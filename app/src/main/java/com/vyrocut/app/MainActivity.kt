@@ -686,8 +686,8 @@ private fun decodeAudioWaveform(
                         val frameCount = if (frameBytes > 0) pcm.remaining() / frameBytes else 0
                         for (frame in 0 until frameCount) {
                             val timeUs = info.presentationTimeUs + frame * 1_000_000L / sampleRate
-                            if (timeUs < startUs || timeUs >= endUs) continue
                             var peak = 0f
+                            // Consume preroll too, keeping PCM channel reads aligned.
                             repeat(channels) {
                                 val sample = when (pcmEncoding) {
                                     android.media.AudioFormat.ENCODING_PCM_8BIT -> ((pcm.get().toInt() and 0xff) - 128) / 128f
@@ -704,9 +704,11 @@ private fun decodeAudioWaveform(
                                 }
                                 peak = maxOf(peak, kotlin.math.abs(sample))
                             }
-                            val bucket = (((timeUs - startUs).toDouble() / durationUs) * bucketCount)
-                                .toInt().coerceIn(0, bucketCount - 1)
-                            peaks[bucket] = maxOf(peaks[bucket], peak)
+                            if (timeUs >= startUs && timeUs < endUs) {
+                                val bucket = (((timeUs - startUs).toDouble() / durationUs) * bucketCount)
+                                    .toInt().coerceIn(0, bucketCount - 1)
+                                peaks[bucket] = maxOf(peaks[bucket], peak)
+                            }
                         }
                     }
                     val eos = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
