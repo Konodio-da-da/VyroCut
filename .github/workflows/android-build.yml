@@ -4,14 +4,15 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main, "feat/**"]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Push and pull-request events for the same feature branch share one build slot.
-# New commits supersede stale runs so the latest code gets CI capacity first.
+# Feature branches are validated by their pull-request event only; this avoids
+# duplicate push + pull-request builds competing for the same runner slot.
+# New commits supersede stale PR runs so the latest code gets CI capacity first.
 concurrency:
   group: android-build-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
