@@ -126,6 +126,8 @@ private fun VyroCutApp() {
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
+    var previousClipEdits by remember { mutableStateOf(clips.toList()) }
+    var previousProjectId by remember { mutableStateOf(activeProjectId) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
 
@@ -150,11 +152,32 @@ private fun VyroCutApp() {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    // Load the ordered edit decision list as a real ExoPlayer playlist. Each source
-    // segment is clipped non-destructively; playback naturally advances between clips.
-    LaunchedEffect(clips) {
-        if (clips.isEmpty()) {
+    // Rebuild the ordered playlist after an edit while preserving the active
+    // source-time playhead when the same clip still exists (including reorders/trims).
+    // Switching projects deliberately starts the new project's first clip at zero.
+    LaunchedEffect(clips, activeProjectId) {
+        val sameProject = previousProjectId == activeProjectId
+        val currentClipId = if (sameProject) player.currentMediaItem?.mediaId else null
+        val currentPositionMs = if (sameProject) player.currentPosition else 0L
+        val wasPlaying = sameProject && player.isPlaying
+        val previousRanges = if (sameProject) {
+            previousClipEdits.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) }
+        } else {
+            emptyList()
+        }
+        val nextRanges = clips.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) }
+        val restoreTarget = resolvePlaybackRestoreTarget(
+            previousClips = previousRanges,
+            nextClips = nextRanges,
+            currentClipId = currentClipId,
+            currentClipPositionMs = currentPositionMs,
+            fallbackClipIndex = if (sameProject) selectedIndex else 0,
+        )
+
+        if (restoreTarget == null) {
+            player.playWhenReady = false
             player.clearMediaItems()
+            timelinePositionMs = 0f
             isPlaying = false
         } else {
             val items = clips.map { clip ->
@@ -169,12 +192,18 @@ private fun VyroCutApp() {
                     )
                     .build()
             }
-            val startIndex = selectedIndex.coerceIn(0, items.lastIndex)
-            player.setMediaItems(items, startIndex, 0L)
-            player.prepare()
             player.playWhenReady = false
-            isPlaying = false
+            player.setMediaItems(items, restoreTarget.clipIndex, restoreTarget.positionMs)
+            player.prepare()
+            player.playWhenReady = wasPlaying
+            timelinePositionMs = calculateTimelinePositionMs(
+                clips.map { it.durationMs },
+                restoreTarget.clipIndex,
+                restoreTarget.positionMs,
+            ).toFloat()
         }
+        previousClipEdits = clips.toList()
+        previousProjectId = activeProjectId
     }
     LaunchedEffect(player, clips, isPlaying) {
         while (true) {
