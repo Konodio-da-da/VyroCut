@@ -3,12 +3,14 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The newer playlist and export commits are awaiting their own CI verification.
+- The ordered-playlist, timeline-scrubbing, thumbnail, and export-publishing changes are verified by GitHub Actions when the corresponding run succeeds.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.
+- Project-wide timeline scrubber maps elapsed project time back to the correct clip and clip-relative position.
+- Timeline cards asynchronously generate frame thumbnails from their source videos.
 - Video import through Android's Storage Access Framework with persisted read permission.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
@@ -18,10 +20,10 @@
 - Project edit decisions autosaved locally in app preferences.
 
 ## Implemented in code; awaiting verification
-- Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling and publish-to-Movies/share flow.
+- Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
 
 ## Still to implement
-- Timeline scrubbing and waveform/thumbnail generation.
+- Waveform generation and a persistent thumbnail cache.
 - Undo/redo and named multiple projects.
 - Audio, image, text, transitions, and effects tracks.
 
