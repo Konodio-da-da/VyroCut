@@ -108,6 +108,55 @@ internal fun <T> moveTimelineItem(items: List<T>, fromIndex: Int, toIndex: Int):
     }
 }
 
+internal data class ClipPlaybackRange(
+    val id: String,
+    val sourceStartMs: Long,
+    val sourceEndMs: Long,
+) {
+    val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
+}
+
+internal data class PlaybackRestoreTarget(
+    val clipIndex: Int,
+    val positionMs: Long,
+)
+
+/**
+ * Restores the current source-time playhead after rebuilding a project's playlist.
+ * Stable clip IDs let reorder/trim edits keep the same visual moment. If the active
+ * clip was removed (for example, deleted or split), playback falls back to the
+ * caller's selected index at the beginning of that segment.
+ */
+internal fun resolvePlaybackRestoreTarget(
+    previousClips: List<ClipPlaybackRange>,
+    nextClips: List<ClipPlaybackRange>,
+    currentClipId: String?,
+    currentClipPositionMs: Long,
+    fallbackClipIndex: Int,
+): PlaybackRestoreTarget? {
+    if (nextClips.isEmpty()) return null
+
+    val previousClip = previousClips.firstOrNull { it.id == currentClipId }
+    val nextIndex = previousClip?.let { old ->
+        nextClips.indexOfFirst { it.id == old.id }
+    } ?: -1
+
+    if (previousClip != null && nextIndex >= 0) {
+        val nextClip = nextClips[nextIndex]
+        val sourcePositionMs = addWithoutOverflow(
+            previousClip.sourceStartMs.coerceAtLeast(0L),
+            currentClipPositionMs.coerceAtLeast(0L),
+        )
+        val maximumPositionMs = (nextClip.durationMs - 1L).coerceAtLeast(0L)
+        val relativePositionMs = (sourcePositionMs - nextClip.sourceStartMs.coerceAtLeast(0L))
+            .coerceIn(0L, maximumPositionMs)
+        return PlaybackRestoreTarget(nextIndex, relativePositionMs)
+    }
+
+    return PlaybackRestoreTarget(fallbackClipIndex.coerceIn(0, nextClips.lastIndex), 0L)
+}
+
+
 /** Computes total timeline length without overflowing when adding clip durations. */
 internal fun calculateTimelineDurationMs(clipDurationsMs: List<Long>): Long =
     clipDurationsMs.fold(0L) { total, duration ->
