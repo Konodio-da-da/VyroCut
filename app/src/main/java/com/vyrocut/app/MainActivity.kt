@@ -5,11 +5,13 @@ import android.net.Uri
 import android.os.Bundle
 import android.media.MediaMetadataRetriever
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
 import java.io.File
 import java.io.FileInputStream
+import java.security.MessageDigest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -435,17 +437,39 @@ private fun ClipThumbnail(clip: EditClip, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val thumbnail by produceState<Bitmap?>(initialValue = null, clip.uri, clip.sourceStartMs) {
         value = withContext(Dispatchers.IO) {
-            val retriever = MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(context, Uri.parse(clip.uri))
-                retriever.getFrameAtTime(
-                    (clip.sourceStartMs * 1000L).coerceAtLeast(0L),
-                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
-                )
-            } catch (_: Exception) {
-                null
-            } finally {
-                runCatching { retriever.release() }
+            // Cache frames on disk so scrolling away, reopening the project, or
+            // recomposing the timeline does not repeatedly decode the same video.
+            val cacheDirectory = File(context.cacheDir, "vyrocut-thumbnails").apply { mkdirs() }
+            val cacheKey = MessageDigest.getInstance("SHA-256")
+                .digest("${clip.uri}:${clip.sourceStartMs}".toByteArray())
+                .joinToString("") { byte -> "%02x".format(byte) }
+            val cacheFile = File(cacheDirectory, "$cacheKey.jpg")
+            val cachedBitmap = runCatching {
+                if (cacheFile.isFile) BitmapFactory.decodeFile(cacheFile.absolutePath) else null
+            }.getOrNull()
+            if (cachedBitmap != null) {
+                cachedBitmap
+            } else {
+                val retriever = MediaMetadataRetriever()
+                val frame = try {
+                    retriever.setDataSource(context, Uri.parse(clip.uri))
+                    retriever.getFrameAtTime(
+                        (clip.sourceStartMs * 1000L).coerceAtLeast(0L),
+                        MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                    )
+                } catch (_: Exception) {
+                    null
+                } finally {
+                    runCatching { retriever.release() }
+                }
+                if (frame != null) {
+                    runCatching {
+                        cacheFile.outputStream().use { output ->
+                            frame.compress(Bitmap.CompressFormat.JPEG, 82, output)
+                        }
+                    }
+                }
+                frame
             }
         }
     }
