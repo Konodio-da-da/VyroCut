@@ -9,7 +9,7 @@ class TimelineMathTest {
     fun mapsPlayerPositionAfterEarlierClips() {
         assertEquals(
             4_250L,
-            timelinePositionMs(listOf(1_000L, 2_000L, 3_000L), 2, 1_250L),
+            calculateTimelinePositionMs(listOf(1_000L, 2_000L, 3_000L), 2, 1_250L),
         )
     }
 
@@ -17,14 +17,14 @@ class TimelineMathTest {
     fun clampsPlayerPositionToCurrentClipDuration() {
         assertEquals(
             3_000L,
-            timelinePositionMs(listOf(1_000L, 2_000L), 1, 9_000L),
+            calculateTimelinePositionMs(listOf(1_000L, 2_000L), 1, 9_000L),
         )
     }
 
     @Test
     fun invalidPlayerIndexMapsToTimelineStart() {
-        assertEquals(0L, timelinePositionMs(listOf(1_000L), -1, 500L))
-        assertEquals(0L, timelinePositionMs(listOf(1_000L), 1, 500L))
+        assertEquals(0L, calculateTimelinePositionMs(listOf(1_000L), -1, 500L))
+        assertEquals(0L, calculateTimelinePositionMs(listOf(1_000L), 1, 500L))
     }
 
     @Test
@@ -73,7 +73,7 @@ class TimelineMathTest {
     fun durationSumSaturatesInsteadOfOverflowing() {
         assertEquals(
             Long.MAX_VALUE,
-            timelinePositionMs(listOf(Long.MAX_VALUE - 5L, 100L), 1, 5L),
+            calculateTimelinePositionMs(listOf(Long.MAX_VALUE - 5L, 100L), 1, 5L),
         )
     }
 }
