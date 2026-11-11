@@ -103,6 +103,9 @@ private fun VyroCutApp() {
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
     var showProjects by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
+    var projectToRename by remember { mutableStateOf<ProjectInfo?>(null) }
+    var renameProjectName by remember { mutableStateOf("") }
+    var projectToDelete by remember { mutableStateOf<ProjectInfo?>(null) }
     val undoStack = remember { mutableStateListOf<List<EditClip>>() }
     val redoStack = remember { mutableStateListOf<List<EditClip>>() }
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -194,6 +197,28 @@ private fun VyroCutApp() {
         newProjectName = ""
         showProjects = false
         switchProject(project)
+    }
+    fun renameProject(project: ProjectInfo) {
+        val name = renameProjectName.trim()
+        if (name.isBlank()) return
+        val index = projects.indexOfFirst { it.id == project.id }
+        if (index < 0) return
+        projects[index] = project.copy(name = name)
+        saveProjectIndex(preferences, projects)
+        projectToRename = null
+        exportMessage = "Renamed project to $name"
+    }
+    fun deleteProject(project: ProjectInfo) {
+        if (projects.size <= 1) return
+        if (project.id == activeProjectId) {
+            val replacement = projects.firstOrNull { it.id != project.id } ?: return
+            switchProject(replacement)
+        }
+        projects.removeAll { it.id == project.id }
+        preferences.edit().remove("project_${project.id}").apply()
+        saveProjectIndex(preferences, projects)
+        projectToDelete = null
+        exportMessage = "Deleted ${project.name}"
     }
     fun changed(items: List<EditClip>) {
         if (items == clips) return
@@ -475,14 +500,26 @@ private fun VyroCutApp() {
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 projects.forEach { project ->
-                                    TextButton(
-                                        onClick = { switchProject(project); showProjects = false },
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            if (project.id == activeProjectId) "✓  ${project.name}" else project.name,
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        TextButton(
+                                            onClick = { switchProject(project); showProjects = false },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                if (project.id == activeProjectId) "✓  ${project.name}" else project.name,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                        TextButton(onClick = {
+                                            projectToRename = project
+                                            renameProjectName = project.name
+                                        }) { Text("Rename", fontSize = 11.sp) }
+                                        TextButton(
+                                            onClick = { projectToDelete = project },
+                                            enabled = projects.size > 1
+                                        ) { Text("Delete", color = if (projects.size > 1) Color(0xFFFF8A80) else StudioMuted, fontSize = 11.sp) }
                                     }
                                 }
                                 HorizontalDivider()
@@ -499,6 +536,44 @@ private fun VyroCutApp() {
                         },
                         dismissButton = {
                             TextButton(onClick = { showProjects = false }) { Text("Close") }
+                        }
+                    )
+                }
+                projectToRename?.let { project ->
+                    AlertDialog(
+                        onDismissRequest = { projectToRename = null },
+                        title = { Text("Rename project") },
+                        text = {
+                            OutlinedTextField(
+                                value = renameProjectName,
+                                onValueChange = { renameProjectName = it },
+                                label = { Text("Project name") },
+                                singleLine = true
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = { renameProject(project) },
+                                enabled = renameProjectName.isNotBlank()
+                            ) { Text("Save") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { projectToRename = null }) { Text("Cancel") }
+                        }
+                    )
+                }
+                projectToDelete?.let { project ->
+                    AlertDialog(
+                        onDismissRequest = { projectToDelete = null },
+                        title = { Text("Delete project?") },
+                        text = { Text("Delete \"${project.name}\" and its saved edit list? This cannot be undone.") },
+                        confirmButton = {
+                            TextButton(onClick = { deleteProject(project) }) {
+                                Text("Delete", color = Color(0xFFFF8A80))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { projectToDelete = null }) { Text("Cancel") }
                         }
                     )
                 }
