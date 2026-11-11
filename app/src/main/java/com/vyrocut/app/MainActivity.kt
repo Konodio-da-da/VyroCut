@@ -106,8 +106,8 @@ private fun VyroCutApp() {
     var projectToRename by remember { mutableStateOf<ProjectInfo?>(null) }
     var renameProjectName by remember { mutableStateOf("") }
     var projectToDelete by remember { mutableStateOf<ProjectInfo?>(null) }
-    val undoStack = remember { mutableStateListOf<List<EditClip>>() }
-    val redoStack = remember { mutableStateListOf<List<EditClip>>() }
+    val undoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
+    val redoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
@@ -185,6 +185,7 @@ private fun VyroCutApp() {
         selectedIndex = 0
         undoStack.clear()
         redoStack.clear()
+        saveProjectHistory(preferences, project.id, undoStack, redoStack)
         timelinePositionMs = 0f
         exportMessage = "Opened ${project.name}"
     }
@@ -226,6 +227,7 @@ private fun VyroCutApp() {
         if (undoStack.size > 50) undoStack.removeAt(0)
         redoStack.clear()
         clips = items.toList()
+        saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         selectedIndex = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         saveProject(items)
     }
@@ -236,6 +238,7 @@ private fun VyroCutApp() {
         clips = previous
         selectedIndex = selectedIndex.coerceIn(0, (previous.size - 1).coerceAtLeast(0))
         saveProject(previous)
+        saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         exportMessage = "Undo completed"
     }
     fun redoEdit() {
@@ -245,6 +248,7 @@ private fun VyroCutApp() {
         clips = next
         selectedIndex = selectedIndex.coerceIn(0, (next.size - 1).coerceAtLeast(0))
         saveProject(next)
+        saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         exportMessage = "Redo completed"
     }
 
@@ -881,6 +885,35 @@ private fun decodeProjectBackup(raw: String): ProjectBackup {
     require(clips.size == clipsJson.length()) { "The backup contains invalid clip entries" }
     return ProjectBackup(name, clips)
 }
+
+private fun saveProjectHistory(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    undo: List<List<EditClip>>,
+    redo: List<List<EditClip>>
+) {
+    fun encodeHistory(history: List<List<EditClip>>): String {
+        val array = JSONArray()
+        history.takeLast(50).forEach { snapshot -> array.put(encodeProject(snapshot)) }
+        return array.toString()
+    }
+    preferences.edit()
+        .putString("project_${projectId}_undo", encodeHistory(undo))
+        .putString("project_${projectId}_redo", encodeHistory(redo))
+        .apply()
+}
+
+private fun loadProjectHistory(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    kind: String
+): List<List<EditClip>> = runCatching {
+    val raw = preferences.getString("project_${projectId}_${kind}", null) ?: return emptyList()
+    val array = JSONArray(raw)
+    (0 until array.length()).mapNotNull { index ->
+        decodeProject(array.getString(index))
+    }.takeLast(50)
+}.getOrDefault(emptyList())
 
 private fun decodeProject(raw: String): List<EditClip> = runCatching {
     val array = JSONArray(raw)
