@@ -128,6 +128,7 @@ private fun VyroCutApp() {
     var isScrubbing by remember { mutableStateOf(false) }
     var previousClipEdits by remember { mutableStateOf(clips.toList()) }
     var previousProjectId by remember { mutableStateOf(activeProjectId) }
+    var previousSelectedIndex by remember { mutableIntStateOf(selectedIndex) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
 
@@ -166,17 +167,25 @@ private fun VyroCutApp() {
             emptyList()
         }
         val nextRanges = clips.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) }
+        val preferredClipId = if (sameProject && previousSelectedIndex != selectedIndex) {
+            clips.getOrNull(selectedIndex)?.id
+        } else {
+            null
+        }
         val restoreTarget = resolvePlaybackRestoreTarget(
             previousClips = previousRanges,
             nextClips = nextRanges,
             currentClipId = currentClipId,
             currentClipPositionMs = currentPositionMs,
             fallbackClipIndex = if (sameProject) selectedIndex else 0,
+            preferredClipId = preferredClipId,
         )
 
         if (restoreTarget == null) {
             player.playWhenReady = false
             player.clearMediaItems()
+            selectedIndex = 0
+            previousSelectedIndex = 0
             timelinePositionMs = 0f
             isPlaying = false
         } else {
@@ -196,6 +205,8 @@ private fun VyroCutApp() {
             player.setMediaItems(items, restoreTarget.clipIndex, restoreTarget.positionMs)
             player.prepare()
             player.playWhenReady = wasPlaying
+            selectedIndex = restoreTarget.clipIndex
+            previousSelectedIndex = restoreTarget.clipIndex
             timelinePositionMs = calculateTimelinePositionMs(
                 clips.map { it.durationMs },
                 restoreTarget.clipIndex,
