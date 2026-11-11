@@ -116,7 +116,8 @@ private fun VyroCutApp() {
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
-    val timelineDurationMs = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
+    val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
+    val timelineDurationMs = clipDurationsMs.sum().coerceAtLeast(1L)
 
     val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
     DisposableEffect(player) { onDispose { player.release() } }
@@ -150,8 +151,11 @@ private fun VyroCutApp() {
         while (true) {
             if (clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
                 val currentIndex = player.currentMediaItemIndex
-                val elapsedBeforeCurrent = clips.take(currentIndex).sumOf { it.durationMs }
-                timelinePositionMs = (elapsedBeforeCurrent + player.currentPosition).coerceIn(0L, timelineDurationMs).toFloat()
+                timelinePositionMs = calculateTimelinePositionMs(
+                    clipDurationsMs,
+                    currentIndex,
+                    player.currentPosition,
+                ).coerceIn(0L, timelineDurationMs).toFloat()
             }
             delay(200)
         }
@@ -347,17 +351,9 @@ private fun VyroCutApp() {
                         value = timelinePositionMs.coerceIn(0f, timelineDurationMs.toFloat()),
                         onValueChange = { timelinePositionMs = it },
                         onValueChangeFinished = {
-                            var remaining = timelinePositionMs.toLong()
-                            val targetIndex = clips.indexOfFirst { clip ->
-                                if (remaining < clip.durationMs) true else {
-                                    remaining -= clip.durationMs
-                                    false
-                                }
-                            }.let { if (it < 0) clips.lastIndex else it }
-                            if (targetIndex >= 0) {
-                                val offset = remaining.coerceIn(0L, (clips[targetIndex].durationMs - 1L).coerceAtLeast(0L))
-                                selectedIndex = targetIndex
-                                player.seekTo(targetIndex, offset)
+                            resolveTimelineSeekTarget(clipDurationsMs, timelinePositionMs.toLong())?.let { target ->
+                                selectedIndex = target.clipIndex
+                                player.seekTo(target.clipIndex, target.positionMs)
                             }
                         },
                         enabled = clips.isNotEmpty(),
