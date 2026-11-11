@@ -142,4 +142,67 @@ class TimelineMathTest {
         assertEquals(listOf("A", "B", "C"), original)
     }
 
+    @Test
+    fun restoresSameClipAndSourcePositionAfterReordering() {
+        val previous = listOf(
+            ClipPlaybackRange("a", 0L, 5_000L),
+            ClipPlaybackRange("b", 2_000L, 8_000L),
+        )
+        val next = listOf(previous[1], previous[0])
+
+        assertEquals(
+            PlaybackRestoreTarget(0, 1_250L),
+            resolvePlaybackRestoreTarget(previous, next, "b", 1_250L, 1),
+        )
+    }
+
+    @Test
+    fun trimStartClampsPlayheadToNewSourceInPoint() {
+        val previous = listOf(ClipPlaybackRange("a", 1_000L, 6_000L))
+        val next = listOf(ClipPlaybackRange("a", 3_000L, 6_000L))
+
+        assertEquals(
+            PlaybackRestoreTarget(0, 0L),
+            resolvePlaybackRestoreTarget(previous, next, "a", 500L, 0),
+        )
+    }
+
+    @Test
+    fun trimEndClampsPlayheadToLastPlayableMillisecond() {
+        val previous = listOf(ClipPlaybackRange("a", 1_000L, 8_000L))
+        val next = listOf(ClipPlaybackRange("a", 1_000L, 4_000L))
+
+        assertEquals(
+            PlaybackRestoreTarget(0, 2_999L),
+            resolvePlaybackRestoreTarget(previous, next, "a", 6_000L, 0),
+        )
+    }
+
+    @Test
+    fun removedCurrentClipFallsBackToSelectedClipStart() {
+        val previous = listOf(
+            ClipPlaybackRange("a", 0L, 5_000L),
+            ClipPlaybackRange("b", 0L, 5_000L),
+        )
+        val next = listOf(ClipPlaybackRange("b", 0L, 5_000L))
+
+        assertEquals(
+            PlaybackRestoreTarget(0, 0L),
+            resolvePlaybackRestoreTarget(previous, next, "a", 2_000L, 0),
+        )
+    }
+
+    @Test
+    fun emptyNextPlaylistHasNoPlaybackRestoreTarget() {
+        assertNull(
+            resolvePlaybackRestoreTarget(
+                previousClips = listOf(ClipPlaybackRange("a", 0L, 1_000L)),
+                nextClips = emptyList(),
+                currentClipId = "a",
+                currentClipPositionMs = 500L,
+                fallbackClipIndex = 0,
+            ),
+        )
+    }
+
 }
