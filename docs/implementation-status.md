@@ -3,13 +3,14 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The ordered-playlist, timeline-scrubbing, thumbnail-cache, undo/redo, and export-publishing changes are verified by GitHub Actions when the corresponding run succeeds. Waveform decoding, project rename/delete, JSON backup/restore, and persistent undo/redo history are implemented in code but are awaiting a successful build run.
+- The latest successful Actions build is from an older revision; the current feature-branch run is queued, so recent changes are not yet build-verified. Waveform decoding, project rename/delete, JSON backup/restore, persistent undo/redo history, and the new timeline-math tests are awaiting a successful CI run.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.
 - Project-wide timeline scrubber maps elapsed project time back to the correct clip and clip-relative position.
+- Timeline seek mapping is isolated in pure Kotlin helpers and has unit tests for clip boundaries, the exact project end, empty/zero-length timelines, clamping, and duration overflow.
 - Timeline cards asynchronously generate frame thumbnails from their source videos; generated frames are cached on disk for reuse.
 - Multiple named local projects can be created, renamed, deleted, switched, and autosaved independently; deleting the active project opens another project first and the final remaining project is protected.
 - Projects can be exported to a versioned `.vyrocut.json` backup and restored as a new project through Android's document picker; malformed or unsupported backup files are rejected.
