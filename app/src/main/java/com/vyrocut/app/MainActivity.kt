@@ -74,27 +74,41 @@ private fun VyroCutApp() {
 
     val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
     DisposableEffect(player) { onDispose { player.release() } }
-    LaunchedEffect(selectedClip?.id, selectedClip?.sourceStartMs, selectedClip?.sourceEndMs) {
-        val clip = selectedClip
-        if (clip != null) {
-            val item = MediaItem.Builder().setUri(Uri.parse(clip.uri))
-                .setClippingConfiguration(
-                    MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(clip.sourceStartMs)
-                        .setEndPositionMs(clip.sourceEndMs).build()
-                ).build()
-            player.setMediaItem(item)
-            player.prepare()
-            player.playWhenReady = false
+    // Load the ordered edit decision list as a real ExoPlayer playlist. Each source
+    // segment is clipped non-destructively; playback naturally advances between clips.
+    LaunchedEffect(clips) {
+        if (clips.isEmpty()) {
+            player.clearMediaItems()
             isPlaying = false
         } else {
-            player.clearMediaItems()
+            val items = clips.map { clip ->
+                MediaItem.Builder()
+                    .setMediaId(clip.id)
+                    .setUri(Uri.parse(clip.uri))
+                    .setClippingConfiguration(
+                        MediaItem.ClippingConfiguration.Builder()
+                            .setStartPositionMs(clip.sourceStartMs)
+                            .setEndPositionMs(clip.sourceEndMs)
+                            .build()
+                    )
+                    .build()
+            }
+            val startIndex = selectedIndex.coerceIn(0, items.lastIndex)
+            player.setMediaItems(items, startIndex, 0L)
+            player.prepare()
+            player.playWhenReady = false
             isPlaying = false
         }
     }
     DisposableEffect(player) {
         val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(playing: Boolean) { isPlaying = playing }
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val activeIndex = player.currentMediaItemIndex
+                if (activeIndex >= 0 && activeIndex != selectedIndex) selectedIndex = activeIndex
+            }
         }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
@@ -171,7 +185,10 @@ private fun VyroCutApp() {
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     clips.forEachIndexed { index, clip ->
                         Column(Modifier.width(116.dp).background(if (index == selectedIndex) Color(0xFF16483D) else StudioPanel, RoundedCornerShape(10.dp))
-                            .clickable { selectedIndex = index }.padding(10.dp)) {
+                            .clickable {
+                                selectedIndex = index
+                                if (index < player.mediaItemCount) player.seekTo(index, 0L)
+                            }.padding(10.dp)) {
                             Text("CLIP ${index + 1}", color = if (index == selectedIndex) StudioAccent else StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(5.dp))
                             Text(clip.name, color = StudioText, fontSize = 11.sp, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
