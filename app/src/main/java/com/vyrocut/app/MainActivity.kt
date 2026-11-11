@@ -257,7 +257,9 @@ private fun VyroCutApp() {
                                         ).build()
                                     EditedMediaItem.Builder(source).build()
                                 }
-                                val sequence = EditedMediaItemSequence.withAudioAndVideoFrom(editedItems)
+                                // Media3 1.5.1 exposes the list-based sequence builder.
+                                @Suppress("DEPRECATION")
+                                val sequence = EditedMediaItemSequence.Builder(editedItems).build()
                                 val composition = Composition.Builder(sequence).build()
                                 val transformer = Transformer.Builder(context)
                                     .addListener(object : Transformer.Listener {
