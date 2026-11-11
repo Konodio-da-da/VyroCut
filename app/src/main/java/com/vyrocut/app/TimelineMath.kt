@@ -133,8 +133,18 @@ internal fun resolvePlaybackRestoreTarget(
     currentClipId: String?,
     currentClipPositionMs: Long,
     fallbackClipIndex: Int,
+    preferredClipId: String? = null,
 ): PlaybackRestoreTarget? {
     if (nextClips.isEmpty()) return null
+
+    // Import and duplicate operations deliberately select a newly-created clip.
+    // Honor that selection instead of retaining the old player's still-valid ID.
+    val preferredIndex = preferredClipId?.let { id ->
+        nextClips.indexOfFirst { it.id == id }
+    } ?: -1
+    if (preferredIndex >= 0 && preferredClipId != currentClipId) {
+        return PlaybackRestoreTarget(preferredIndex, 0L)
+    }
 
     val previousClip = previousClips.firstOrNull { it.id == currentClipId }
     val nextIndex = previousClip?.let { old ->
