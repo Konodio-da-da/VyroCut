@@ -266,6 +266,7 @@ private fun VyroCutApp() {
                                         override fun onCompleted(composition: Composition, result: ExportResult) {
                                             isExporting = false
                                             activeTransformer = null
+                                            var pendingDestination: Uri? = null
                                             runCatching {
                                                 val values = ContentValues().apply {
                                                     put(MediaStore.Video.Media.DISPLAY_NAME, outputFile.name)
@@ -273,22 +274,27 @@ private fun VyroCutApp() {
                                                     put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/VyroCut")
                                                     put(MediaStore.Video.Media.IS_PENDING, 1)
                                                 }
-                                                val destination = context.contentResolver.insert(
+                                                pendingDestination = context.contentResolver.insert(
                                                     MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values
                                                 ) ?: error("Could not create a Movies library entry")
-                                                context.contentResolver.openOutputStream(destination)?.use { output ->
+                                                context.contentResolver.openOutputStream(pendingDestination!!)?.use { output ->
                                                     FileInputStream(outputFile).use { input -> input.copyTo(output) }
                                                 } ?: error("Could not write the exported video")
-                                                context.contentResolver.update(
-                                                    destination,
+                                                val publishedRows = context.contentResolver.update(
+                                                    pendingDestination!!,
                                                     ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) },
                                                     null,
                                                     null
                                                 )
-                                                exportedUri = destination
+                                                check(publishedRows > 0) { "Could not finish publishing the video" }
+                                                exportedUri = pendingDestination
                                                 exportMessage = "Export complete • Saved to Movies/VyroCut"
+                                                outputFile.delete()
                                             }.onFailure { error ->
-                                                exportMessage = "Export complete, but could not publish to Movies: ${error.message}"
+                                                pendingDestination?.let { uri ->
+                                                    runCatching { context.contentResolver.delete(uri, null, null) }
+                                                }
+                                                exportMessage = "Export finished, but saving to Movies failed: ${error.message}"
                                             }
                                         }
                                         override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
@@ -307,6 +313,7 @@ private fun VyroCutApp() {
                                     .onFailure { error ->
                                         isExporting = false
                                         activeTransformer = null
+                                        outputFile.delete()
                                         exportMessage = "Could not start export: ${error.message}"
                                     }
                             }
@@ -321,6 +328,7 @@ private fun VyroCutApp() {
                         OutlinedButton(onClick = {
                             activeTransformer?.cancel()
                             isExporting = false
+                            activeTransformer = null
                             exportMessage = "Export cancelled"
                         }) {
                             Text("Cancel")
