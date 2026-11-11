@@ -88,6 +88,8 @@ private fun VyroCutApp() {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
     var clips by remember { mutableStateOf(loadProject(preferences)) }
+    val undoStack = remember { mutableStateListOf<List<EditClip>>() }
+    val redoStack = remember { mutableStateListOf<List<EditClip>>() }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
@@ -154,9 +156,31 @@ private fun VyroCutApp() {
         preferences.edit().putString("clips", encodeProject(items)).apply()
     }
     fun changed(items: List<EditClip>) {
-        clips = items
+        if (items == clips) return
+        undoStack.add(clips.toList())
+        if (undoStack.size > 50) undoStack.removeAt(0)
+        redoStack.clear()
+        clips = items.toList()
         selectedIndex = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         saveProject(items)
+    }
+    fun undoEdit() {
+        if (undoStack.isEmpty()) return
+        redoStack.add(clips.toList())
+        val previous = undoStack.removeAt(undoStack.lastIndex)
+        clips = previous
+        selectedIndex = selectedIndex.coerceIn(0, (previous.size - 1).coerceAtLeast(0))
+        saveProject(previous)
+        exportMessage = "Undo completed"
+    }
+    fun redoEdit() {
+        if (redoStack.isEmpty()) return
+        undoStack.add(clips.toList())
+        val next = redoStack.removeAt(redoStack.lastIndex)
+        clips = next
+        selectedIndex = selectedIndex.coerceIn(0, (next.size - 1).coerceAtLeast(0))
+        saveProject(next)
+        exportMessage = "Redo completed"
     }
 
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -242,6 +266,12 @@ private fun VyroCutApp() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("TIMELINE", color = StudioMuted, fontSize = 10.sp, letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        Text("Undo", fontSize = 11.sp)
+                    }
+                    TextButton(onClick = { redoEdit() }, enabled = redoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                        Text("Redo", fontSize = 11.sp)
+                    }
                     Text("${clips.size} clips", color = StudioMuted, fontSize = 11.sp)
                 }
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
