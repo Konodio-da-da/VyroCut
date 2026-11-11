@@ -4,6 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.media.MediaMetadataRetriever
+import android.content.ContentValues
+import android.os.Environment
+import android.provider.MediaStore
+import java.io.File
+import java.io.FileInputStream
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -37,6 +42,13 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.transformer.Composition
+import androidx.media3.transformer.EditedMediaItem
+import androidx.media3.transformer.EditedMediaItemSequence
+import androidx.media3.transformer.ExportException
+import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.Transformer
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -63,6 +75,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
@@ -70,6 +83,10 @@ private fun VyroCutApp() {
     var clips by remember { mutableStateOf(loadProject(preferences)) }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
+    var isExporting by remember { mutableStateOf(false) }
+    var exportMessage by remember { mutableStateOf<String?>(null) }
+    var exportedUri by remember { mutableStateOf<Uri?>(null) }
+    var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     val selectedClip = clips.getOrNull(selectedIndex)
 
     val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
@@ -221,6 +238,101 @@ private fun VyroCutApp() {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = Color(0xFFFF8A80))
                     }
                 }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            if (clips.isNotEmpty() && !isExporting) {
+                                val outputDirectory = File(
+                                    context.getExternalFilesDir(Environment.DIRECTORY_MOVIES),
+                                    "VyroCut"
+                                ).apply { mkdirs() }
+                                val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
+                                val editedItems = clips.map { clip ->
+                                    val source = MediaItem.Builder()
+                                        .setUri(Uri.parse(clip.uri))
+                                        .setClippingConfiguration(
+                                            MediaItem.ClippingConfiguration.Builder()
+                                                .setStartPositionMs(clip.sourceStartMs)
+                                                .setEndPositionMs(clip.sourceEndMs)
+                                                .build()
+                                        ).build()
+                                    EditedMediaItem.Builder(source).build()
+                                }
+                                val sequence = EditedMediaItemSequence.withAudioAndVideoFrom(editedItems)
+                                val composition = Composition.Builder(sequence).build()
+                                val transformer = Transformer.Builder(context)
+                                    .addListener(object : Transformer.Listener {
+                                        override fun onCompleted(composition: Composition, result: ExportResult) {
+                                            isExporting = false
+                                            activeTransformer = null
+                                            runCatching {
+                                                val values = ContentValues().apply {
+                                                    put(MediaStore.Video.Media.DISPLAY_NAME, outputFile.name)
+                                                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+                                                    put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/VyroCut")
+                                                    put(MediaStore.Video.Media.IS_PENDING, 1)
+                                                }
+                                                val destination = context.contentResolver.insert(
+                                                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values
+                                                ) ?: error("Could not create a Movies library entry")
+                                                context.contentResolver.openOutputStream(destination)?.use { output ->
+                                                    FileInputStream(outputFile).use { input -> input.copyTo(output) }
+                                                } ?: error("Could not write the exported video")
+                                                context.contentResolver.update(
+                                                    destination,
+                                                    ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) },
+                                                    null,
+                                                    null
+                                                )
+                                                exportedUri = destination
+                                                exportMessage = "Export complete • Saved to Movies/VyroCut"
+                                            }.onFailure { error ->
+                                                exportMessage = "Export complete, but could not publish to Movies: ${error.message}"
+                                            }
+                                        }
+                                        override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
+                                            isExporting = false
+                                            activeTransformer = null
+                                            exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
+                                            outputFile.delete()
+                                        }
+                                    }).build()
+                                activeTransformer = transformer
+                                exportedUri = null
+                                exportMessage = "Preparing MP4 export…"
+                                isExporting = true
+                                player.pause()
+                                runCatching { transformer.start(composition, outputFile.absolutePath) }
+                                    .onFailure { error ->
+                                        isExporting = false
+                                        activeTransformer = null
+                                        exportMessage = "Could not start export: ${error.message}"
+                                    }
+                            }
+                        },
+                        enabled = clips.isNotEmpty() && !isExporting,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))
+                    ) {
+                        Text(if (isExporting) "Exporting…" else "Export MP4", fontWeight = FontWeight.Bold)
+                    }
+                    if (isExporting) {
+                        OutlinedButton(onClick = { activeTransformer?.cancel(); isExporting = false; exportMessage = "Export cancelled" }) {
+                            Text("Cancel")
+                        }
+                    }
+                    exportedUri?.let { uri ->
+                        OutlinedButton(onClick = {
+                            val share = Intent(Intent.ACTION_SEND).apply {
+                                type = "video/mp4"
+                                putExtra(Intent.EXTRA_STREAM, uri)
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            context.startActivity(Intent.createChooser(share, "Share exported video"))
+                        }) { Text("Share") }
+                    }
+                }
+                exportMessage?.let { Text(it, color = StudioAccent, fontSize = 11.sp) }
                 Text("Offline editing • Project autosaves on this device", color = StudioMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
         }
