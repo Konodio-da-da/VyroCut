@@ -116,6 +116,7 @@ private fun VyroCutApp() {
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
+    var isScrubbing by remember { mutableStateOf(false) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = clipDurationsMs.sum().coerceAtLeast(1L)
 
@@ -149,7 +150,7 @@ private fun VyroCutApp() {
     }
     LaunchedEffect(player, clips, isPlaying) {
         while (true) {
-            if (clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
+            if (!isScrubbing && clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
                 val currentIndex = player.currentMediaItemIndex
                 timelinePositionMs = calculateTimelinePositionMs(
                     clipDurationsMs,
@@ -349,12 +350,16 @@ private fun VyroCutApp() {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Slider(
                         value = timelinePositionMs.coerceIn(0f, timelineDurationMs.toFloat()),
-                        onValueChange = { timelinePositionMs = it },
+                        onValueChange = {
+                            isScrubbing = true
+                            timelinePositionMs = it
+                        },
                         onValueChangeFinished = {
                             resolveTimelineSeekTarget(clipDurationsMs, timelinePositionMs.toLong())?.let { target ->
                                 selectedIndex = target.clipIndex
                                 player.seekTo(target.clipIndex, target.positionMs)
                             }
+                            isScrubbing = false
                         },
                         enabled = clips.isNotEmpty(),
                         colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
