@@ -21,13 +21,18 @@
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
 - Split selected segments at their midpoint while preserving left-to-right source order.
+- Move the selected clip earlier or later in the ordered timeline without changing its source range.
+- Duplicate a selected segment as a separate edit-decision-list entry while retaining the same source URI and in/out points.
 - Trim either the selected segment's start or end by one second without modifying source media.
+- Video import now rejects sources that cannot grant persistent read access or provide a valid duration, instead of silently saving a temporary or one-millisecond clip.
 - Timeline duration uses saturating arithmetic so extremely long projects cannot wrap to a negative slider range.
 - Delete selected segment.
 - Project edit decisions autosaved locally in app preferences.
 
 ## Implemented in code; awaiting verification
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
+- Before publishing, the completed file is checked for a non-empty MP4, a readable video track, and at least one video sample. This is a container/track check, not a substitute for decoding and watching the exported file on an Android device.
+- The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
 
 ## Still to implement
 - Automatic recovery snapshots beyond the persisted edit history, including recovery UI and interrupted-export recovery.
