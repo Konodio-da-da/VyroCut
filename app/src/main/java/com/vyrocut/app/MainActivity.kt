@@ -67,6 +67,8 @@ private val StudioAccent = Color(0xFF0FE8B8)
 private val StudioText = Color(0xFFE5EDEA)
 private val StudioMuted = Color(0xFF9BAAA5)
 
+private data class ProjectInfo(val id: String, val name: String)
+
 private data class EditClip(
     val id: String,
     val uri: String,
@@ -89,7 +91,13 @@ class MainActivity : ComponentActivity() {
 private fun VyroCutApp() {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
-    var clips by remember { mutableStateOf(loadProject(preferences)) }
+    val projects = remember { mutableStateListOf<ProjectInfo>().apply { addAll(loadProjectIndex(preferences)) } }
+    var activeProjectId by remember {
+        mutableStateOf(preferences.getString("active_project_id", projects.first().id) ?: projects.first().id)
+    }
+    var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
+    var showProjects by remember { mutableStateOf(false) }
+    var newProjectName by remember { mutableStateOf("") }
     val undoStack = remember { mutableStateListOf<List<EditClip>>() }
     val redoStack = remember { mutableStateListOf<List<EditClip>>() }
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -155,7 +163,32 @@ private fun VyroCutApp() {
     }
 
     fun saveProject(items: List<EditClip>) {
-        preferences.edit().putString("clips", encodeProject(items)).apply()
+        preferences.edit()
+            .putString("project_$activeProjectId", encodeProject(items))
+            .putString("active_project_id", activeProjectId)
+            .apply()
+    }
+    fun switchProject(project: ProjectInfo) {
+        if (project.id == activeProjectId) return
+        saveProject(clips)
+        activeProjectId = project.id
+        preferences.edit().putString("active_project_id", project.id).apply()
+        clips = loadProject(preferences, project.id)
+        selectedIndex = 0
+        undoStack.clear()
+        redoStack.clear()
+        timelinePositionMs = 0f
+        exportMessage = "Opened ${project.name}"
+    }
+    fun createProject() {
+        val name = newProjectName.trim().ifBlank { "Untitled project" }
+        val project = ProjectInfo(java.util.UUID.randomUUID().toString(), name)
+        projects.add(project)
+        saveProjectIndex(preferences, projects)
+        preferences.edit().putString("project_${project.id}", encodeProject(emptyList())).apply()
+        newProjectName = ""
+        showProjects = false
+        switchProject(project)
     }
     fun changed(items: List<EditClip>) {
         if (items == clips) return
@@ -209,7 +242,9 @@ private fun VyroCutApp() {
                     Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(28.dp))
                     Text("VyroCut", color = StudioText, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 9.dp))
                     Spacer(Modifier.weight(1f))
-                    Text("AUTOSAVED", color = StudioAccent, fontSize = 10.sp, letterSpacing = 1.sp)
+                    TextButton(onClick = { showProjects = true }) {
+                        Text(projects.firstOrNull { it.id == activeProjectId }?.name ?: "Project", color = StudioAccent, maxLines = 1)
+                    }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
                 Box(Modifier.fillMaxWidth().weight(1f).background(Color.Black, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
@@ -426,6 +461,40 @@ private fun VyroCutApp() {
                 }
                 exportMessage?.let { Text(it, color = StudioAccent, fontSize = 11.sp) }
                 Text("Offline editing • Project autosaves on this device", color = StudioMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+                if (showProjects) {
+                    AlertDialog(
+                        onDismissRequest = { showProjects = false },
+                        title = { Text("Your projects") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                projects.forEach { project ->
+                                    TextButton(
+                                        onClick = { switchProject(project); showProjects = false },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text(
+                                            if (project.id == activeProjectId) "✓  ${project.name}" else project.name,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                                HorizontalDivider()
+                                OutlinedTextField(
+                                    value = newProjectName,
+                                    onValueChange = { newProjectName = it },
+                                    label = { Text("New project name") },
+                                    singleLine = true
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = { createProject() }) { Text("Create project") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showProjects = false }) { Text("Close") }
+                        }
+                    )
+                }
             }
         }
     }
@@ -499,8 +568,42 @@ private fun encodeProject(clips: List<EditClip>): String {
     return array.toString()
 }
 
-private fun loadProject(preferences: android.content.SharedPreferences): List<EditClip> {
-    val raw = preferences.getString("clips", null) ?: return emptyList()
+private fun loadProjectIndex(preferences: android.content.SharedPreferences): List<ProjectInfo> {
+    val raw = preferences.getString("project_index", null)
+    val loaded = runCatching {
+        val array = JSONArray(raw ?: "[]")
+        (0 until array.length()).map { index ->
+            val item = array.getJSONObject(index)
+            ProjectInfo(item.getString("id"), item.getString("name"))
+        }
+    }.getOrDefault(emptyList())
+    if (loaded.isNotEmpty()) return loaded
+    val initial = listOf(ProjectInfo("default", "My Project"))
+    saveProjectIndex(preferences, initial)
+    return initial
+}
+
+private fun saveProjectIndex(
+    preferences: android.content.SharedPreferences,
+    projects: List<ProjectInfo>
+) {
+    val array = JSONArray()
+    projects.forEach { project ->
+        array.put(JSONObject().apply {
+            put("id", project.id)
+            put("name", project.name)
+        })
+    }
+    preferences.edit().putString("project_index", array.toString()).apply()
+}
+
+private fun loadProject(
+    preferences: android.content.SharedPreferences,
+    projectId: String
+): List<EditClip> {
+    val raw = preferences.getString("project_$projectId", null)
+        ?: if (projectId == "default") preferences.getString("clips", null) else null
+        ?: return emptyList()
     return runCatching {
         val array = JSONArray(raw)
         (0 until array.length()).mapNotNull { index ->
