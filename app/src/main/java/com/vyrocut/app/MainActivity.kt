@@ -266,10 +266,10 @@ private fun VyroCutApp() {
                     ?: error("Could not read the selected backup")
             }.mapCatching(::decodeProjectBackup)
             result.onSuccess { backup ->
-                val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.first)
+                val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.name)
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
-                preferences.edit().putString("project_${imported.id}", encodeProject(backup.second)).apply()
+                preferences.edit().putString("project_${imported.id}", encodeProject(backup.clips)).apply()
                 switchProject(imported)
                 showProjects = false
                 exportMessage = "Restored ${imported.name} (${backup.second.size} clips)"
@@ -871,8 +871,9 @@ private fun decodeProjectBackup(raw: String): ProjectBackup {
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     require(root.getInt("version") == 1) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
-    val clips = decodeProject(root.getJSONArray("clips").toString())
-    require(clips.isNotEmpty()) { "The backup contains no valid clips" }
+    val clipsJson = root.getJSONArray("clips")
+    val clips = decodeProject(clipsJson.toString())
+    require(clips.size == clipsJson.length()) { "The backup contains invalid clip entries" }
     return ProjectBackup(name, clips)
 }
 
