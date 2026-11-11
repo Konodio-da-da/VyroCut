@@ -3,8 +3,8 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The latest code revision verified by GitHub Actions is `b0623844a89140267568e21dd83854711c23626c` (run [43106247889](https://github.com/Konodio-da-da/VyroCut/actions/runs/43106247889)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- The 15 timeline-domain unit tests passed as part of `testDebugUnitTest`. The CI build confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- The latest previously verified code revision was `b6b0f7c5e2be54c8d2a44cee8894c745697edc01` (run [43114554052](https://github.com/Konodio-da-da/VyroCut/actions/runs/43114554052)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
+- The previous revision's 18 timeline-domain unit tests passed as part of `testDebugUnitTest`. The CI build confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -28,6 +28,8 @@
 - Timeline duration uses saturating arithmetic so extremely long projects cannot wrap to a negative slider range.
 - Delete selected segment.
 - Project edit decisions autosaved locally in app preferences.
+- Rebuilding the Media3 playlist after a timeline edit preserves the active clip's source-time playhead when that clip remains in the project; reorders and trims no longer automatically jump playback back to the beginning. If the active clip is removed, playback falls back to the selected remaining clip. Switching projects starts the new project at its beginning.
+- Playback restoration is isolated in pure Kotlin and covered by tests for reordering, trim-start/trim-end clamping, deleted clips, and empty projects.
 
 ## Implemented in code; awaiting verification
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
