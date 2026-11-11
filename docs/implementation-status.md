@@ -3,14 +3,16 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The ordered-playlist, timeline-scrubbing, thumbnail, and export-publishing changes are verified by GitHub Actions when the corresponding run succeeds.
+- The ordered-playlist, timeline-scrubbing, thumbnail-cache, undo/redo, and export-publishing changes are verified by GitHub Actions when the corresponding run succeeds.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.
 - Project-wide timeline scrubber maps elapsed project time back to the correct clip and clip-relative position.
-- Timeline cards asynchronously generate frame thumbnails from their source videos.
+- Timeline cards asynchronously generate frame thumbnails from their source videos; generated frames are cached on disk for reuse.
+- Multiple named local projects can be created, switched, and autosaved independently.
+- Undo/redo supports up to 50 timeline edit states per active session.
 - Video import through Android's Storage Access Framework with persisted read permission.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
@@ -23,8 +25,8 @@
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
 
 ## Still to implement
-- Waveform generation and a persistent thumbnail cache.
-- Undo/redo and named multiple projects.
+- Waveform generation.
+- Named project rename/delete and project-level recovery/backup.
 - Audio, image, text, transitions, and effects tracks.
 
 A control is only considered complete when its operation is connected to the project state and verified by the Android build. Device playback and rendering still require hands-on testing on an Android device.
