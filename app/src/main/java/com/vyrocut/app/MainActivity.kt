@@ -242,10 +242,9 @@ private fun VyroCutApp() {
                     Button(
                         onClick = {
                             if (clips.isNotEmpty() && !isExporting) {
-                                val outputDirectory = File(
-                                    context.getExternalFilesDir(Environment.DIRECTORY_MOVIES),
-                                    "VyroCut"
-                                ).apply { mkdirs() }
+                                val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+                                    ?: File(context.filesDir, "Movies")
+                                val outputDirectory = File(outputRoot, "VyroCut").apply { mkdirs() }
                                 val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
                                 val editedItems = clips.map { clip ->
                                     val source = MediaItem.Builder()
@@ -317,7 +316,11 @@ private fun VyroCutApp() {
                         Text(if (isExporting) "Exporting…" else "Export MP4", fontWeight = FontWeight.Bold)
                     }
                     if (isExporting) {
-                        OutlinedButton(onClick = { activeTransformer?.cancel(); isExporting = false; exportMessage = "Export cancelled" }) {
+                        OutlinedButton(onClick = {
+                            activeTransformer?.cancel()
+                            isExporting = false
+                            exportMessage = "Export cancelled"
+                        }) {
                             Text("Cancel")
                         }
                     }
