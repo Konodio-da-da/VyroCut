@@ -146,7 +146,7 @@ private fun VyroCutApp() {
                     } else {
                         AndroidView(
                             factory = { viewContext -> PlayerView(viewContext).apply {
-                                player = this@apply.player
+                                useController = true
                             } },
                             update = { it.player = player },
                             modifier = Modifier.fillMaxSize()
