@@ -567,6 +567,11 @@ private fun VyroCutApp() {
                                         modifier = Modifier.weight(1f)
                                     ) { Text("Restore") }
                                 }
+                                Text(
+                                    "Backups save your edit list and media references. Keep the original video files available; the videos themselves are not copied into the backup.",
+                                    color = StudioMuted,
+                                    fontSize = 10.sp
+                                )
                                 OutlinedTextField(
                                     value = newProjectName,
                                     onValueChange = { newProjectName = it },
