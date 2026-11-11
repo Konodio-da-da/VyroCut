@@ -102,6 +102,7 @@ private fun VyroCutApp() {
     }
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
     var showProjects by remember { mutableStateOf(false) }
+    var showTrimMenu by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
     var projectToRename by remember { mutableStateOf<ProjectInfo?>(null) }
     var renameProjectName by remember { mutableStateOf("") }
@@ -118,7 +119,7 @@ private fun VyroCutApp() {
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
-    val timelineDurationMs = clipDurationsMs.sum().coerceAtLeast(1L)
+    val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
 
     val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
     DisposableEffect(player) { onDispose { player.release() } }
@@ -342,7 +343,14 @@ private fun VyroCutApp() {
                         Text(selectedClip?.name ?: "No media selected", color = StudioText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(if (selectedClip != null) "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}" else "Your project is stored locally", color = StudioMuted, fontSize = 11.sp)
                     }
-                    FilledTonalButton(onClick = { if (player.isPlaying) player.pause() else player.play() }, enabled = selectedClip != null,
+                    FilledTonalButton(onClick = {
+                        if (player.isPlaying) {
+                            player.pause()
+                        } else {
+                            if (player.playbackState == Player.STATE_ENDED) player.seekTo(0, 0L)
+                            player.play()
+                        }
+                    }, enabled = selectedClip != null,
                         colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))) {
                         Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlaying) "Pause" else "Play")
                     }
@@ -407,18 +415,64 @@ private fun VyroCutApp() {
                     OutlinedButton(onClick = {
                         val clip = selectedClip ?: return@OutlinedButton
                         val midpoint = clip.sourceStartMs + clip.durationMs / 2
-                        if (midpoint > clip.sourceStartMs && midpoint < clip.sourceEndMs) {
-                            val left = clip.copy(id = java.util.UUID.randomUUID().toString(), sourceEndMs = midpoint)
-                            val right = clip.copy(id = java.util.UUID.randomUUID().toString(), sourceStartMs = midpoint)
-                            changed(clips.toMutableList().apply { removeAt(selectedIndex); add(selectedIndex, right); add(selectedIndex, left) })
+                        val halves = splitClipRange(clip.sourceStartMs, clip.sourceEndMs, midpoint)
+                        if (halves != null) {
+                            val left = clip.copy(
+                                id = java.util.UUID.randomUUID().toString(),
+                                sourceStartMs = halves.first.startMs,
+                                sourceEndMs = halves.first.endMs
+                            )
+                            val right = clip.copy(
+                                id = java.util.UUID.randomUUID().toString(),
+                                sourceStartMs = halves.second.startMs,
+                                sourceEndMs = halves.second.endMs
+                            )
+                            changed(clips.toMutableList().apply {
+                                removeAt(selectedIndex)
+                                add(selectedIndex, left)
+                                add(selectedIndex + 1, right)
+                            })
                         }
                     }, enabled = selectedClip != null && selectedClip.durationMs >= 2L, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.ContentCut, null); Text("Split", maxLines = 1)
                     }
-                    OutlinedButton(onClick = {
-                        val clip = selectedClip ?: return@OutlinedButton
-                        if (clip.durationMs > 1000L) changed(clips.toMutableList().apply { this[selectedIndex] = clip.copy(sourceStartMs = clip.sourceStartMs + 1000L) })
-                    }, enabled = selectedClip != null && selectedClip.durationMs > 1000L, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) { Text("Trim 1s", maxLines = 1) }
+                    Box(Modifier.weight(1f)) {
+                        OutlinedButton(
+                            onClick = { showTrimMenu = true },
+                            enabled = selectedClip != null && selectedClip.durationMs > 1000L,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text("Trim", maxLines = 1) }
+                        DropdownMenu(
+                            expanded = showTrimMenu,
+                            onDismissRequest = { showTrimMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Trim start by 1s") },
+                                onClick = {
+                                    showTrimMenu = false
+                                    val clip = selectedClip ?: return@DropdownMenuItem
+                                    val range = trimClipRange(clip.sourceStartMs, clip.sourceEndMs, 1000L, fromStart = true)
+                                        ?: return@DropdownMenuItem
+                                    changed(clips.toMutableList().apply {
+                                        this[selectedIndex] = clip.copy(sourceStartMs = range.startMs, sourceEndMs = range.endMs)
+                                    })
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Trim end by 1s") },
+                                onClick = {
+                                    showTrimMenu = false
+                                    val clip = selectedClip ?: return@DropdownMenuItem
+                                    val range = trimClipRange(clip.sourceStartMs, clip.sourceEndMs, 1000L, fromStart = false)
+                                        ?: return@DropdownMenuItem
+                                    changed(clips.toMutableList().apply {
+                                        this[selectedIndex] = clip.copy(sourceStartMs = range.startMs, sourceEndMs = range.endMs)
+                                    })
+                                }
+                            )
+                        }
+                    }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = Color(0xFFFF8A80))
                     }
@@ -479,6 +533,7 @@ private fun VyroCutApp() {
                                                 pendingDestination?.let { uri ->
                                                     runCatching { context.contentResolver.delete(uri, null, null) }
                                                 }
+                                                outputFile.delete()
                                                 exportMessage = "Export finished, but saving to Movies failed: ${error.message}"
                                             }
                                         }

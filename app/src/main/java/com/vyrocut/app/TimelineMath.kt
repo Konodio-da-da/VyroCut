@@ -68,5 +68,42 @@ internal fun resolveTimelineSeekTarget(
     )
 }
 
+/** A valid source-time interval for one non-destructive clip segment. */
+internal data class ClipRange(val startMs: Long, val endMs: Long)
+
+/** Returns the left and right source ranges in playback order, or null for an invalid split. */
+internal fun splitClipRange(
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    splitPositionMs: Long,
+): Pair<ClipRange, ClipRange>? {
+    if (sourceStartMs < 0L || sourceEndMs <= sourceStartMs) return null
+    if (splitPositionMs <= sourceStartMs || splitPositionMs >= sourceEndMs) return null
+    return ClipRange(sourceStartMs, splitPositionMs) to ClipRange(splitPositionMs, sourceEndMs)
+}
+
+/** Trims one edge without mutating the source file or allowing an empty segment. */
+internal fun trimClipRange(
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    trimAmountMs: Long,
+    fromStart: Boolean,
+): ClipRange? {
+    if (sourceStartMs < 0L || sourceEndMs <= sourceStartMs || trimAmountMs <= 0L) return null
+    val durationMs = sourceEndMs - sourceStartMs
+    if (trimAmountMs >= durationMs) return null
+    return if (fromStart) {
+        ClipRange(sourceStartMs + trimAmountMs, sourceEndMs)
+    } else {
+        ClipRange(sourceStartMs, sourceEndMs - trimAmountMs)
+    }
+}
+
+/** Computes total timeline length without overflowing when adding clip durations. */
+internal fun calculateTimelineDurationMs(clipDurationsMs: List<Long>): Long =
+    clipDurationsMs.fold(0L) { total, duration ->
+        addWithoutOverflow(total, duration.coerceAtLeast(0L))
+    }
+
 private fun addWithoutOverflow(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right

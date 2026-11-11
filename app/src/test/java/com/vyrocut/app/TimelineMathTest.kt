@@ -76,4 +76,48 @@ class TimelineMathTest {
             calculateTimelinePositionMs(listOf(Long.MAX_VALUE - 5L, 100L), 1, 5L),
         )
     }
+    @Test
+    fun splitKeepsSourceRangesInLeftToRightPlaybackOrder() {
+        assertEquals(
+            ClipRange(1_000L, 2_500L) to ClipRange(2_500L, 4_000L),
+            splitClipRange(1_000L, 4_000L, 2_500L),
+        )
+    }
+
+    @Test
+    fun splitRejectsPositionsAtOrOutsideClipBoundaries() {
+        assertNull(splitClipRange(1_000L, 4_000L, 1_000L))
+        assertNull(splitClipRange(1_000L, 4_000L, 4_000L))
+        assertNull(splitClipRange(4_000L, 1_000L, 2_500L))
+    }
+
+    @Test
+    fun trimStartMovesOnlyTheSourceInPoint() {
+        assertEquals(
+            ClipRange(2_000L, 4_000L),
+            trimClipRange(1_000L, 4_000L, 1_000L, fromStart = true),
+        )
+    }
+
+    @Test
+    fun trimEndMovesOnlyTheSourceOutPoint() {
+        assertEquals(
+            ClipRange(1_000L, 3_000L),
+            trimClipRange(1_000L, 4_000L, 1_000L, fromStart = false),
+        )
+    }
+
+    @Test
+    fun trimCannotCreateAnEmptyOrNegativeLengthClip() {
+        assertNull(trimClipRange(1_000L, 2_000L, 1_000L, fromStart = true))
+        assertNull(trimClipRange(1_000L, 2_000L, 1_000L, fromStart = false))
+        assertNull(trimClipRange(1_000L, 2_000L, 0L, fromStart = true))
+    }
+
+    @Test
+    fun timelineDurationSaturatesInsteadOfOverflowing() {
+        assertEquals(Long.MAX_VALUE, calculateTimelineDurationMs(listOf(Long.MAX_VALUE - 10L, 50L)))
+        assertEquals(0L, calculateTimelineDurationMs(emptyList()))
+    }
+
 }

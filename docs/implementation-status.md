@@ -19,8 +19,9 @@
 - Video import through Android's Storage Access Framework with persisted read permission.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
-- Split selected segment at its midpoint.
-- Trim the selected segment's start by one second.
+- Split selected segments at their midpoint while preserving left-to-right source order.
+- Trim either the selected segment's start or end by one second without modifying source media.
+- Timeline duration uses saturating arithmetic so extremely long projects cannot wrap to a negative slider range.
 - Delete selected segment.
 - Project edit decisions autosaved locally in app preferences.
 
