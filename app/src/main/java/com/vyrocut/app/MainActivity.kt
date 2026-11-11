@@ -51,6 +51,7 @@ import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
 import org.json.JSONArray
 import org.json.JSONObject
+import kotlinx.coroutines.delay
 
 private val StudioBackground = Color(0xFF111313)
 private val StudioPanel = Color(0xFF1C2221)
@@ -88,6 +89,8 @@ private fun VyroCutApp() {
     var exportedUri by remember { mutableStateOf<Uri?>(null) }
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     val selectedClip = clips.getOrNull(selectedIndex)
+    var timelinePositionMs by remember { mutableFloatStateOf(0f) }
+    val timelineDurationMs = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
 
     val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
     DisposableEffect(player) { onDispose { player.release() } }
@@ -115,6 +118,16 @@ private fun VyroCutApp() {
             player.prepare()
             player.playWhenReady = false
             isPlaying = false
+        }
+    }
+    LaunchedEffect(player, clips, isPlaying) {
+        while (true) {
+            if (clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
+                val currentIndex = player.currentMediaItemIndex
+                val elapsedBeforeCurrent = clips.take(currentIndex).sumOf { it.durationMs }
+                timelinePositionMs = (elapsedBeforeCurrent + player.currentPosition).coerceIn(0L, timelineDurationMs).toFloat()
+            }
+            delay(200)
         }
     }
     DisposableEffect(player) {
@@ -192,6 +205,32 @@ private fun VyroCutApp() {
                     FilledTonalButton(onClick = { if (player.isPlaying) player.pause() else player.play() }, enabled = selectedClip != null,
                         colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))) {
                         Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlaying) "Pause" else "Play")
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Slider(
+                        value = timelinePositionMs.coerceIn(0f, timelineDurationMs.toFloat()),
+                        onValueChange = { timelinePositionMs = it },
+                        onValueChangeFinished = {
+                            var remaining = timelinePositionMs.toLong()
+                            val targetIndex = clips.indexOfFirst { clip ->
+                                if (remaining < clip.durationMs) true else {
+                                    remaining -= clip.durationMs
+                                    false
+                                }
+                            }.let { if (it < 0) clips.lastIndex else it }
+                            if (targetIndex >= 0) {
+                                val offset = remaining.coerceIn(0L, (clips[targetIndex].durationMs - 1L).coerceAtLeast(0L))
+                                selectedIndex = targetIndex
+                                player.seekTo(targetIndex, offset)
+                            }
+                        },
+                        enabled = clips.isNotEmpty(),
+                        colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(formatTime(timelinePositionMs.toLong()), color = StudioMuted, fontSize = 10.sp)
+                        Text(formatTime(timelineDurationMs), color = StudioMuted, fontSize = 10.sp)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
