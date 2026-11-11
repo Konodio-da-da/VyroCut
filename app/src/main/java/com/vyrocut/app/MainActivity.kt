@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.media.MediaMetadataRetriever
+import android.graphics.Bitmap
 import android.content.ContentValues
 import android.os.Environment
 import android.provider.MediaStore
@@ -13,6 +14,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -32,6 +34,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +56,8 @@ import androidx.media3.transformer.Transformer
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private val StudioBackground = Color(0xFF111313)
 private val StudioPanel = Color(0xFF1C2221)
@@ -247,6 +253,8 @@ private fun VyroCutApp() {
                             }.padding(10.dp)) {
                             Text("CLIP ${index + 1}", color = if (index == selectedIndex) StudioAccent else StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(5.dp))
+                            ClipThumbnail(clip = clip, modifier = Modifier.fillMaxWidth().height(62.dp))
+                            Spacer(Modifier.height(5.dp))
                             Text(clip.name, color = StudioText, fontSize = 11.sp, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
                             Spacer(Modifier.height(6.dp))
                             Text(formatTime(clip.durationMs), color = StudioAccent, fontSize = 10.sp)
@@ -387,6 +395,43 @@ private fun VyroCutApp() {
                 exportMessage?.let { Text(it, color = StudioAccent, fontSize = 11.sp) }
                 Text("Offline editing • Project autosaves on this device", color = StudioMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
             }
+        }
+    }
+}
+
+ 
+@Composable
+private fun ClipThumbnail(clip: EditClip, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val thumbnail by produceState<Bitmap?>(initialValue = null, clip.uri, clip.sourceStartMs) {
+        value = withContext(Dispatchers.IO) {
+            val retriever = MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(context, Uri.parse(clip.uri))
+                retriever.getFrameAtTime(
+                    (clip.sourceStartMs * 1000L).coerceAtLeast(0L),
+                    MediaMetadataRetriever.OPTION_CLOSEST_SYNC
+                )
+            } catch (_: Exception) {
+                null
+            } finally {
+                runCatching { retriever.release() }
+            }
+        }
+    }
+    Box(
+        modifier = modifier.background(Color(0xFF293330), RoundedCornerShape(6.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (thumbnail != null) {
+            Image(
+                bitmap = thumbnail!!.asImageBitmap(),
+                contentDescription = "Video clip thumbnail",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(Icons.Default.Movie, contentDescription = null, tint = StudioMuted)
         }
     }
 }
