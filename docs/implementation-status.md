@@ -1,8 +1,9 @@
 # Implementation status
 
-## Verified build
-- The Android foundation build completed successfully on GitHub Actions.
+## Last verified build
+- The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
+- The newer playlist and export commits are awaiting their own CI verification.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -16,11 +17,12 @@
 - Delete selected segment.
 - Project edit decisions autosaved locally in app preferences.
 
-## Not yet implemented
-- Multi-clip export / composition (not yet implemented).
+## Implemented in code; awaiting verification
+- Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling and publish-to-Movies/share flow.
+
+## Still to implement
 - Timeline scrubbing and waveform/thumbnail generation.
 - Undo/redo and named multiple projects.
-- Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling and publish-to-Movies/share flow (awaiting CI and device verification).
 - Audio, image, text, transitions, and effects tracks.
 
 A control is only considered complete when its operation is connected to the project state and verified by the Android build. Device playback and rendering still require hands-on testing on an Android device.
