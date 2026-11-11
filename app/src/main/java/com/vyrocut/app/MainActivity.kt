@@ -30,6 +30,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Pause
@@ -49,6 +52,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -95,6 +102,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
     val projects = remember { mutableStateListOf<ProjectInfo>().apply { addAll(loadProjectIndex(preferences)) } }
     var activeProjectId by remember {
@@ -121,8 +129,27 @@ private fun VyroCutApp() {
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
 
-    val player = remember { ExoPlayer.Builder(context).build().apply { playWhenReady = false } }
+    val player = remember {
+        ExoPlayer.Builder(context).build().apply {
+            playWhenReady = false
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                    .build(),
+                true
+            )
+            setHandleAudioBecomingNoisy(true)
+        }
+    }
     DisposableEffect(player) { onDispose { player.release() } }
+    DisposableEffect(player, lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) player.pause()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     // Load the ordered edit decision list as a real ExoPlayer playlist. Each source
     // segment is clipped non-destructively; playback naturally advances between clips.
     LaunchedEffect(clips) {
@@ -293,19 +320,41 @@ private fun VyroCutApp() {
     }
 
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let {
-            runCatching {
-                context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        uri?.let { selectedUri ->
+            val permission = runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    selectedUri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            }
+            if (permission.isFailure) {
+                exportMessage = "Could not keep access to this video. Choose a file provider that supports persistent access."
+                return@let
             }
             val retriever = MediaMetadataRetriever()
             val duration = runCatching {
-                retriever.setDataSource(context, it)
-                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong()
-            }.getOrNull()?.coerceAtLeast(1L) ?: 1L
-            runCatching { retriever.release() }
-            val name = MediaMetadataReader.displayName(context.contentResolver, it)
-            changed(clips + EditClip(java.util.UUID.randomUUID().toString(), it.toString(), name, 0L, duration))
+                retriever.setDataSource(context, selectedUri)
+                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            }.getOrNull().also {
+                runCatching { retriever.release() }
+            }?.takeIf { it > 0L }
+            if (duration == null) {
+                exportMessage = "Could not read this video's duration. It was not added."
+                return@let
+            }
+            val name = runCatching {
+                MediaMetadataReader.displayName(context.contentResolver, selectedUri)
+            }.getOrDefault("Imported video")
+            val importedClip = EditClip(
+                java.util.UUID.randomUUID().toString(),
+                selectedUri.toString(),
+                name,
+                0L,
+                duration
+            )
+            changed(clips + importedClip)
             selectedIndex = clips.lastIndex
+            exportMessage = "Imported $name"
         }
     }
 
@@ -408,6 +457,52 @@ private fun VyroCutApp() {
                     }
                     if (clips.isEmpty()) Text("Your clips will appear here", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 16.dp))
                 }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text("CLIP ORDER", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.weight(1f))
+                    IconButton(
+                        onClick = {
+                            val destination = selectedIndex - 1
+                            if (destination in clips.indices) {
+                                changed(moveTimelineItem(clips, selectedIndex, destination))
+                                selectedIndex = destination
+                            }
+                        },
+                        enabled = selectedClip != null && selectedIndex > 0
+                    ) {
+                        Icon(Icons.Default.ArrowBack, "Move selected clip left", tint = StudioAccent)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val clip = selectedClip ?: return@OutlinedButton
+                            val destination = selectedIndex + 1
+                            val duplicate = clip.copy(id = java.util.UUID.randomUUID().toString())
+                            changed(clips.toMutableList().apply { add(destination, duplicate) })
+                            selectedIndex = destination
+                        },
+                        enabled = selectedClip != null
+                    ) {
+                        Icon(Icons.Default.ContentCopy, null)
+                        Spacer(Modifier.width(4.dp))
+                        Text("Duplicate")
+                    }
+                    IconButton(
+                        onClick = {
+                            val destination = selectedIndex + 1
+                            if (destination in clips.indices) {
+                                changed(moveTimelineItem(clips, selectedIndex, destination))
+                                selectedIndex = destination
+                            }
+                        },
+                        enabled = selectedClip != null && selectedIndex < clips.lastIndex
+                    ) {
+                        Icon(Icons.Default.ArrowForward, "Move selected clip right", tint = StudioAccent)
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = { mediaPicker.launch(arrayOf("video/*")) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.Add, null); Text("Import", maxLines = 1)
@@ -507,6 +602,7 @@ private fun VyroCutApp() {
                                             activeTransformer = null
                                             var pendingDestination: Uri? = null
                                             runCatching {
+                                                verifyExportedMp4(outputFile)
                                                 val values = ContentValues().apply {
                                                     put(MediaStore.Video.Media.DISPLAY_NAME, outputFile.name)
                                                     put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
@@ -527,14 +623,14 @@ private fun VyroCutApp() {
                                                 )
                                                 check(publishedRows > 0) { "Could not finish publishing the video" }
                                                 exportedUri = pendingDestination
-                                                exportMessage = "Export complete • Saved to Movies/VyroCut"
+                                                exportMessage = "Export complete • Video track verified • Saved to Movies/VyroCut"
                                                 outputFile.delete()
                                             }.onFailure { error ->
                                                 pendingDestination?.let { uri ->
                                                     runCatching { context.contentResolver.delete(uri, null, null) }
                                                 }
                                                 outputFile.delete()
-                                                exportMessage = "Export finished, but saving to Movies failed: ${error.message}"
+                                                exportMessage = "Export verification or saving failed: ${error.message}"
                                             }
                                         }
                                         override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
@@ -784,6 +880,24 @@ private fun AudioWaveform(clip: EditClip, modifier: Modifier = Modifier) {
                 )
             }
         }
+    }
+}
+
+private fun verifyExportedMp4(file: File) {
+    check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
+    val extractor = MediaExtractor()
+    try {
+        extractor.setDataSource(file.absolutePath)
+        val videoTrack = (0 until extractor.trackCount).firstOrNull { index ->
+            extractor.getTrackFormat(index)
+                .getString(MediaFormat.KEY_MIME)
+                ?.startsWith("video/") == true
+        } ?: error("The exported MP4 contains no video track")
+        extractor.selectTrack(videoTrack)
+        if (extractor.sampleTime < 0L) extractor.advance()
+        check(extractor.sampleTime >= 0L) { "The exported video track contains no readable samples" }
+    } finally {
+        extractor.release()
     }
 }
 
