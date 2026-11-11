@@ -120,4 +120,26 @@ class TimelineMathTest {
         assertEquals(0L, calculateTimelineDurationMs(emptyList()))
     }
 
+    @Test
+    fun movesTimelineItemsInBothDirections() {
+        val original = listOf("A", "B", "C", "D")
+        assertEquals(listOf("B", "A", "C", "D"), moveTimelineItem(original, 1, 0))
+        assertEquals(listOf("A", "C", "B", "D"), moveTimelineItem(original, 1, 2))
+    }
+
+    @Test
+    fun invalidTimelineMoveLeavesOrderUnchanged() {
+        val original = listOf("A", "B", "C")
+        assertEquals(original, moveTimelineItem(original, -1, 1))
+        assertEquals(original, moveTimelineItem(original, 1, 3))
+        assertEquals(original, moveTimelineItem(original, 1, 1))
+    }
+
+    @Test
+    fun movingTimelineItemDoesNotMutateOriginalList() {
+        val original = listOf("A", "B", "C")
+        moveTimelineItem(original, 0, 2)
+        assertEquals(listOf("A", "B", "C"), original)
+    }
+
 }
