@@ -99,6 +99,15 @@ internal fun trimClipRange(
     }
 }
 
+/** Moves an item to a new timeline index without mutating the original list. */
+internal fun <T> moveTimelineItem(items: List<T>, fromIndex: Int, toIndex: Int): List<T> {
+    if (fromIndex !in items.indices || toIndex !in items.indices || fromIndex == toIndex) return items
+    return items.toMutableList().apply {
+        val moved = removeAt(fromIndex)
+        add(toIndex, moved)
+    }
+}
+
 /** Computes total timeline length without overflowing when adding clip durations. */
 internal fun calculateTimelineDurationMs(clipDurationsMs: List<Long>): Long =
     clipDurationsMs.fold(0L) { total, duration ->
