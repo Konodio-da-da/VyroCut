@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Push and pull-request events for the same feature branch share one build slot.
+# New commits supersede stale runs so the latest code gets CI capacity first.
+concurrency:
+  group: android-build-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
