@@ -193,6 +193,27 @@ class TimelineMathTest {
     }
 
     @Test
+    fun newlySelectedDuplicateOrImportedClipTakesPriorityOverOldPlayhead() {
+        val previous = listOf(ClipPlaybackRange("a", 0L, 5_000L))
+        val next = listOf(
+            ClipPlaybackRange("a", 0L, 5_000L),
+            ClipPlaybackRange("new-copy", 0L, 5_000L),
+        )
+
+        assertEquals(
+            PlaybackRestoreTarget(1, 0L),
+            resolvePlaybackRestoreTarget(
+                previousClips = previous,
+                nextClips = next,
+                currentClipId = "a",
+                currentClipPositionMs = 2_000L,
+                fallbackClipIndex = 1,
+                preferredClipId = "new-copy",
+            ),
+        )
+    }
+
+    @Test
     fun emptyNextPlaylistHasNoPlaybackRestoreTarget() {
         assertNull(
             resolvePlaybackRestoreTarget(
