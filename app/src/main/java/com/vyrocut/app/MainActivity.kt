@@ -248,6 +248,37 @@ private fun VyroCutApp() {
         exportMessage = "Redo completed"
     }
 
+    val backupExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri != null) {
+            val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "VyroCut project"
+            val backup = encodeProjectBackup(projectName, clips)
+            val result = runCatching {
+                context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
+                    ?: error("Could not open the backup destination")
+            }
+            exportMessage = if (result.isSuccess) "Project backup saved" else "Backup failed: ${result.exceptionOrNull()?.message}"
+        }
+    }
+    val backupImporter = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { backupUri ->
+            val result = runCatching {
+                context.contentResolver.openInputStream(backupUri)?.bufferedReader()?.use { it.readText() }
+                    ?: error("Could not read the selected backup")
+            }.mapCatching(::decodeProjectBackup)
+            result.onSuccess { backup ->
+                val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.first)
+                projects.add(imported)
+                saveProjectIndex(preferences, projects)
+                preferences.edit().putString("project_${imported.id}", encodeProject(backup.second)).apply()
+                switchProject(imported)
+                showProjects = false
+                exportMessage = "Restored ${imported.name} (${backup.second.size} clips)"
+            }.onFailure { error ->
+                exportMessage = "Could not restore backup: ${error.message}"
+            }
+        }
+    }
+
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
             runCatching {
@@ -523,6 +554,19 @@ private fun VyroCutApp() {
                                     }
                                 }
                                 HorizontalDivider()
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val name = projects.firstOrNull { it.id == activeProjectId }?.name ?: "VyroCut"
+                                            backupExporter.launch("${name.replace(Regex("[^A-Za-z0-9_-]"), "_")}.vyrocut.json")
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Backup") }
+                                    OutlinedButton(
+                                        onClick = { backupImporter.launch(arrayOf("application/json", "text/json", "*/*")) },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text("Restore") }
+                                }
                                 OutlinedTextField(
                                     value = newProjectName,
                                     onValueChange = { newProjectName = it },
@@ -811,6 +855,43 @@ private fun encodeProject(clips: List<EditClip>): String {
     return array.toString()
 }
 
+private data class ProjectBackup(val name: String, val clips: List<EditClip>)
+
+private fun encodeProjectBackup(name: String, clips: List<EditClip>): String =
+    JSONObject().apply {
+        put("format", "vyrocut-project")
+        put("version", 1)
+        put("projectName", name)
+        put("createdAt", System.currentTimeMillis())
+        put("clips", JSONArray(encodeProject(clips)))
+    }.toString(2)
+
+private fun decodeProjectBackup(raw: String): ProjectBackup {
+    val root = JSONObject(raw)
+    require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
+    require(root.getInt("version") == 1) { "Unsupported backup version" }
+    val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
+    val clips = decodeProject(root.getJSONArray("clips").toString())
+    require(clips.isNotEmpty()) { "The backup contains no valid clips" }
+    return ProjectBackup(name, clips)
+}
+
+private fun decodeProject(raw: String): List<EditClip> = runCatching {
+    val array = JSONArray(raw)
+    (0 until array.length()).mapNotNull { index ->
+        val item = array.getJSONObject(index)
+        val start = item.getLong("start")
+        val end = item.getLong("end")
+        if (end <= start) null else EditClip(
+            item.getString("id"),
+            item.getString("uri"),
+            item.optString("name", "Imported video"),
+            start,
+            end
+        )
+    }
+}.getOrDefault(emptyList())
+
 private fun loadProjectIndex(preferences: android.content.SharedPreferences): List<ProjectInfo> {
     val raw = preferences.getString("project_index", null)
     val loaded = runCatching {
@@ -847,14 +928,7 @@ private fun loadProject(
     val raw = preferences.getString("project_$projectId", null)
         ?: if (projectId == "default") preferences.getString("clips", null) else null
         ?: return emptyList()
-    return runCatching {
-        val array = JSONArray(raw)
-        (0 until array.length()).mapNotNull { index ->
-            val item = array.getJSONObject(index)
-            val start = item.getLong("start"); val end = item.getLong("end")
-            if (end <= start) null else EditClip(item.getString("id"), item.getString("uri"), item.optString("name", "Imported video"), start, end)
-        }
-    }.getOrDefault(emptyList())
+    return decodeProject(raw)
 }
 
 private fun formatTime(milliseconds: Long): String {
