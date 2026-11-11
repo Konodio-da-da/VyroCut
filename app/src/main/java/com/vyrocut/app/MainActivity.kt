@@ -285,7 +285,7 @@ private fun VyroCutApp() {
                 preferences.edit().putString("project_${imported.id}", encodeProject(backup.clips)).apply()
                 switchProject(imported)
                 showProjects = false
-                exportMessage = "Restored ${imported.name} (${backup.second.size} clips)"
+                exportMessage = "Restored ${imported.name} (${backup.clips.size} clips)"
             }.onFailure { error ->
                 exportMessage = "Could not restore backup: ${error.message}"
             }
@@ -1024,7 +1024,7 @@ private fun loadProject(
     projectId: String
 ): List<EditClip> {
     val raw = preferences.getString("project_$projectId", null)
-        ?: if (projectId == "default") preferences.getString("clips", null) else null
+        ?: (if (projectId == "default") preferences.getString("clips", null) else null)
         ?: return emptyList()
     return decodeProject(raw)
 }
