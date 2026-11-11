@@ -183,9 +183,8 @@ private fun VyroCutApp() {
         preferences.edit().putString("active_project_id", project.id).apply()
         clips = loadProject(preferences, project.id)
         selectedIndex = 0
-        undoStack.clear()
-        redoStack.clear()
-        saveProjectHistory(preferences, project.id, undoStack, redoStack)
+        // History state is keyed by activeProjectId and reloads from that
+        // project's persisted snapshots after this state change recomposes.
         timelinePositionMs = 0f
         exportMessage = "Opened ${project.name}"
     }
@@ -216,7 +215,11 @@ private fun VyroCutApp() {
             switchProject(replacement)
         }
         projects.removeAll { it.id == project.id }
-        preferences.edit().remove("project_${project.id}").apply()
+        preferences.edit()
+            .remove("project_${project.id}")
+            .remove("project_${project.id}_undo")
+            .remove("project_${project.id}_redo")
+            .apply()
         saveProjectIndex(preferences, projects)
         projectToDelete = null
         exportMessage = "Deleted ${project.name}"
