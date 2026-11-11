@@ -107,7 +107,7 @@ private fun VyroCutApp() {
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val activeIndex = player.currentMediaItemIndex
-                if (activeIndex >= 0 && activeIndex != selectedIndex) selectedIndex = activeIndex
+                if (activeIndex >= 0) selectedIndex = activeIndex
             }
         }
         player.addListener(listener)
