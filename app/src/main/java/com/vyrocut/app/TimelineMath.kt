@@ -10,7 +10,7 @@ internal data class TimelineSeekTarget(
 )
 
 /** Maps a clip-relative player position to an absolute position in the concatenated timeline. */
-internal fun timelinePositionMs(
+internal fun calculateTimelinePositionMs(
     clipDurationsMs: List<Long>,
     currentClipIndex: Int,
     currentClipPositionMs: Long,
