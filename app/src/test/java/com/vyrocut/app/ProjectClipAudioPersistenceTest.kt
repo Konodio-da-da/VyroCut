@@ -17,6 +17,7 @@ class ProjectClipAudioPersistenceTest {
             audioVolume = 0.35f,
             fadeInMs = 750L,
             fadeOutMs = 1_250L,
+            visualAdjustments = ClipVisualAdjustments(brightness = 35, contrast = -20, saturation = 55),
         )
 
         val restored = decodeProjectStrict(encodeProject(listOf(original)))
@@ -25,6 +26,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(0.35f, restored!!.single().audioVolume, 0.0001f)
         assertEquals(750L, restored.single().fadeInMs)
         assertEquals(1_250L, restored.single().fadeOutMs)
+        assertEquals(original.visualAdjustments, restored.single().visualAdjustments)
         assertEquals(original.sourceStartMs, restored.single().sourceStartMs)
         assertEquals(original.sourceEndMs, restored.single().sourceEndMs)
     }
@@ -39,6 +41,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(1f, restored!!.single().audioVolume, 0f)
         assertEquals(0L, restored.single().fadeInMs)
         assertEquals(0L, restored.single().fadeOutMs)
+        assertEquals(ClipVisualAdjustments(), restored.single().visualAdjustments)
     }
 
     @Test
@@ -55,7 +58,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionFourBackupPreservesClipVolumeAndFades() {
+    fun versionFiveBackupPreservesClipAudioAndVisualAdjustments() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -65,6 +68,7 @@ class ProjectClipAudioPersistenceTest {
             audioVolume = 0.2f,
             fadeInMs = 1_000L,
             fadeOutMs = 2_000L,
+            visualAdjustments = ClipVisualAdjustments(brightness = -45, contrast = 25, saturation = 70),
         )
         val backup = encodeProjectBackup(
             "Volume project",
@@ -73,11 +77,32 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
+        assertEquals(5, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
         assertEquals(2_000L, restored.clips.single().fadeOutMs)
+        assertEquals(ClipVisualAdjustments(-45, 25, 70), restored.clips.single().visualAdjustments)
         assertEquals(ProjectCanvasSettings("16:9", "DARK"), restored.canvasSettings)
+    }
+
+    @Test
+    fun versionFourBackupWithoutVisualAdjustmentsRemainsCompatible() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":4,
+            "projectName":"Version four backup",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Old clip","start":0,"end":1000,"volume":0.4,"fadeInMs":100,"fadeOutMs":200}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|16:9|DARK"
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals("Version four backup", restored.name)
+        assertEquals(0.4f, restored.clips.single().audioVolume, 0.0001f)
+        assertEquals(100L, restored.clips.single().fadeInMs)
+        assertEquals(200L, restored.clips.single().fadeOutMs)
+        assertEquals(ClipVisualAdjustments(), restored.clips.single().visualAdjustments)
     }
 
     @Test
@@ -96,6 +121,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(0.25f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(0L, restored.clips.single().fadeInMs)
         assertEquals(0L, restored.clips.single().fadeOutMs)
+        assertEquals(ClipVisualAdjustments(), restored.clips.single().visualAdjustments)
     }
 
     @Test
@@ -114,6 +140,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(1f, restored.clips.single().audioVolume, 0f)
         assertEquals(0L, restored.clips.single().fadeInMs)
         assertEquals(0L, restored.clips.single().fadeOutMs)
+        assertEquals(ClipVisualAdjustments(), restored.clips.single().visualAdjustments)
         assertEquals(ProjectCanvasSettings("9:16", "BLACK"), restored.canvasSettings)
     }
 }
