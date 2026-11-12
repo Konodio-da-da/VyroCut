@@ -92,6 +92,15 @@ internal fun verifyExportedMp4(
     validateExportTrackSummary(summary, expectedDurationMs, sourceHasAudio, expectedCanvasSize)?.let { message ->
         error(message)
     }
+
+    // Demuxing proves that packets exist; decode real frames and PCM before
+    // publishing so a structurally valid but undecodable MP4 is never exposed.
+    expectedCanvasSize?.let { canvas ->
+        verifyExportedVideoFrames(file, expectedDurationMs, canvas)
+    }
+    if (sourceHasAudio) {
+        verifyExportedAudioSamples(file)
+    }
 }
 
 /** Publishes only a fully verified export; a failed copy removes its pending MediaStore row. */
