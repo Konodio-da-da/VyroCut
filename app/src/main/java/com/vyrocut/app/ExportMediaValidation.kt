@@ -16,6 +16,7 @@ internal fun verifyExportedMp4(
     file: File,
     sourceUris: List<String>,
     expectedDurationMs: Long,
+    clipDurationsMs: List<Long>,
     expectedCanvasSize: ExportCanvasSize? = null,
     canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
     expectedBackgroundArgb: Int? = null,
@@ -98,7 +99,7 @@ internal fun verifyExportedMp4(
     // Demuxing proves that packets exist; decode real frames and PCM before
     // publishing so a structurally valid but undecodable MP4 is never exposed.
     expectedCanvasSize?.let { canvas ->
-        verifyExportedVideoFrames(file, expectedDurationMs, canvas)
+        verifyExportedVideoFrames(file, clipDurationsMs, canvas)
     }
     if (expectedBackgroundArgb != null) {
         check(canvasVisualClips.isNotEmpty()) {
