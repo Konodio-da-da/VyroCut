@@ -89,6 +89,65 @@ class ExportDecodeValidationTest {
     }
 
     @Test
+    fun rejectsSingleAudioGapLongerThanOneHundredMilliseconds() {
+        assertEquals(
+            "The exported MP4 audio contains a gap longer than 100ms",
+            validateDecodedAudioCoverage(
+                DecodedAudioCoverage(
+                    pcmBufferCount = 100,
+                    firstPresentationTimeUs = 0L,
+                    lastPresentationTimeUs = 3_800_000L,
+                    decodedEndTimeUs = 4_000_000L,
+                    timestampsMonotonic = true,
+                    reachedEndOfStream = true,
+                    maximumGapUs = 180_000L,
+                    totalGapUs = 180_000L,
+                ),
+                expectedDurationMs = 4_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun rejectsAccumulatedAudioGapsEvenWhenEachGapIsSmall() {
+        assertEquals(
+            "The exported MP4 audio contains too much cumulative silence between decoded buffers",
+            validateDecodedAudioCoverage(
+                DecodedAudioCoverage(
+                    pcmBufferCount = 100,
+                    firstPresentationTimeUs = 0L,
+                    lastPresentationTimeUs = 3_950_000L,
+                    decodedEndTimeUs = 4_000_000L,
+                    timestampsMonotonic = true,
+                    reachedEndOfStream = true,
+                    maximumGapUs = 60_000L,
+                    totalGapUs = 180_000L,
+                ),
+                expectedDurationMs = 4_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun acceptsSmallCodecBufferTimestampJitter() {
+        assertNull(
+            validateDecodedAudioCoverage(
+                DecodedAudioCoverage(
+                    pcmBufferCount = 188,
+                    firstPresentationTimeUs = 0L,
+                    lastPresentationTimeUs = 3_978_666L,
+                    decodedEndTimeUs = 4_000_000L,
+                    timestampsMonotonic = true,
+                    reachedEndOfStream = true,
+                    maximumGapUs = 20_000L,
+                    totalGapUs = 40_000L,
+                ),
+                expectedDurationMs = 4_000L,
+            ),
+        )
+    }
+
+    @Test
     fun rejectsProjectsWithoutPositiveDuration() {
         assertEquals(
             "The project has no playable duration for audio verification",
