@@ -37,7 +37,7 @@ internal fun verifyExportedMp4(
             }
         }
         check(videoTracks.isNotEmpty()) { "The exported MP4 contains no video track" }
-        (videoTracks + audioTracks).forEach(extractor::selectTrack)
+        (videoTracks + audioTracks).forEach { trackIndex -> extractor.selectTrack(trackIndex) }
 
         var videoSamples = 0L
         var audioSamples = 0L
