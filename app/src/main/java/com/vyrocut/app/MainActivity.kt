@@ -88,13 +88,17 @@ private val StudioMuted = Color(0xFF9BAAA5)
 
 private data class ProjectInfo(val id: String, val name: String)
 
-private data class EditClip(
+internal data class EditClip(
     val id: String,
     val uri: String,
     val name: String,
     val sourceStartMs: Long,
     val sourceEndMs: Long,
+    val audioVolume: Float = DEFAULT_CLIP_AUDIO_VOLUME,
 ) {
+    init {
+        require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
+    }
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
 
@@ -160,6 +164,9 @@ private fun VyroCutApp() {
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
+    var clipVolumeDraft by remember(selectedClip?.id, selectedClip?.audioVolume) {
+        mutableFloatStateOf(selectedClip?.audioVolume ?: DEFAULT_CLIP_AUDIO_VOLUME)
+    }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
     var previousClipEdits by remember { mutableStateOf(clips.toList()) }
@@ -275,6 +282,7 @@ private fun VyroCutApp() {
                     .build()
             }
             player.playWhenReady = false
+            player.setVolume(clips[restoreTarget.clipIndex].audioVolume)
             player.setMediaItems(items, restoreTarget.clipIndex, restoreTarget.positionMs)
             player.prepare()
             player.playWhenReady = wasPlaying
@@ -320,6 +328,7 @@ private fun VyroCutApp() {
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         clips.getOrNull(position.clipIndex)?.let { clip ->
+            player.setVolume(clip.audioVolume)
             savePreviewPosition(preferences, activeProjectId, clip, position.clipPositionMs)
         }
     }
@@ -434,6 +443,15 @@ private fun VyroCutApp() {
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         selectedIndex = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         saveProject(items)
+    }
+    fun commitSelectedClipAudioVolume(volume: Float) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        if (!isValidClipAudioVolume(volume) || clip.audioVolume == volume) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(audioVolume = volume)
+        })
+        player.setVolume(volume)
+        exportMessage = "Clip volume set to ${clipAudioVolumePercent(volume)}%"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -1036,6 +1054,37 @@ private fun VyroCutApp() {
                         }
                     }
                 }
+                if (activeTool == "Audio" && selectedClip != null) {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("CLIP VOLUME", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text("${clipAudioVolumePercent(clipVolumeDraft)}%", color = StudioAccent, fontSize = 11.sp)
+                            TextButton(
+                                onClick = {
+                                    val nextVolume = if (clipVolumeDraft == 0f) 1f else 0f
+                                    clipVolumeDraft = nextVolume
+                                    commitSelectedClipAudioVolume(nextVolume)
+                                },
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                            ) {
+                                Text(if (clipVolumeDraft == 0f) "Unmute" else "Mute", fontSize = 10.sp)
+                            }
+                        }
+                        Slider(
+                            value = clipVolumeDraft.coerceIn(0f, 1f),
+                            onValueChange = { clipVolumeDraft = it },
+                            onValueChangeFinished = { commitSelectedClipAudioVolume(clipVolumeDraft) },
+                            valueRange = 0f..1f,
+                            steps = 19,
+                            colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                        )
+                        Text("Non-destructive • Applies to this clip in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
+                    }
+                }
                 if (activeTool == "Audio" || activeTool == "Text" || activeTool == "Stickers") {
                     val options = when (activeTool) {
                         "Audio" -> listOf("Music", "SFX", "Voiceover", "Extract")
@@ -1169,7 +1218,7 @@ private fun VyroCutApp() {
                                                 )?.let(videoEffects::add)
                                             }
                                             EditedMediaItem.Builder(source)
-                                                .setEffects(Effects(emptyList(), videoEffects))
+                                                .setEffects(Effects(createClipAudioProcessors(clip.audioVolume), videoEffects))
                                                 .build()
                                         }
                                         // Media3 1.5.1 exposes the list-based sequence builder.
@@ -1710,40 +1759,41 @@ private fun decodeAudioWaveform(
     }
 }
 
-private fun encodeProject(clips: List<EditClip>): String {
+internal fun encodeProject(clips: List<EditClip>): String {
     val array = JSONArray()
     clips.forEach { clip -> array.put(JSONObject().apply {
         put("id", clip.id); put("uri", clip.uri); put("name", clip.name)
         put("start", clip.sourceStartMs); put("end", clip.sourceEndMs)
+        put("volume", clip.audioVolume.toDouble())
     }) }
     return array.toString()
 }
 
-private data class ProjectBackup(
+internal data class ProjectBackup(
     val name: String,
     val clips: List<EditClip>,
     val canvasSettings: ProjectCanvasSettings,
 )
 
-private fun encodeProjectBackup(
+internal fun encodeProjectBackup(
     name: String,
     clips: List<EditClip>,
     canvasSettings: ProjectCanvasSettings,
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 2)
+        put("version", 3)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
         put("canvasSettings", encodeProjectCanvasSettings(canvasSettings))
     }.toString(2)
 
-private fun decodeProjectBackup(raw: String): ProjectBackup {
+internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version == 1 || version == 2) { "Unsupported backup version" }
+    require(version in 1..3) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -1813,7 +1863,7 @@ private fun saveProjectIndex(
     preferences.edit().putString("project_index", array.toString()).apply()
 }
 
-private fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
+internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
     val array = JSONArray(raw)
     buildList {
         for (index in 0 until array.length()) {
@@ -1825,7 +1875,10 @@ private fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
             val start = item.getLong("start")
             val end = item.getLong("end")
             require(start >= 0L && end > start) { "A clip has an invalid source range" }
-            add(EditClip(id, uri, item.optString("name", "Imported video"), start, end))
+            val audioVolume = decodeClipAudioVolume(
+                if (item.has("volume")) item.optDouble("volume", Double.NaN) else null,
+            ) ?: error("A clip has an invalid audio volume")
+            add(EditClip(id, uri, item.optString("name", "Imported video"), start, end, audioVolume))
         }
     }
 }.getOrNull()
