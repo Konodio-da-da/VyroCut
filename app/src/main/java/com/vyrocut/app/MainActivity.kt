@@ -693,6 +693,7 @@ private fun VyroCutApp() {
                 TimelineEditorStrip(
                     clips = clips,
                     selectedIndex = selectedIndex,
+                    playheadPositionMs = timelinePositionMs.toLong(),
                     onSelectClip = { index ->
                         selectedIndex = index
                         clips.getOrNull(index)?.let { clip ->
@@ -1630,6 +1631,7 @@ private fun formatTime(milliseconds: Long): String {
 private fun TimelineEditorStrip(
     clips: List<EditClip>,
     selectedIndex: Int,
+    playheadPositionMs: Long,
     onSelectClip: (Int) -> Unit,
 ) {
     val clipWidths = clips.map { (it.durationMs / 1000f * 18f).coerceIn(108f, 240f) }
@@ -1677,10 +1679,20 @@ private fun TimelineEditorStrip(
                         }
                     }
                     val totalDuration = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
-                    val elapsedBeforeSelection = clips.take(selectedIndex.coerceAtLeast(0)).sumOf { it.durationMs }
-                    val fraction = (elapsedBeforeSelection.toFloat() / totalDuration).coerceIn(0f, 1f)
+                    var remainingMs = playheadPositionMs.coerceIn(0L, totalDuration)
+                    var markerX = 0f
+                    clips.forEachIndexed { index, clip ->
+                        val width = clipWidths[index]
+                        if (remainingMs >= clip.durationMs && index < clips.lastIndex) {
+                            markerX += width + 6f
+                            remainingMs -= clip.durationMs
+                        } else {
+                            markerX += width * (remainingMs.toFloat() / clip.durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
+                            return@forEachIndexed
+                        }
+                    }
                     Box(
-                        Modifier.offset(x = (totalWidth.value * fraction).dp)
+                        Modifier.offset(x = markerX.dp)
                             .width(2.dp)
                             .height(72.dp)
                             .background(StudioAccent)
