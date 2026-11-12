@@ -614,9 +614,8 @@ private fun VyroCutApp() {
             } else {
             Column(
                 Modifier.fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
@@ -631,29 +630,26 @@ private fun VyroCutApp() {
                     }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val previewHeight = (maxWidth / canvasAspectRatio).coerceIn(180.dp, 320.dp)
-                    Box(
-                        Modifier.fillMaxWidth().height(previewHeight)
-                            .background(canvasBackground, RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (selectedClip == null) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(42.dp))
-                                Spacer(Modifier.height(8.dp))
-                                Text("Import a video to start editing", color = StudioMuted)
-                            }
-                        } else {
-                            AndroidView(
-                                factory = { viewContext -> PlayerView(viewContext).apply {
-                                    useController = true
-                                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                } },
-                                update = { it.player = player },
-                                modifier = Modifier.fillMaxHeight().aspectRatio(canvasAspectRatio)
-                            )
+                Box(
+                    Modifier.fillMaxWidth().height(190.dp)
+                        .background(canvasBackground, RoundedCornerShape(8.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selectedClip == null) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(38.dp))
+                            Spacer(Modifier.height(6.dp))
+                            Text("Import a video to start editing", color = StudioMuted, fontSize = 12.sp)
                         }
+                    } else {
+                        AndroidView(
+                            factory = { viewContext -> PlayerView(viewContext).apply {
+                                useController = false
+                                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            } },
+                            update = { it.player = player },
+                            modifier = Modifier.fillMaxHeight().aspectRatio(canvasAspectRatio)
+                        )
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -751,52 +747,7 @@ private fun VyroCutApp() {
                         }
                     }
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text("CLIP ORDER", color = StudioMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.weight(1f))
-                    IconButton(
-                        onClick = {
-                            val destination = selectedIndex - 1
-                            if (destination in clips.indices) {
-                                changed(moveTimelineItem(clips, selectedIndex, destination))
-                                selectedIndex = destination
-                            }
-                        },
-                        enabled = selectedClip != null && selectedIndex > 0
-                    ) {
-                        Icon(Icons.Default.ArrowBack, "Move selected clip left", tint = StudioAccent)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            val clip = selectedClip ?: return@OutlinedButton
-                            val destination = selectedIndex + 1
-                            val duplicate = clip.copy(id = java.util.UUID.randomUUID().toString())
-                            changed(clips.toMutableList().apply { add(destination, duplicate) })
-                            selectedIndex = destination
-                        },
-                        enabled = selectedClip != null
-                    ) {
-                        Icon(Icons.Default.ContentCopy, null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("Duplicate")
-                    }
-                    IconButton(
-                        onClick = {
-                            val destination = selectedIndex + 1
-                            if (destination in clips.indices) {
-                                changed(moveTimelineItem(clips, selectedIndex, destination))
-                                selectedIndex = destination
-                            }
-                        },
-                        enabled = selectedClip != null && selectedIndex < clips.lastIndex
-                    ) {
-                        Icon(Icons.Default.ArrowForward, "Move selected clip right", tint = StudioAccent)
-                    }
-                }
+
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = { mediaPicker.launch(arrayOf("video/*")) },
