@@ -117,6 +117,9 @@ private fun VyroCutApp() {
     var projectToDelete by remember { mutableStateOf<ProjectInfo?>(null) }
     val undoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
     val redoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
+    var recoveryCandidate by remember(activeProjectId) {
+        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId))
+    }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var isExporting by remember { mutableStateOf(false) }
@@ -325,10 +328,9 @@ private fun VyroCutApp() {
     }
 
     fun saveProject(items: List<EditClip>) {
-        preferences.edit()
-            .putString("project_$activeProjectId", encodeProject(items))
-            .putString("active_project_id", activeProjectId)
-            .apply()
+        val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "Untitled project"
+        persistProjectWithRecovery(preferences, activeProjectId, projectName, items)
+        preferences.edit().putString("active_project_id", activeProjectId).apply()
     }
     fun switchProject(project: ProjectInfo) {
         if (project.id == activeProjectId) return
@@ -350,7 +352,7 @@ private fun VyroCutApp() {
         val project = ProjectInfo(java.util.UUID.randomUUID().toString(), name)
         projects.add(project)
         saveProjectIndex(preferences, projects)
-        preferences.edit().putString("project_${project.id}", encodeProject(emptyList())).apply()
+        persistProjectWithRecovery(preferences, project.id, project.name, emptyList())
         newProjectName = ""
         showProjects = false
         switchProject(project)
@@ -376,6 +378,8 @@ private fun VyroCutApp() {
             .remove("project_${project.id}")
             .remove("project_${project.id}_undo")
             .remove("project_${project.id}_redo")
+            .remove("project_${project.id}_recovery")
+            .remove("project_${project.id}_recovery_dismissed")
             .apply()
         saveProjectIndex(preferences, projects)
         projectToDelete = null
@@ -433,7 +437,7 @@ private fun VyroCutApp() {
                 val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.name)
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
-                preferences.edit().putString("project_${imported.id}", encodeProject(backup.clips)).apply()
+                persistProjectWithRecovery(preferences, imported.id, imported.name, backup.clips)
                 switchProject(imported)
                 showProjects = false
                 exportMessage = "Restored ${imported.name} (${backup.clips.size} clips)"
@@ -997,6 +1001,55 @@ private fun VyroCutApp() {
                         }
                     )
                 }
+                recoveryCandidate?.let { snapshot ->
+                    val recoverableClips = decodeProjectStrict(snapshot.projectJson)
+                    AlertDialog(
+                        onDismissRequest = {
+                            preferences.edit()
+                                .putString("project_${snapshot.projectId}_recovery_dismissed", snapshot.checksum)
+                                .apply()
+                            recoveryCandidate = null
+                        },
+                        title = { Text("Recover project checkpoint?") },
+                        text = {
+                            Text(
+                                "VyroCut found a separate local checkpoint for \"${snapshot.projectName}\" " +
+                                    "saved ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(snapshot.savedAtMs))}. " +
+                                    "${recoverableClips?.size ?: 0} clips can be recovered. Your current project data differs from this checkpoint."
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                enabled = recoverableClips != null,
+                                onClick = {
+                                    val restored = recoverableClips
+                                    if (restored != null) {
+                                        val name = projects.firstOrNull { it.id == snapshot.projectId }?.name
+                                            ?: snapshot.projectName
+                                        persistProjectWithRecovery(preferences, snapshot.projectId, name, restored)
+                                        if (snapshot.projectId == activeProjectId) {
+                                            clips = restored
+                                            selectedIndex = 0
+                                            timelinePositionMs = 0f
+                                        }
+                                        recoveryCandidate = null
+                                        exportMessage = "Recovered ${restored.size} clips from the local checkpoint"
+                                    }
+                                }
+                            ) { Text("Recover") }
+                        },
+                        dismissButton = {
+                            TextButton(
+                                onClick = {
+                                    preferences.edit()
+                                        .putString("project_${snapshot.projectId}_recovery_dismissed", snapshot.checksum)
+                                        .apply()
+                                    recoveryCandidate = null
+                                }
+                            ) { Text("Keep current project") }
+                        }
+                    )
+                }
                 projectToRename?.let { project ->
                     AlertDialog(
                         onDismissRequest = { projectToRename = null },
@@ -1363,6 +1416,63 @@ private fun saveProjectIndex(
         })
     }
     preferences.edit().putString("project_index", array.toString()).apply()
+}
+
+private fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
+    val array = JSONArray(raw)
+    buildList {
+        for (index in 0 until array.length()) {
+            val item = array.getJSONObject(index)
+            val id = item.getString("id").takeIf { it.isNotBlank() }
+                ?: error("A clip is missing its ID")
+            val uri = item.getString("uri").takeIf { it.isNotBlank() }
+                ?: error("A clip is missing its media reference")
+            val start = item.getLong("start")
+            val end = item.getLong("end")
+            require(start >= 0L && end > start) { "A clip has an invalid source range" }
+            add(EditClip(id, uri, item.optString("name", "Imported video"), start, end))
+        }
+    }
+}.getOrNull()
+
+private fun persistProjectWithRecovery(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    projectName: String,
+    clips: List<EditClip>,
+) {
+    val projectJson = encodeProject(clips)
+    val recoveryJson = ProjectRecoveryJournal.encode(
+        projectId = projectId,
+        projectName = projectName,
+        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
+        projectJson = projectJson,
+    )
+    // Both values are committed in one SharedPreferences edit. The independent
+    // recovery key can still rescue the project if its primary value is damaged.
+    preferences.edit()
+        .putString("project_$projectId", projectJson)
+        .putString("project_${projectId}_recovery", recoveryJson)
+        .remove("project_${projectId}_recovery_dismissed")
+        .apply()
+}
+
+private fun findProjectRecoveryCandidate(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+): ProjectRecoverySnapshot? {
+    val snapshot = ProjectRecoveryJournal.decode(
+        preferences.getString("project_${projectId}_recovery", null),
+        projectId,
+    ) ?: return null
+    if (preferences.getString("project_${projectId}_recovery_dismissed", null) == snapshot.checksum) {
+        return null
+    }
+    val primaryJson = preferences.getString("project_$projectId", null)
+        ?: (if (projectId == "default") preferences.getString("clips", null) else null)
+    if (!ProjectRecoveryJournal.shouldOfferRecovery(primaryJson, snapshot)) return null
+    if (decodeProjectStrict(snapshot.projectJson) == null) return null
+    return snapshot
 }
 
 private fun loadProject(
