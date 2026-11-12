@@ -121,6 +121,39 @@ internal data class PlaybackRestoreTarget(
     val positionMs: Long,
 )
 
+/** Saved preview location uses source time so it survives trim and reorder edits. */
+internal data class SavedPlaybackPosition(
+    val clipId: String,
+    val sourceTimeMs: Long,
+)
+
+/**
+ * Restores a project's last saved preview location. A saved source time outside a
+ * newly-trimmed range is clamped to the nearest playable millisecond.
+ */
+internal fun resolveSavedPlaybackTarget(
+    nextClips: List<ClipPlaybackRange>,
+    savedPosition: SavedPlaybackPosition?,
+    fallbackClipIndex: Int = 0,
+): PlaybackRestoreTarget? {
+    if (nextClips.isEmpty()) return null
+
+    val savedIndex = savedPosition?.let { saved ->
+        nextClips.indexOfFirst { it.id == saved.clipId }
+    } ?: -1
+    if (savedIndex >= 0 && savedPosition != null) {
+        val clip = nextClips[savedIndex]
+        val maximumPositionMs = (clip.durationMs - 1L).coerceAtLeast(0L)
+        val relativePositionMs = (
+            savedPosition.sourceTimeMs.coerceAtLeast(0L) -
+                clip.sourceStartMs.coerceAtLeast(0L)
+            ).coerceIn(0L, maximumPositionMs)
+        return PlaybackRestoreTarget(savedIndex, relativePositionMs)
+    }
+
+    return PlaybackRestoreTarget(fallbackClipIndex.coerceIn(0, nextClips.lastIndex), 0L)
+}
+
 /**
  * Restores the current source-time playhead after rebuilding a project's playlist.
  * Stable clip IDs let reorder/trim edits keep the same visual moment. If the active
