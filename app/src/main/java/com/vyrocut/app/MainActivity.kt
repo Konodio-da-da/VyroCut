@@ -140,6 +140,7 @@ private fun VyroCutApp() {
     // Check each project's persisted document URIs when opening or switching projects.
     // Keep this off the main thread; edits such as reorder/split do not need to re-probe files.
     LaunchedEffect(activeProjectId) {
+        missingMediaUris = emptySet()
         val projectClips = clips
         val unavailableUris = withContext(Dispatchers.IO) {
             projectClips.groupBy { it.uri }.mapNotNull { (uri, uriClips) ->
@@ -485,17 +486,27 @@ private fun VyroCutApp() {
                                 val oldUriStillUsed = clips.any { clip ->
                                     clip.id != relinkTarget.id && clip.uri == relinkTarget.uri
                                 }
-                                changed(clips.map { clip ->
+                                val updatedClips = clips.map { clip ->
                                     if (clip.id == relinkTarget.id) {
                                         clip.copy(uri = selectedUri.toString(), name = name)
                                     } else {
                                         clip
                                     }
-                                })
-                                missingMediaUris = if (oldUriStillUsed) {
-                                    missingMediaUris - selectedUri.toString()
+                                }
+                                changed(updatedClips)
+                                val newUriHasIncompatibleClip = updatedClips.any { clip ->
+                                    clip.uri == selectedUri.toString() &&
+                                        !isClipSourceCompatible(clip.sourceStartMs, clip.sourceEndMs, durationMs)
+                                }
+                                val retainedMissingUris = if (oldUriStillUsed) {
+                                    missingMediaUris
                                 } else {
-                                    missingMediaUris - relinkTarget.uri - selectedUri.toString()
+                                    missingMediaUris - relinkTarget.uri
+                                }
+                                missingMediaUris = if (newUriHasIncompatibleClip) {
+                                    retainedMissingUris + selectedUri.toString()
+                                } else {
+                                    retainedMissingUris - selectedUri.toString()
                                 }
                                 exportMessage = "Relinked ${relinkTarget.name} • Existing trim preserved"
                             }
