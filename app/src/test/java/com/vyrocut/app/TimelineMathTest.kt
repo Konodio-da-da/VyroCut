@@ -179,6 +179,43 @@ class TimelineMathTest {
     }
 
     @Test
+    fun skipForwardCrossesIntoTheNextClip() {
+        assertEquals(
+            TimelineSeekTarget(1, 2_000L),
+            resolveTimelineSeekTargetAfterDelta(
+                listOf(4_000L, 5_000L),
+                currentTimelinePositionMs = 2_000L,
+                deltaMs = 5_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun skipBackwardCrossesIntoThePreviousClip() {
+        assertEquals(
+            TimelineSeekTarget(0, 1_000L),
+            resolveTimelineSeekTargetAfterDelta(
+                listOf(4_000L, 5_000L),
+                currentTimelinePositionMs = 6_000L,
+                deltaMs = -5_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun skipControlsClampAtBothProjectEnds() {
+        assertEquals(
+            TimelineSeekTarget(0, 0L),
+            resolveTimelineSeekTargetAfterDelta(listOf(2_000L, 3_000L), 500L, Long.MIN_VALUE),
+        )
+        assertEquals(
+            TimelineSeekTarget(1, 2_999L),
+            resolveTimelineSeekTargetAfterDelta(listOf(2_000L, 3_000L), 4_500L, Long.MAX_VALUE),
+        )
+        assertNull(resolveTimelineSeekTargetAfterDelta(listOf(0L, -1L), 0L, 5_000L))
+    }
+
+    @Test
     fun durationSumSaturatesInsteadOfOverflowing() {
         assertEquals(
             Long.MAX_VALUE,
