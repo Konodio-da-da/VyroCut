@@ -243,4 +243,59 @@ class TimelineMathTest {
         )
     }
 
+
+    @Test
+    fun restoresSavedPreviewByStableClipIdAfterReordering() {
+        val clips = listOf(
+            ClipPlaybackRange("second", 500L, 4_500L),
+            ClipPlaybackRange("first", 0L, 3_000L),
+        )
+        assertEquals(
+            PlaybackRestoreTarget(0, 1_250L),
+            resolveSavedPlaybackTarget(clips, SavedPlaybackPosition("second", 1_750L)),
+        )
+    }
+
+    @Test
+    fun savedSourceTimeBeforeTrimmedStartClampsToClipStart() {
+        assertEquals(
+            PlaybackRestoreTarget(0, 0L),
+            resolveSavedPlaybackTarget(
+                listOf(ClipPlaybackRange("clip", 2_000L, 6_000L)),
+                SavedPlaybackPosition("clip", 1_500L),
+            ),
+        )
+    }
+
+    @Test
+    fun savedSourceTimeAfterTrimmedEndClampsToLastPlayableMillisecond() {
+        assertEquals(
+            PlaybackRestoreTarget(0, 1_999L),
+            resolveSavedPlaybackTarget(
+                listOf(ClipPlaybackRange("clip", 2_000L, 4_000L)),
+                SavedPlaybackPosition("clip", 9_000L),
+            ),
+        )
+    }
+
+    @Test
+    fun missingSavedClipFallsBackToRequestedSelection() {
+        assertEquals(
+            PlaybackRestoreTarget(1, 0L),
+            resolveSavedPlaybackTarget(
+                listOf(
+                    ClipPlaybackRange("a", 0L, 1_000L),
+                    ClipPlaybackRange("b", 0L, 2_000L),
+                ),
+                SavedPlaybackPosition("deleted", 500L),
+                fallbackClipIndex = 1,
+            ),
+        )
+    }
+
+    @Test
+    fun emptyProjectHasNoSavedPlaybackTarget() {
+        assertNull(resolveSavedPlaybackTarget(emptyList(), SavedPlaybackPosition("clip", 500L)))
+    }
+
 }
