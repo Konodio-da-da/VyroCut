@@ -147,9 +147,14 @@ private fun VyroCutApp() {
         }
     }
     DisposableEffect(player) { onDispose { player.release() } }
-    DisposableEffect(player, lifecycleOwner) {
+    DisposableEffect(player, lifecycleOwner, clips, activeProjectId) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) player.pause()
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
+                clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
+                    savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+                }
+                player.pause()
+            }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -173,14 +178,22 @@ private fun VyroCutApp() {
         } else {
             null
         }
-        val restoreTarget = resolvePlaybackRestoreTarget(
-            previousClips = previousRanges,
-            nextClips = nextRanges,
-            currentClipId = currentClipId,
-            currentClipPositionMs = currentPositionMs,
-            fallbackClipIndex = if (sameProject) selectedIndex else 0,
-            preferredClipId = preferredClipId,
-        )
+        val restoreTarget = if (sameProject && currentClipId != null) {
+            resolvePlaybackRestoreTarget(
+                previousClips = previousRanges,
+                nextClips = nextRanges,
+                currentClipId = currentClipId,
+                currentClipPositionMs = currentPositionMs,
+                fallbackClipIndex = selectedIndex,
+                preferredClipId = preferredClipId,
+            )
+        } else {
+            resolveSavedPlaybackTarget(
+                nextClips = nextRanges,
+                savedPosition = loadSavedPlaybackPosition(preferences, activeProjectId),
+                fallbackClipIndex = if (sameProject) selectedIndex else 0,
+            )
+        }
 
         if (restoreTarget == null) {
             player.playWhenReady = false
@@ -213,24 +226,37 @@ private fun VyroCutApp() {
                 restoreTarget.clipIndex,
                 restoreTarget.positionMs,
             ).toFloat()
+            clips.getOrNull(restoreTarget.clipIndex)?.let { clip ->
+                savePreviewPosition(preferences, activeProjectId, clip, restoreTarget.positionMs)
+            }
         }
         previousClipEdits = clips.toList()
         previousProjectId = activeProjectId
     }
-    LaunchedEffect(player, clips, isPlaying) {
+    LaunchedEffect(player, clips, isPlaying, activeProjectId) {
+        var lastPersistedAtMs = 0L
         while (true) {
             if (!isScrubbing && clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
                 val currentIndex = player.currentMediaItemIndex
+                val currentPositionMs = player.currentPosition
                 timelinePositionMs = calculateTimelinePositionMs(
                     clipDurationsMs,
                     currentIndex,
-                    player.currentPosition,
+                    currentPositionMs,
                 ).coerceIn(0L, timelineDurationMs).toFloat()
+
+                val nowMs = System.currentTimeMillis()
+                if (player.isPlaying && nowMs - lastPersistedAtMs >= 2_000L) {
+                    clips.getOrNull(currentIndex)?.let { clip ->
+                        savePreviewPosition(preferences, activeProjectId, clip, currentPositionMs)
+                    }
+                    lastPersistedAtMs = nowMs
+                }
             }
             delay(200)
         }
     }
-    DisposableEffect(player) {
+    DisposableEffect(player, clips, activeProjectId) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
@@ -241,7 +267,12 @@ private fun VyroCutApp() {
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val activeIndex = player.currentMediaItemIndex
-                if (activeIndex >= 0) selectedIndex = activeIndex
+                if (activeIndex >= 0) {
+                    selectedIndex = activeIndex
+                    clips.getOrNull(activeIndex)?.let { clip ->
+                        savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+                    }
+                }
             }
         }
         player.addListener(listener)
@@ -256,6 +287,9 @@ private fun VyroCutApp() {
     }
     fun switchProject(project: ProjectInfo) {
         if (project.id == activeProjectId) return
+        clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
+            savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+        }
         saveProject(clips)
         activeProjectId = project.id
         preferences.edit().putString("active_project_id", project.id).apply()
@@ -440,9 +474,17 @@ private fun VyroCutApp() {
                     }
                     FilledTonalButton(onClick = {
                         if (player.isPlaying) {
+                            clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
+                                savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+                            }
                             player.pause()
                         } else {
-                            if (player.playbackState == Player.STATE_ENDED) player.seekTo(0, 0L)
+                            if (player.playbackState == Player.STATE_ENDED) {
+                                player.seekTo(0, 0L)
+                                clips.firstOrNull()?.let { clip ->
+                                    savePreviewPosition(preferences, activeProjectId, clip, 0L)
+                                }
+                            }
                             player.play()
                         }
                     }, enabled = selectedClip != null,
@@ -461,6 +503,9 @@ private fun VyroCutApp() {
                             resolveTimelineSeekTarget(clipDurationsMs, timelinePositionMs.toLong())?.let { target ->
                                 selectedIndex = target.clipIndex
                                 player.seekTo(target.clipIndex, target.positionMs)
+                                clips.getOrNull(target.clipIndex)?.let { clip ->
+                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
+                                }
                             }
                             isScrubbing = false
                         },
@@ -488,7 +533,10 @@ private fun VyroCutApp() {
                         Column(Modifier.width(116.dp).background(if (index == selectedIndex) Color(0xFF16483D) else StudioPanel, RoundedCornerShape(10.dp))
                             .clickable {
                                 selectedIndex = index
-                                if (index < player.mediaItemCount) player.seekTo(index, 0L)
+                                if (index < player.mediaItemCount) {
+                                    player.seekTo(index, 0L)
+                                    savePreviewPosition(preferences, activeProjectId, clip, 0L)
+                                }
                             }.padding(10.dp)) {
                             Text("CLIP ${index + 1}", color = if (index == selectedIndex) StudioAccent else StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(5.dp))
@@ -1187,6 +1235,36 @@ private fun loadProject(
         ?: (if (projectId == "default") preferences.getString("clips", null) else null)
         ?: return emptyList()
     return decodeProject(raw)
+}
+
+private fun savePreviewPosition(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    clip: EditClip,
+    clipPositionMs: Long,
+) {
+    val maximumPositionMs = (clip.durationMs - 1L).coerceAtLeast(0L)
+    val relativePositionMs = clipPositionMs.coerceIn(0L, maximumPositionMs)
+    val sourceTimeMs = (clip.sourceStartMs + relativePositionMs)
+        .coerceAtMost((clip.sourceEndMs - 1L).coerceAtLeast(clip.sourceStartMs))
+    preferences.edit()
+        .putString("project_${projectId}_preview_clip_id", clip.id)
+        .putLong("project_${projectId}_preview_source_time_ms", sourceTimeMs)
+        .apply()
+}
+
+private fun loadSavedPlaybackPosition(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+): SavedPlaybackPosition? {
+    val clipId = preferences.getString("project_${projectId}_preview_clip_id", null)
+        ?.takeIf { it.isNotBlank() } ?: return null
+    val positionKey = "project_${projectId}_preview_source_time_ms"
+    if (!preferences.contains(positionKey)) return null
+    return SavedPlaybackPosition(
+        clipId = clipId,
+        sourceTimeMs = preferences.getLong(positionKey, 0L).coerceAtLeast(0L),
+    )
 }
 
 private fun formatTime(milliseconds: Long): String {
