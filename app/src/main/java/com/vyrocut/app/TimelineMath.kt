@@ -175,3 +175,15 @@ internal fun calculateTimelineDurationMs(clipDurationsMs: List<Long>): Long =
 
 private fun addWithoutOverflow(left: Long, right: Long): Long =
     if (right > Long.MAX_VALUE - left) Long.MAX_VALUE else left + right
+
+
+/** Appends an item and returns the index that should become selected. */
+internal data class TimelineAppendResult<T>(
+    val items: List<T>,
+    val selectedIndex: Int,
+)
+
+internal fun <T> appendTimelineItemAndSelect(
+    items: List<T>,
+    item: T,
+): TimelineAppendResult<T> = TimelineAppendResult(items + item, items.size)
