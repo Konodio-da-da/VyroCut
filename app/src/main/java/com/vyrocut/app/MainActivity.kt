@@ -944,7 +944,7 @@ private fun VyroCutApp() {
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Could not initialize export: ${error.message}"
-                                        return@exportPublishing
+                                        return@exportPreparation
                                     }
                                     activeTransformer = transformer
                                     activeExportFile = outputFile
