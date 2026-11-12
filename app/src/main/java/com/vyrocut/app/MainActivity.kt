@@ -608,21 +608,29 @@ private fun VyroCutApp() {
                     }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
-                Box(Modifier.fillMaxWidth().height(280.dp).background(canvasBackground, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                    if (selectedClip == null) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(42.dp))
-                            Spacer(Modifier.height(8.dp))
-                            Text("Import a video to start editing", color = StudioMuted)
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    val previewHeight = (maxWidth / canvasAspectRatio).coerceIn(180.dp, 320.dp)
+                    Box(
+                        Modifier.fillMaxWidth().height(previewHeight)
+                            .background(canvasBackground, RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (selectedClip == null) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(42.dp))
+                                Spacer(Modifier.height(8.dp))
+                                Text("Import a video to start editing", color = StudioMuted)
+                            }
+                        } else {
+                            AndroidView(
+                                factory = { viewContext -> PlayerView(viewContext).apply {
+                                    useController = true
+                                    resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                } },
+                                update = { it.player = player },
+                                modifier = Modifier.fillMaxHeight().aspectRatio(canvasAspectRatio)
+                            )
                         }
-                    } else {
-                        AndroidView(
-                            factory = { viewContext -> PlayerView(viewContext).apply {
-                                useController = true
-                            } },
-                            update = { it.player = player },
-                            modifier = Modifier.fillMaxHeight().aspectRatio(canvasAspectRatio)
-                        )
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
