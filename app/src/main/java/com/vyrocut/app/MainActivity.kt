@@ -838,17 +838,17 @@ private fun VyroCutApp() {
                                 player.pause()
                                 exportMessage = "Checking source videos…"
 
-                                exportScope.launch {
+                                exportScope.launch exportPreparation@ {
                                     val preflightError = withContext(Dispatchers.IO) {
                                         val sourceMetadata = inspectExportSources(context, exportRequirements)
                                         validateExportPreflight(exportRequirements, sourceMetadata)
                                     }
-                                    if (exportSessionId != exportSession) return@launch
+                                    if (exportSessionId != exportSession) return@exportPreparation
                                     if (preflightError != null) {
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Export stopped: $preflightError"
-                                        return@launch
+                                        return@exportPreparation
                                     }
 
                                     val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
@@ -858,7 +858,7 @@ private fun VyroCutApp() {
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Could not create the temporary export directory"
-                                        return@launch
+                                        return@exportPreparation
                                     }
                                     val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
                                     val sourceUris = exportClips.map { it.uri }
@@ -883,7 +883,7 @@ private fun VyroCutApp() {
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Could not prepare export: ${error.message}"
-                                        return@launch
+                                        return@exportPreparation
                                     }
                                     val transformer = try {
                                         Transformer.Builder(context)
@@ -893,7 +893,7 @@ private fun VyroCutApp() {
                                                         outputFile.delete()
                                                         return
                                                     }
-                                                    exportScope.launch {
+                                                    exportScope.launch exportPublishing@ {
                                                         val publishResult = runCatching {
                                                             withContext(Dispatchers.IO) {
                                                                 verifyExportedMp4(
@@ -912,7 +912,7 @@ private fun VyroCutApp() {
                                                                 }
                                                             }
                                                             outputFile.delete()
-                                                            return@launch
+                                                            return@exportPublishing
                                                         }
                                                         isExporting = false
                                                         activeTransformer = null
@@ -944,7 +944,7 @@ private fun VyroCutApp() {
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Could not initialize export: ${error.message}"
-                                        return@launch
+                                        return@exportPublishing
                                     }
                                     activeTransformer = transformer
                                     activeExportFile = outputFile
@@ -962,7 +962,6 @@ private fun VyroCutApp() {
                                         }
                                 }
                             }
-                        }
                         },
                         enabled = clips.isNotEmpty() && !isExporting && !isReadingMedia,
                         modifier = Modifier.weight(1f),
