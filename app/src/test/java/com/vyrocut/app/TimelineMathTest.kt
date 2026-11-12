@@ -179,9 +179,75 @@ class TimelineMathTest {
     }
 
     @Test
+    fun timelinePixelOffsetMapsProportionallyInsideAClip() {
+        assertEquals(
+            TimelineSeekTarget(0, 500L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                clipDurationsMs = listOf(1_000L, 2_000L),
+                clipWidthsPx = listOf(100f, 200f),
+                offsetPx = 50f,
+                gapPx = 10f,
+            ),
+        )
+    }
+
+    @Test
+    fun timelinePixelOffsetInGapSnapsToNextClipStart() {
+        assertEquals(
+            TimelineSeekTarget(1, 0L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                listOf(1_000L, 2_000L),
+                listOf(100f, 200f),
+                offsetPx = 105f,
+                gapPx = 10f,
+            ),
+        )
+    }
+
+    @Test
+    fun timelinePixelOffsetPastEndTargetsLastPlayableFrame() {
+        assertEquals(
+            TimelineSeekTarget(1, 1_999L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                listOf(1_000L, 0L, 2_000L),
+                listOf(100f, 80f, 200f),
+                offsetPx = 500f,
+                gapPx = 10f,
+            ),
+        )
+    }
+
+    @Test
+    fun zeroDurationVisualSlotDoesNotConsumePlaybackTime() {
+        assertEquals(
+            TimelineSeekTarget(1, 0L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                listOf(0L, 1_000L),
+                listOf(80f, 120f),
+                offsetPx = 40f,
+                gapPx = 6f,
+            ),
+        )
+    }
+
+    @Test
+    fun invalidTimelinePixelOffsetStillResolvesSafely() {
+        assertEquals(
+            TimelineSeekTarget(0, 0L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                listOf(1_000L),
+                listOf(Float.NaN),
+                offsetPx = Float.NaN,
+                gapPx = Float.POSITIVE_INFINITY,
+            ),
+        )
+        assertNull(resolveTimelineSeekTargetAtOffsetPx(listOf(0L), listOf(100f), 50f, 6f))
+    }
+
+    @Test
     fun skipForwardCrossesIntoTheNextClip() {
         assertEquals(
-            TimelineSeekTarget(1, 2_000L),
+            TimelineSeekTarget(1, 3_000L),
             resolveTimelineSeekTargetAfterDelta(
                 listOf(4_000L, 5_000L),
                 currentTimelinePositionMs = 2_000L,
