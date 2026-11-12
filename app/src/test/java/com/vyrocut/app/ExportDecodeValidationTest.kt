@@ -8,7 +8,7 @@ class ExportDecodeValidationTest {
     @Test
     fun probesBeginningMiddleAndEndOfEveryClip() {
         assertEquals(
-            listOf(0L, 2L, 3L, 4L, 6L, 7L, 8L, 10L, 11L),
+            listOf(0L, 2L, 3L, 4L, 6L, 8L, 9L, 11L, 12L),
             exportFrameProbePositionsMs(listOf(4L, 5L, 4L)),
         )
     }
