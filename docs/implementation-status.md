@@ -1,10 +1,10 @@
 # Implementation status
 
 ## Last verified build
-- The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The current branch head `02ba0e5671ea3c7056ffe3ea360c964537e8722f` passed `assembleDebug` and `testDebugUnitTest` in [run 43136495031](https://github.com/Konodio-da-da/VyroCut/actions/runs/43136495031); the debug APK artifact was uploaded.
-- All 38 tests passed on that revision (31 timeline-domain tests and 7 export-validation rule tests). The next preview-controller synchronization change is awaiting its own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- Branch head `d6f425a581d254ee6724bfac6454b50febd4470e` passed both tasks in [run 43143355244](https://github.com/Konodio-da-da/VyroCut/actions/runs/43143355244); the debug APK artifact was uploaded (artifact ID `13910292703`).
+- All 42 tests passed on that revision (35 timeline-domain tests and 7 export-validation rule tests). The following media-relinking changes are awaiting their own CI run.
+- CI confirms Android compilation and unit tests; it does not replace physical-device playback or a full exported-file decode/playback test.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -18,6 +18,9 @@
 - Undo/redo supports up to 50 timeline edit states per project and persists its history across app restarts.
 - Timeline audio waveforms are decoded from each clip's source audio on a background dispatcher, bucketed into 48 peak-amplitude samples, and aligned to the clip's trimmed source range.
 - Video import through Android's Storage Access Framework with persisted read permission.
+- Persisted source URIs are checked when a project opens; unavailable or too-short sources are flagged in the selected-clip header.
+- A missing clip can be relinked to another video through the document picker. The replacement must cover the existing source in/out range, and relinking preserves the clip ID and trim points so undo/redo and preview restoration remain coherent.
+- Video duration and display-name metadata are read on an IO dispatcher instead of blocking the Compose UI thread.
 - Importing a clip selects the newly appended segment, including when importing into an empty project; the selected index is calculated from the pre-append list size rather than the stale Compose state.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
@@ -47,6 +50,7 @@
 
 ## Still to implement
 - Automatic recovery snapshots beyond the persisted edit history, including recovery UI and interrupted-export recovery.
+- Physical-device validation of continuous multi-clip playback, source relinking, and actual MP4 decoding/audio continuity.
 - Audio, image, text, transitions, and effects tracks.
 
 A control is only considered complete when its operation is connected to the project state and verified by the Android build. Device playback and rendering still require hands-on testing on an Android device.
