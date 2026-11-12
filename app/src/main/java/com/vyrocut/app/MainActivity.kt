@@ -1186,6 +1186,7 @@ private fun VyroCutApp() {
                                                                     file = outputFile,
                                                                     sourceUris = sourceUris,
                                                                     expectedDurationMs = expectedDurationMs,
+                                                                    clipDurationsMs = exportRequirements.map { it.sourceEndMs - it.sourceStartMs },
                                                                     expectedCanvasSize = exportCanvasSize,
                                                                     canvasVisualClips = canvasVisualClips,
                                                                     expectedBackgroundArgb = expectedBackgroundForVerification,
