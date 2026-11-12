@@ -519,6 +519,16 @@ private fun VyroCutApp() {
                                 durationMs
                             )
                             val appendResult = appendTimelineItemAndSelect(clips, importedClip)
+                            val importedUri = selectedUri.toString()
+                            val uriHasIncompatibleClip = appendResult.items.any { clip ->
+                                clip.uri == importedUri &&
+                                    !isClipSourceCompatible(clip.sourceStartMs, clip.sourceEndMs, durationMs)
+                            }
+                            missingMediaUris = if (uriHasIncompatibleClip) {
+                                missingMediaUris + importedUri
+                            } else {
+                                missingMediaUris - importedUri
+                            }
                             changed(appendResult.items)
                             selectedIndex = appendResult.selectedIndex
                             exportMessage = "Imported $name"
