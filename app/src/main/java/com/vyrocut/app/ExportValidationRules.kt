@@ -20,7 +20,7 @@ internal fun validateExportTrackSummary(
     if (summary.videoDurationMs <= 0L) return "The exported video has no measurable duration"
 
     // Allow codec/frame-boundary rounding without accepting a materially truncated render.
-    val durationToleranceMs = maxOf(500L, expectedDurationMs / 50L)
+    val durationToleranceMs = maxOf(250L, expectedDurationMs / 100L)
     val durationDifferenceMs = if (summary.videoDurationMs >= expectedDurationMs) {
         summary.videoDurationMs - expectedDurationMs
     } else {
