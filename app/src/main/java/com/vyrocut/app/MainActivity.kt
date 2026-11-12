@@ -1131,13 +1131,33 @@ private fun VyroCutApp() {
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             val options = when (activeTool) {
                                 "Effects" -> listOf("Edge Glow", "Blur", "Glitch", "Vignette", "Shake")
-                                "Filters" -> listOf("Original", "Cinema", "Warm", "Cool", "Mono")
+                                "Filters" -> ClipVisualPreset.values().map { it.label }
                                 else -> listOf("Brightness", "Contrast", "Saturation")
                             }
                             options.forEach { item ->
                                 FilterChip(
-                                    selected = selectedEffect == item,
-                                    onClick = { selectedEffect = item },
+                                    selected = if (activeTool == "Filters") {
+                                        selectedClip?.visualAdjustments == clipVisualPresetAdjustments(item)
+                                    } else {
+                                        selectedEffect == item
+                                    },
+                                    onClick = {
+                                        if (activeTool == "Filters") {
+                                            val preset = clipVisualPresetAdjustments(item)
+                                            if (preset != null && selectedClip != null) {
+                                                clipBrightnessDraft = preset.brightness.toFloat()
+                                                clipContrastDraft = preset.contrast.toFloat()
+                                                clipSaturationDraft = preset.saturation.toFloat()
+                                                commitSelectedClipVisualAdjustments(
+                                                    brightness = preset.brightness,
+                                                    contrast = preset.contrast,
+                                                    saturation = preset.saturation,
+                                                )
+                                            }
+                                        } else {
+                                            selectedEffect = item
+                                        }
+                                    },
                                     label = { Text(item, fontSize = 11.sp) }
                                 )
                             }
@@ -1204,7 +1224,15 @@ private fun VyroCutApp() {
                             )
                             Text("Effect rendering is not implemented yet.", color = StudioMuted, fontSize = 10.sp)
                         } else {
-                            Text("Filter rendering is not implemented yet.", color = StudioMuted, fontSize = 10.sp)
+                            if (selectedClip == null) {
+                                Text("Select a video clip to apply a tonal preset.", color = StudioMuted, fontSize = 10.sp)
+                            } else {
+                                Text(
+                                    "Preset applied to this clip • Fine-tune it in Adjust",
+                                    color = StudioMuted,
+                                    fontSize = 10.sp,
+                                )
+                            }
                         }
                     }
                 }
