@@ -167,6 +167,36 @@ class TimelineMathTest {
     }
 
     @Test
+    fun trimRangeClampsBothHandlesToTheOriginalSourceDuration() {
+        assertEquals(
+            ClipRange(0L, 9_000L),
+            clampTrimRange(
+                sourceDurationMs = 9_000L,
+                requestedStartMs = -500L,
+                requestedEndMs = 12_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun trimRangePreservesIndependentInAndOutPoints() {
+        assertEquals(
+            ClipRange(1_250L, 7_750L),
+            clampTrimRange(10_000L, 1_250L, 7_750L),
+        )
+    }
+
+    @Test
+    fun trimRangeRejectsSegmentsShorterThanOneHundredMilliseconds() {
+        assertNull(clampTrimRange(10_000L, 2_000L, 2_099L))
+        assertEquals(
+            ClipRange(2_000L, 2_100L),
+            clampTrimRange(10_000L, 2_000L, 2_100L),
+        )
+        assertNull(clampTrimRange(0L, 0L, 500L))
+    }
+
+    @Test
     fun timelineDurationSaturatesInsteadOfOverflowing() {
         assertEquals(Long.MAX_VALUE, calculateTimelineDurationMs(listOf(Long.MAX_VALUE - 10L, 50L)))
         assertEquals(0L, calculateTimelineDurationMs(emptyList()))

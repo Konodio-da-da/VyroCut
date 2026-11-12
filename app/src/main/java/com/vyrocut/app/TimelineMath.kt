@@ -128,6 +128,25 @@ internal fun splitClipRangeAtPlaybackPosition(
     )
 }
 
+internal const val MIN_CLIP_DURATION_MS = 100L
+
+/**
+ * Clamps a two-handle trim selection to the original source and rejects segments
+ * shorter than [minimumDurationMs]. The source file itself is never modified.
+ */
+internal fun clampTrimRange(
+    sourceDurationMs: Long,
+    requestedStartMs: Long,
+    requestedEndMs: Long,
+    minimumDurationMs: Long = MIN_CLIP_DURATION_MS,
+): ClipRange? {
+    if (sourceDurationMs <= 0L || minimumDurationMs <= 0L) return null
+    val startMs = requestedStartMs.coerceIn(0L, sourceDurationMs)
+    val endMs = requestedEndMs.coerceIn(0L, sourceDurationMs)
+    if (endMs - startMs < minimumDurationMs) return null
+    return ClipRange(startMs, endMs)
+}
+
 /** Trims one edge without mutating the source file or allowing an empty segment. */
 internal fun trimClipRange(
     sourceStartMs: Long,

@@ -117,7 +117,11 @@ private fun VyroCutApp() {
     var canvasAspectRatio by remember { mutableFloatStateOf(9f / 16f) }
     var canvasBackground by remember { mutableStateOf(Color.Black) }
     var showProjects by remember { mutableStateOf(false) }
-    var showTrimMenu by remember { mutableStateOf(false) }
+    var showTrimDialog by remember { mutableStateOf(false) }
+    var trimTargetClipId by remember { mutableStateOf<String?>(null) }
+    var trimSourceDurationMs by remember { mutableLongStateOf(1L) }
+    var isLoadingTrimSource by remember { mutableStateOf(false) }
+    var trimSourceReadFailed by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
     var projectToRename by remember { mutableStateOf<ProjectInfo?>(null) }
     var renameProjectName by remember { mutableStateOf("") }
@@ -401,6 +405,25 @@ private fun VyroCutApp() {
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         selectedIndex = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         saveProject(items)
+    }
+    fun openTrimDialog(clip: EditClip) {
+        if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
+        trimTargetClipId = clip.id
+        trimSourceDurationMs = clip.sourceEndMs.coerceAtLeast(1L)
+        isLoadingTrimSource = true
+        trimSourceReadFailed = false
+        showTrimDialog = true
+
+        exportScope.launch {
+            val sourceDuration = withContext(Dispatchers.IO) {
+                MediaMetadataReader.videoDurationMs(context, Uri.parse(clip.uri))
+            }
+            if (trimTargetClipId == clip.id) {
+                trimSourceReadFailed = sourceDuration == null
+                trimSourceDurationMs = maxOf(sourceDuration ?: clip.sourceEndMs, clip.sourceEndMs).coerceAtLeast(1L)
+                isLoadingTrimSource = false
+            }
+        }
     }
     fun undoEdit() {
         if (undoStack.isEmpty()) return
@@ -819,43 +842,15 @@ private fun VyroCutApp() {
                     } == true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
                         Icon(Icons.Default.ContentCut, null); Text("Split at playhead", maxLines = 1)
                     }
-                    Box(Modifier.weight(1f)) {
-                        OutlinedButton(
-                            onClick = { showTrimMenu = true },
-                            enabled = selectedClip != null && selectedClip.durationMs > 1000L,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(10.dp)
-                        ) { Text("Trim", maxLines = 1) }
-                        DropdownMenu(
-                            expanded = showTrimMenu,
-                            onDismissRequest = { showTrimMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Trim start by 1s") },
-                                onClick = {
-                                    showTrimMenu = false
-                                    val clip = selectedClip ?: return@DropdownMenuItem
-                                    val range = trimClipRange(clip.sourceStartMs, clip.sourceEndMs, 1000L, fromStart = true)
-                                        ?: return@DropdownMenuItem
-                                    changed(clips.toMutableList().apply {
-                                        this[selectedIndex] = clip.copy(sourceStartMs = range.startMs, sourceEndMs = range.endMs)
-                                    })
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Trim end by 1s") },
-                                onClick = {
-                                    showTrimMenu = false
-                                    val clip = selectedClip ?: return@DropdownMenuItem
-                                    val range = trimClipRange(clip.sourceStartMs, clip.sourceEndMs, 1000L, fromStart = false)
-                                        ?: return@DropdownMenuItem
-                                    changed(clips.toMutableList().apply {
-                                        this[selectedIndex] = clip.copy(sourceStartMs = range.startMs, sourceEndMs = range.endMs)
-                                    })
-                                }
-                            )
-                        }
-                    }
+                    OutlinedButton(
+                        onClick = { selectedClip?.let { openTrimDialog(it) } },
+                        enabled = selectedClip != null &&
+                            selectedClip.durationMs >= MIN_CLIP_DURATION_MS &&
+                            selectedClip.uri !in missingMediaUris &&
+                            !isReadingMedia,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) { Text("Trim", maxLines = 1) }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = Color(0xFFFF8A80))
                     }
@@ -1257,6 +1252,37 @@ private fun VyroCutApp() {
                                     recoveryCandidate = null
                                 }
                             ) { Text("Keep current project") }
+                        }
+                    )
+                }
+                val trimTargetClip = clips.firstOrNull { it.id == trimTargetClipId }
+                if (showTrimDialog && trimTargetClip != null) {
+                    VyroCutTrimDialog(
+                        clipId = trimTargetClip.id,
+                        clipName = trimTargetClip.name,
+                        sourceDurationMs = trimSourceDurationMs,
+                        initialRange = ClipRange(trimTargetClip.sourceStartMs, trimTargetClip.sourceEndMs),
+                        isLoadingSource = isLoadingTrimSource,
+                        sourceReadFailed = trimSourceReadFailed,
+                        onDismiss = {
+                            showTrimDialog = false
+                            trimTargetClipId = null
+                            isLoadingTrimSource = false
+                        },
+                        onApply = { range ->
+                            val index = clips.indexOfFirst { it.id == trimTargetClip.id }
+                            if (index >= 0) {
+                                changed(clips.toMutableList().apply {
+                                    this[index] = trimTargetClip.copy(
+                                        sourceStartMs = range.startMs,
+                                        sourceEndMs = range.endMs,
+                                    )
+                                })
+                                selectedIndex = index
+                            }
+                            showTrimDialog = false
+                            trimTargetClipId = null
+                            isLoadingTrimSource = false
                         }
                     )
                 }
