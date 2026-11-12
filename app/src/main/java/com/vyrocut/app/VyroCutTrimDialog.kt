@@ -77,7 +77,7 @@ internal fun VyroCutTrimDialog(
                         valueRange = 0f..maximumSourceMs.toFloat().coerceAtLeast(1f),
                         steps = 0,
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoadingSource,
+                        enabled = !isLoadingSource && !sourceReadFailed,
                     )
                     Text(
                         "Selected length  ${formatTrimTime((selectedRange.endMs - selectedRange.startMs).coerceAtLeast(0L))}",
@@ -85,7 +85,7 @@ internal fun VyroCutTrimDialog(
                     )
                     Text(
                         if (sourceReadFailed) {
-                            "The full source length could not be read. The current out point is the available limit."
+                            "Trimming is disabled because the original source duration could not be verified or the saved out point exceeds it. Relink the original video before editing this range."
                         } else {
                             "Drag either handle to adjust the source in and out points. The original video stays untouched."
                         },
@@ -97,7 +97,7 @@ internal fun VyroCutTrimDialog(
         confirmButton = {
             TextButton(
                 onClick = { validRange?.let(onApply) },
-                enabled = !isLoadingSource && validRange != null && validRange != initialRange,
+                enabled = !isLoadingSource && !sourceReadFailed && validRange != null && validRange != initialRange,
             ) { Text("Apply trim") }
         },
         dismissButton = {
