@@ -448,9 +448,21 @@ private fun VyroCutApp() {
                 MediaMetadataReader.videoDurationMs(context, Uri.parse(clip.uri))
             }
             if (trimTargetClipId == clip.id) {
-                trimSourceReadFailed = sourceDuration == null
-                trimSourceDurationMs = maxOf(sourceDuration ?: clip.sourceEndMs, clip.sourceEndMs).coerceAtLeast(1L)
+                val sourceRangeIsValid = isClipRangeWithinSourceDuration(
+                    sourceDurationMs = sourceDuration,
+                    sourceStartMs = clip.sourceStartMs,
+                    sourceEndMs = clip.sourceEndMs,
+                )
+                trimSourceReadFailed = !sourceRangeIsValid
+                trimSourceDurationMs = if (sourceRangeIsValid) {
+                    sourceDuration ?: clip.sourceEndMs
+                } else {
+                    clip.sourceEndMs.coerceAtLeast(1L)
+                }
                 isLoadingTrimSource = false
+                if (!sourceRangeIsValid) {
+                    exportMessage = "Cannot safely trim this clip: its original source duration could not be verified or is shorter than the saved out point. Relink the original video first."
+                }
             }
         }
     }
