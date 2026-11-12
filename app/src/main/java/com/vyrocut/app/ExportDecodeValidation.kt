@@ -34,6 +34,8 @@ internal fun validateDecodedExportFrameDimensions(
     return null
 }
 
+private const val MAX_ALLOWED_AUDIO_GAP_US = 100_000L
+
 internal data class DecodedAudioCoverage(
     val pcmBufferCount: Int,
     val firstPresentationTimeUs: Long,
@@ -41,6 +43,8 @@ internal data class DecodedAudioCoverage(
     val decodedEndTimeUs: Long,
     val timestampsMonotonic: Boolean,
     val reachedEndOfStream: Boolean,
+    val maximumGapUs: Long = 0L,
+    val totalGapUs: Long = 0L,
 )
 
 /**
@@ -62,12 +66,20 @@ internal fun validateDecodedAudioCoverage(
     if (!coverage.reachedEndOfStream) {
         return "The exported MP4 audio track could not be decoded through its end"
     }
+    if (coverage.maximumGapUs > MAX_ALLOWED_AUDIO_GAP_US) {
+        return "The exported MP4 audio contains a gap longer than 100ms"
+    }
 
     val expectedDurationUs = if (expectedDurationMs > Long.MAX_VALUE / 1_000L) {
         Long.MAX_VALUE
     } else {
         expectedDurationMs * 1_000L
     }
+    val allowedTotalGapUs = maxOf(MAX_ALLOWED_AUDIO_GAP_US, expectedDurationUs / 200L)
+    if (coverage.totalGapUs > allowedTotalGapUs) {
+        return "The exported MP4 audio contains too much cumulative silence between decoded buffers"
+    }
+
     // Audio codec priming/padding and the final PCM frame can differ slightly
     // from the video clock. Keep the allowance tight (0.1%, at least 250 ms).
     val toleranceUs = maxOf(250_000L, expectedDurationUs / 1_000L)
@@ -177,6 +189,9 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
         var lastPresentationTimeUs = Long.MIN_VALUE
         var decodedEndTimeUs = Long.MIN_VALUE
         var timestampsMonotonic = true
+        var previousDecodedEndTimeUs: Long? = null
+        var maximumGapUs = 0L
+        var totalGapUs = 0L
 
         while (!outputEnded) {
             var madeProgress = false
@@ -234,6 +249,9 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
                             "The exported MP4 decoder returned an invalid PCM format"
                         }
                         val bytesPerFrame = bytesPerSample.toLong() * channelCount.toLong()
+                        check(bufferInfo.size.toLong() % bytesPerFrame == 0L) {
+                            "The exported MP4 audio decoder returned a partial PCM frame"
+                        }
                         val decodedFrames = bufferInfo.size.toLong() / bytesPerFrame
                         check(decodedFrames > 0L) {
                             "The exported MP4 audio decoder returned an incomplete PCM frame"
@@ -254,6 +272,17 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
                         } else {
                             presentationTimeUs + bufferDurationUs
                         }
+                        val previousEndUs = previousDecodedEndTimeUs
+                        if (previousEndUs != null && presentationTimeUs > previousEndUs) {
+                            val gapUs = presentationTimeUs - previousEndUs
+                            maximumGapUs = maxOf(maximumGapUs, gapUs)
+                            totalGapUs = if (gapUs > Long.MAX_VALUE - totalGapUs) {
+                                Long.MAX_VALUE
+                            } else {
+                                totalGapUs + gapUs
+                            }
+                        }
+                        previousDecodedEndTimeUs = maxOf(previousEndUs ?: bufferEndUs, bufferEndUs)
                         decodedEndTimeUs = maxOf(decodedEndTimeUs, bufferEndUs)
                         pcmBufferCount++
                     }
@@ -284,6 +313,8 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
             decodedEndTimeUs = decodedEndTimeUs,
             timestampsMonotonic = timestampsMonotonic,
             reachedEndOfStream = outputEnded,
+            maximumGapUs = maximumGapUs,
+            totalGapUs = totalGapUs,
         )
         validateDecodedAudioCoverage(coverage, expectedDurationMs)?.let(::error)
     } finally {
