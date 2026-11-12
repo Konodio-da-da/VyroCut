@@ -136,17 +136,24 @@ private fun VyroCutApp() {
     var previousSelectedIndex by remember { mutableIntStateOf(selectedIndex) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
+    val mediaSourceRequirements = remember(clips) {
+        clips.groupBy { it.uri }.map { (uri, uriClips) ->
+            uri to uriClips.map { ClipRange(it.sourceStartMs, it.sourceEndMs) }
+                .sortedWith(compareBy<ClipRange> { it.startMs }.thenBy { it.endMs })
+        }.sortedBy { it.first }
+    }
 
-    // Check each project's persisted document URIs when opening or switching projects.
-    // Keep this off the main thread; edits such as reorder/split do not need to re-probe files.
-    LaunchedEffect(activeProjectId) {
+    // Re-check when a project's URI/range requirements change. The stable, sorted
+    // key avoids re-probing files for a pure clip reorder, but undo/relink/trim changes
+    // are detected. Document-provider work stays off the Compose main thread.
+    LaunchedEffect(activeProjectId, mediaSourceRequirements) {
         missingMediaUris = emptySet()
-        val projectClips = clips
+        val requirements = mediaSourceRequirements
         val unavailableUris = withContext(Dispatchers.IO) {
-            projectClips.groupBy { it.uri }.mapNotNull { (uri, uriClips) ->
+            requirements.mapNotNull { (uri, ranges) ->
                 val durationMs = MediaMetadataReader.videoDurationMs(context, Uri.parse(uri))
-                if (durationMs == null || uriClips.any { clip ->
-                        !isClipSourceCompatible(clip.sourceStartMs, clip.sourceEndMs, durationMs)
+                if (durationMs == null || ranges.any { range ->
+                        !isClipSourceCompatible(range.startMs, range.endMs, durationMs)
                     }
                 ) uri else null
             }.toSet()
