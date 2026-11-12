@@ -631,7 +631,7 @@ private fun VyroCutApp() {
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
                 Box(
-                    Modifier.fillMaxWidth().height(190.dp)
+                    Modifier.fillMaxWidth().height(148.dp)
                         .background(canvasBackground, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
@@ -812,7 +812,7 @@ private fun VyroCutApp() {
                 )
                 if (activeTool == "Ratio" || activeTool == "Canvas") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(if (activeTool == "Ratio") "ASPECT RATIO" else "CANVAS BACKGROUND", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
@@ -839,7 +839,7 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Effects" || activeTool == "Filters" || activeTool == "Adjust") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
@@ -1755,7 +1755,7 @@ private fun TimelineEditorStrip(
             }
         }
 
-        Box(Modifier.width(totalWidth).height(76.dp)) {
+        Box(Modifier.width(totalWidth).height(60.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
                     Column(
@@ -1764,7 +1764,7 @@ private fun TimelineEditorStrip(
                             .clickable { onSelectClip(index) }
                             .padding(3.dp)
                     ) {
-                        Box(Modifier.fillMaxWidth().height(49.dp)) {
+                        Box(Modifier.fillMaxWidth().height(38.dp)) {
                             ClipThumbnail(clip, Modifier.fillMaxSize())
                             Text(
                                 "V" + (index + 1), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
@@ -1779,7 +1779,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
-            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(76.dp).background(StudioAccent))
+            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(60.dp).background(StudioAccent))
             Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
         }
 
@@ -1791,12 +1791,12 @@ private fun TimelineEditorStrip(
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
             clips.forEachIndexed { index, clip ->
                 Box(
-                    Modifier.width(clipWidths[index].dp).height(32.dp)
+                    Modifier.width(clipWidths[index].dp).height(26.dp)
                         .background(if (index == selectedIndex) Color(0xFF1B4239) else Color(0xFF172C28), RoundedCornerShape(4.dp))
                         .clickable { onSelectClip(index) }.padding(horizontal = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    AudioWaveform(clip, Modifier.fillMaxWidth().height(24.dp))
+                    AudioWaveform(clip, Modifier.fillMaxWidth().height(20.dp))
                 }
             }
         }
