@@ -1184,7 +1184,7 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            exportMessage = "Export complete • Video/audio samples and duration verified • Saved to Movies/VyroCut"
+                                                            exportMessage = "Export complete • Video frames and full audio decode verified • Saved to Movies/VyroCut"
                                                         }.onFailure { error ->
                                                             exportedUri = null
                                                             exportMessage = "Export verification or saving failed: ${error.message}"
