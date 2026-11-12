@@ -1681,15 +1681,15 @@ private fun TimelineEditorStrip(
                     val totalDuration = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
                     var remainingMs = playheadPositionMs.coerceIn(0L, totalDuration)
                     var markerX = 0f
-                    clips.forEachIndexed { index, clip ->
+                    for (index in clips.indices) {
+                        val clip = clips[index]
                         val width = clipWidths[index]
-                        if (remainingMs >= clip.durationMs && index < clips.lastIndex) {
-                            markerX += width + 6f
-                            remainingMs -= clip.durationMs
-                        } else {
+                        if (remainingMs <= clip.durationMs || index == clips.lastIndex) {
                             markerX += width * (remainingMs.toFloat() / clip.durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
-                            return@forEachIndexed
+                            break
                         }
+                        markerX += width + 6f
+                        remainingMs -= clip.durationMs
                     }
                     Box(
                         Modifier.offset(x = markerX.dp)
