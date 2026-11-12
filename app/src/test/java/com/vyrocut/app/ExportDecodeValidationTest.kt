@@ -6,6 +6,33 @@ import org.junit.Test
 
 class ExportDecodeValidationTest {
     @Test
+    fun probesBeginningMiddleAndEndOfEveryClip() {
+        assertEquals(
+            listOf(0L, 2L, 3L, 4L, 6L, 7L, 8L, 10L, 11L),
+            exportFrameProbePositionsMs(listOf(4L, 5L, 4L)),
+        )
+    }
+
+    @Test
+    fun deduplicatesProbesForVeryShortClips() {
+        assertEquals(
+            listOf(0L, 1L, 2L),
+            exportFrameProbePositionsMs(listOf(1L, 1L, 1L)),
+        )
+    }
+
+    @Test
+    fun rejectsInvalidOrOverflowingClipDurationsForFrameProbes() {
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(emptyList()))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(listOf(2L, 0L, 3L)))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(listOf(2L, -1L)))
+        assertEquals(
+            emptyList<Long>(),
+            exportFrameProbePositionsMs(listOf(Long.MAX_VALUE, 1L)),
+        )
+    }
+
+    @Test
     fun acceptsAudioDecodedThroughProjectEndAndEos() {
         assertNull(
             validateDecodedAudioCoverage(
