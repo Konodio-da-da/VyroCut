@@ -576,6 +576,16 @@ private fun VyroCutApp() {
                     onOpenProject = { id ->
                         projects.firstOrNull { it.id == id }?.let { switchProject(it) }
                         showHome = false
+                    },
+                    onRenameProject = { id, name ->
+                        val index = projects.indexOfFirst { it.id == id }
+                        if (index >= 0 && name.isNotBlank()) {
+                            projects[index] = projects[index].copy(name = name.trim())
+                            saveProjectIndex(preferences, projects)
+                        }
+                    },
+                    onDeleteProject = { id ->
+                        projects.firstOrNull { it.id == id }?.let { deleteProject(it) }
                     }
                 )
             } else {
