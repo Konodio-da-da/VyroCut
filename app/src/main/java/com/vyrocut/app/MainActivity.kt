@@ -110,6 +110,9 @@ private fun VyroCutApp() {
     }
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
     var showHome by remember { mutableStateOf(true) }
+    var activeTool by remember { mutableStateOf("Edit") }
+    var selectedEffect by remember { mutableStateOf("Edge Glow") }
+    var effectIntensity by remember { mutableFloatStateOf(0.65f) }
     var showProjects by remember { mutableStateOf(false) }
     var showTrimMenu by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
@@ -687,29 +690,17 @@ private fun VyroCutApp() {
                     }
                     Text("${clips.size} clips", color = StudioMuted, fontSize = 11.sp)
                 }
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    clips.forEachIndexed { index, clip ->
-                        Column(Modifier.width(116.dp).background(if (index == selectedIndex) Color(0xFF16483D) else StudioPanel, RoundedCornerShape(10.dp))
-                            .clickable {
-                                selectedIndex = index
-                                if (index < player.mediaItemCount) {
-                                    player.seekTo(index, 0L)
-                                    savePreviewPosition(preferences, activeProjectId, clip, 0L)
-                                }
-                            }.padding(10.dp)) {
-                            Text("CLIP ${index + 1}", color = if (index == selectedIndex) StudioAccent else StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.height(5.dp))
-                            ClipThumbnail(clip = clip, modifier = Modifier.fillMaxWidth().height(62.dp))
-                            Spacer(Modifier.height(4.dp))
-                            AudioWaveform(clip = clip, modifier = Modifier.fillMaxWidth().height(24.dp))
-                            Spacer(Modifier.height(5.dp))
-                            Text(clip.name, color = StudioText, fontSize = 11.sp, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis)
-                            Spacer(Modifier.height(6.dp))
-                            Text(formatTime(clip.durationMs), color = StudioAccent, fontSize = 10.sp)
+                TimelineEditorStrip(
+                    clips = clips,
+                    selectedIndex = selectedIndex,
+                    onSelectClip = { index ->
+                        selectedIndex = index
+                        clips.getOrNull(index)?.let { clip ->
+                            player.seekTo(index, 0L)
+                            savePreviewPosition(preferences, activeProjectId, clip, 0L)
                         }
                     }
-                    if (clips.isEmpty()) Text("Your clips will appear here", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 16.dp))
-                }
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -840,6 +831,50 @@ private fun VyroCutApp() {
                     }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = Color(0xFFFF8A80))
+                    }
+                }
+                VyroCutToolDock(
+                    activeTool = activeTool,
+                    onToolSelected = { activeTool = it }
+                )
+                if (activeTool == "Effects" || activeTool == "Filters" || activeTool == "Adjust") {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            when (activeTool) {
+                                "Effects" -> "VIDEO EFFECTS"
+                                "Filters" -> "FILTERS"
+                                else -> "ADJUST"
+                            },
+                            color = StudioText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            (if (activeTool == "Effects") listOf("Edge Glow", "Blur", "Glitch", "Vignette", "Shake") else if (activeTool == "Filters") listOf("Original", "Cinema", "Warm", "Cool", "Mono") else listOf("Brightness", "Contrast", "Saturation", "Sharpness")).forEach { item ->
+                                FilterChip(
+                                    selected = selectedEffect == item,
+                                    onClick = { selectedEffect = item },
+                                    label = { Text(item, fontSize = 11.sp) }
+                                )
+                            }
+                        }
+                        if (activeTool == "Effects" || activeTool == "Adjust") {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(if (activeTool == "Effects") "Intensity" else selectedEffect, color = StudioMuted, fontSize = 11.sp)
+                                Spacer(Modifier.weight(1f))
+                                Text("${(effectIntensity * 100).toInt()}%", color = StudioAccent, fontSize = 11.sp)
+                            }
+                            Slider(
+                                value = effectIntensity,
+                                onValueChange = { effectIntensity = it },
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
+                            )
+                            Text("Control panel layout is in place; effect rendering is a separate implementation step.", color = StudioMuted, fontSize = 10.sp)
+                        }
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
