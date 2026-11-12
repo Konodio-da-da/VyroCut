@@ -999,24 +999,6 @@ private fun AudioWaveform(clip: EditClip, modifier: Modifier = Modifier) {
     }
 }
 
-private fun verifyExportedMp4(file: File) {
-    check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
-    val extractor = MediaExtractor()
-    try {
-        extractor.setDataSource(file.absolutePath)
-        val videoTrack = (0 until extractor.trackCount).firstOrNull { index ->
-            extractor.getTrackFormat(index)
-                .getString(MediaFormat.KEY_MIME)
-                ?.startsWith("video/") == true
-        } ?: error("The exported MP4 contains no video track")
-        extractor.selectTrack(videoTrack)
-        if (extractor.sampleTime < 0L) extractor.advance()
-        check(extractor.sampleTime >= 0L) { "The exported video track contains no readable samples" }
-    } finally {
-        extractor.release()
-    }
-}
-
 private fun decodeAudioWaveform(
     context: android.content.Context,
     clip: EditClip,
