@@ -161,7 +161,7 @@ private fun VyroCutApp() {
     }
     // Rebuild the ordered playlist after an edit while preserving the active
     // source-time playhead when the same clip still exists (including reorders/trims).
-    // Switching projects deliberately starts the new project's first clip at zero.
+    // Initial load and project switches restore that project's saved preview location.
     LaunchedEffect(clips, activeProjectId) {
         val sameProject = previousProjectId == activeProjectId
         val currentClipId = if (sameProject) player.currentMediaItem?.mediaId else null
