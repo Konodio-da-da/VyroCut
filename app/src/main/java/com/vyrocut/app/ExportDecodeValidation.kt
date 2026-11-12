@@ -47,6 +47,13 @@ internal data class DecodedAudioCoverage(
     val totalGapUs: Long = 0L,
 )
 
+internal data class ExportCanvasVisualClip(
+    val durationMs: Long,
+    val sourceWidthPx: Int,
+    val sourceHeightPx: Int,
+    val sourceRotationDegrees: Int = 0,
+)
+
 /**
  * Validates decoded PCM coverage against the project timeline. A successful
  * demux or one initial PCM buffer is not enough: the decoder must reach EOS
@@ -148,6 +155,77 @@ internal fun verifyExportedVideoFrames(
     } finally {
         retriever.release()
     }
+}
+
+/**
+ * Samples the actual encoded MP4 at the midpoint of each clip and checks the
+ * pixels in its letterbox/pillarbox regions against the selected canvas colour.
+ * Returns the number of background pixels checked; zero means every clip fills
+ * the canvas and there were no background bars to inspect.
+ */
+internal fun verifyExportedCanvasBackgroundPixels(
+    file: File,
+    canvasSize: ExportCanvasSize,
+    clips: List<ExportCanvasVisualClip>,
+    expectedBackgroundArgb: Int,
+): Int {
+    check(file.isFile && file.length() > 0L) { "The exported MP4 is unavailable for canvas verification" }
+    check(clips.isNotEmpty()) { "Source dimensions are unavailable for canvas background verification" }
+
+    val retriever = MediaMetadataRetriever()
+    var timelineStartMs = 0L
+    var verifiedPixelCount = 0
+    try {
+        retriever.setDataSource(file.absolutePath)
+        clips.forEachIndexed { index, clip ->
+            check(clip.durationMs > 0L) { "Clip ${index + 1} has no duration for canvas verification" }
+            check(clip.sourceWidthPx > 0 && clip.sourceHeightPx > 0) {
+                "Clip ${index + 1} has invalid source dimensions for canvas verification"
+            }
+            val probes = letterboxBackgroundProbePoints(
+                canvasWidthPx = canvasSize.widthPx,
+                canvasHeightPx = canvasSize.heightPx,
+                sourceWidthPx = clip.sourceWidthPx,
+                sourceHeightPx = clip.sourceHeightPx,
+                sourceRotationDegrees = clip.sourceRotationDegrees,
+            )
+            if (probes.isNotEmpty()) {
+                val samplePositionMs = timelineStartMs + clip.durationMs / 2L
+                val samplePositionUs = if (samplePositionMs > Long.MAX_VALUE / 1_000L) {
+                    Long.MAX_VALUE
+                } else {
+                    samplePositionMs * 1_000L
+                }
+                val frame = retriever.getFrameAtTime(
+                    samplePositionUs,
+                    MediaMetadataRetriever.OPTION_CLOSEST,
+                ) ?: error("Could not decode clip ${index + 1} for canvas background verification")
+                try {
+                    check(frame.width == canvasSize.widthPx && frame.height == canvasSize.heightPx) {
+                        "Clip ${index + 1} decoded at ${frame.width}x${frame.height}, not the selected canvas size"
+                    }
+                    val actualPixels = probes.map { probe ->
+                        check(probe.x in 0 until frame.width && probe.y in 0 until frame.height) {
+                            "Canvas background probe fell outside the decoded frame"
+                        }
+                        frame.getPixel(probe.x, probe.y)
+                    }
+                    validateLetterboxBackgroundPixels(actualPixels, expectedBackgroundArgb)?.let(::error)
+                    verifiedPixelCount += actualPixels.size
+                } finally {
+                    frame.recycle()
+                }
+            }
+            timelineStartMs = if (clip.durationMs > Long.MAX_VALUE - timelineStartMs) {
+                Long.MAX_VALUE
+            } else {
+                timelineStartMs + clip.durationMs
+            }
+        }
+    } finally {
+        retriever.release()
+    }
+    return verifiedPixelCount
 }
 
 /**
