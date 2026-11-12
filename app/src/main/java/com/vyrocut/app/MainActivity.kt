@@ -125,6 +125,9 @@ private fun VyroCutApp() {
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     var activeExportFile by remember { mutableStateOf<File?>(null) }
     var exportSessionId by remember { mutableStateOf<String?>(null) }
+    var relinkTargetClipId by remember { mutableStateOf<String?>(null) }
+    var missingMediaClipIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
@@ -133,6 +136,24 @@ private fun VyroCutApp() {
     var previousSelectedIndex by remember { mutableIntStateOf(selectedIndex) }
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
+
+    // Re-check persisted document URIs when a project's source ranges change.
+    // Providers may revoke access or the original file may have been moved/deleted.
+    LaunchedEffect(clips.map { it.uri to it.sourceEndMs }) {
+        val projectClips = clips
+        val unavailableIds = withContext(Dispatchers.IO) {
+            projectClips.mapNotNull { clip ->
+                val durationMs = MediaMetadataReader.videoDurationMs(context, Uri.parse(clip.uri))
+                if (durationMs == null || !isClipSourceCompatible(
+                        clip.sourceStartMs,
+                        clip.sourceEndMs,
+                        durationMs,
+                    )
+                ) clip.id else null
+            }.toSet()
+        }
+        missingMediaClipIds = unavailableIds
+    }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply {
@@ -417,7 +438,12 @@ private fun VyroCutApp() {
     }
 
     val mediaPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { selectedUri ->
+        if (uri == null) {
+            relinkTargetClipId = null
+        } else {
+            val selectedUri = uri
+            val targetClipId = relinkTargetClipId
+            relinkTargetClipId = null
             val permission = runCatching {
                 context.contentResolver.takePersistableUriPermission(
                     selectedUri,
@@ -426,33 +452,61 @@ private fun VyroCutApp() {
             }
             if (permission.isFailure) {
                 exportMessage = "Could not keep access to this video. Choose a file provider that supports persistent access."
-                return@let
+            } else {
+                isReadingMedia = true
+                exportMessage = "Reading video metadata…"
+                exportScope.launch {
+                    val metadata = withContext(Dispatchers.IO) {
+                        val durationMs = MediaMetadataReader.videoDurationMs(context, selectedUri)
+                        durationMs?.let {
+                            it to runCatching {
+                                MediaMetadataReader.displayName(context.contentResolver, selectedUri)
+                            }.getOrDefault("Imported video")
+                        }
+                    }
+                    isReadingMedia = false
+                    if (metadata == null) {
+                        exportMessage = "Could not read this video's duration. It was not added."
+                    } else {
+                        val (durationMs, name) = metadata
+                        val relinkTarget = targetClipId?.let { id -> clips.firstOrNull { it.id == id } }
+                        if (targetClipId != null && relinkTarget == null) {
+                            exportMessage = "The clip selected for relinking is no longer in this project."
+                        } else if (relinkTarget != null) {
+                            if (!isClipSourceCompatible(
+                                    relinkTarget.sourceStartMs,
+                                    relinkTarget.sourceEndMs,
+                                    durationMs,
+                                )
+                            ) {
+                                exportMessage = "Replacement video is too short for this clip's existing trim. The edit was left unchanged."
+                            } else {
+                                changed(clips.map { clip ->
+                                    if (clip.id == relinkTarget.id) {
+                                        clip.copy(uri = selectedUri.toString(), name = name)
+                                    } else {
+                                        clip
+                                    }
+                                })
+                                missingMediaClipIds = missingMediaClipIds - relinkTarget.id
+                                exportMessage = "Relinked ${relinkTarget.name} • Existing trim preserved"
+                            }
+                        } else {
+                            val importedClip = EditClip(
+                                java.util.UUID.randomUUID().toString(),
+                                selectedUri.toString(),
+                                name,
+                                0L,
+                                durationMs
+                            )
+                            val appendResult = appendTimelineItemAndSelect(clips, importedClip)
+                            changed(appendResult.items)
+                            selectedIndex = appendResult.selectedIndex
+                            exportMessage = "Imported $name"
+                        }
+                    }
+                }
             }
-            val retriever = MediaMetadataRetriever()
-            val duration = runCatching {
-                retriever.setDataSource(context, selectedUri)
-                retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-            }.getOrNull().also {
-                runCatching { retriever.release() }
-            }?.takeIf { it > 0L }
-            if (duration == null) {
-                exportMessage = "Could not read this video's duration. It was not added."
-                return@let
-            }
-            val name = runCatching {
-                MediaMetadataReader.displayName(context.contentResolver, selectedUri)
-            }.getOrDefault("Imported video")
-            val importedClip = EditClip(
-                java.util.UUID.randomUUID().toString(),
-                selectedUri.toString(),
-                name,
-                0L,
-                duration
-            )
-            val appendResult = appendTimelineItemAndSelect(clips, importedClip)
-            changed(appendResult.items)
-            selectedIndex = appendResult.selectedIndex
-            exportMessage = "Imported $name"
         }
     }
 
@@ -488,7 +542,26 @@ private fun VyroCutApp() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(selectedClip?.name ?: "No media selected", color = StudioText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(if (selectedClip != null) "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}" else "Your project is stored locally", color = StudioMuted, fontSize = 11.sp)
+                        val sourceMissing = selectedClip?.id?.let { it in missingMediaClipIds } == true
+                        Text(
+                            when {
+                                selectedClip == null -> "Your project is stored locally"
+                                sourceMissing -> "Source unavailable • Relink to keep this edit"
+                                else -> "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}"
+                            },
+                            color = if (sourceMissing) Color(0xFFFF8A80) else StudioMuted,
+                            fontSize = 11.sp
+                        )
+                    }
+                    if (selectedClip != null && selectedClip.id in missingMediaClipIds) {
+                        TextButton(
+                            onClick = {
+                                relinkTargetClipId = selectedClip.id
+                                mediaPicker.launch(arrayOf("video/*"))
+                            },
+                            enabled = !isReadingMedia,
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+                        ) { Text(if (isReadingMedia) "Reading…" else "Relink", fontSize = 11.sp) }
                     }
                     FilledTonalButton(onClick = {
                         if (player.isPlaying) {
@@ -619,7 +692,12 @@ private fun VyroCutApp() {
                     }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { mediaPicker.launch(arrayOf("video/*")) }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
+                    OutlinedButton(
+                        onClick = { mediaPicker.launch(arrayOf("video/*")) },
+                        enabled = !isReadingMedia,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
                         Icon(Icons.Default.Add, null); Text("Import", maxLines = 1)
                     }
                     OutlinedButton(onClick = {
