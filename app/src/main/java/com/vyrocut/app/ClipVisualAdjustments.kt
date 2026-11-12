@@ -41,25 +41,50 @@ internal fun decodeClipVisualAdjustments(
     return ClipVisualAdjustments(brightness, contrast, saturation)
 }
 
+internal enum class ClipVisualEffectType {
+    BRIGHTNESS,
+    CONTRAST,
+    SATURATION,
+}
+
+/** Pure description of an effect, safe to exercise in local JVM unit tests. */
+internal data class ClipVisualEffectSpec(
+    val type: ClipVisualEffectType,
+    val amount: Float,
+)
+
+/**
+ * Builds a deterministic effect description without constructing Android/Media3
+ * effect objects. This keeps local JVM tests independent of Android framework stubs.
+ */
+internal fun createClipVisualEffectSpecs(
+    adjustments: ClipVisualAdjustments,
+): List<ClipVisualEffectSpec> = buildList {
+    if (adjustments.brightness != 0) {
+        add(ClipVisualEffectSpec(ClipVisualEffectType.BRIGHTNESS, adjustments.brightness / 100f))
+    }
+    if (adjustments.contrast != 0) {
+        add(ClipVisualEffectSpec(ClipVisualEffectType.CONTRAST, adjustments.contrast / 100f))
+    }
+    if (adjustments.saturation != 0) {
+        add(ClipVisualEffectSpec(ClipVisualEffectType.SATURATION, adjustments.saturation.toFloat()))
+    }
+}
+
 /**
  * Builds the same ordered Media3 effect list for preview and Transformer export.
  * Zero-valued controls are omitted so untouched clips keep the no-op fast path.
+ * Keep Android-backed Media3 object construction out of local JVM tests.
  */
 @OptIn(UnstableApi::class)
 internal fun createClipVisualEffects(
     adjustments: ClipVisualAdjustments,
-): List<Effect> = buildList {
-    if (adjustments.brightness != 0) {
-        add(Brightness(adjustments.brightness / 100f))
-    }
-    if (adjustments.contrast != 0) {
-        add(Contrast(adjustments.contrast / 100f))
-    }
-    if (adjustments.saturation != 0) {
-        add(
-            HslAdjustment.Builder()
-                .adjustSaturation(adjustments.saturation.toFloat())
-                .build(),
-        )
+): List<Effect> = createClipVisualEffectSpecs(adjustments).map { spec ->
+    when (spec.type) {
+        ClipVisualEffectType.BRIGHTNESS -> Brightness(spec.amount)
+        ClipVisualEffectType.CONTRAST -> Contrast(spec.amount)
+        ClipVisualEffectType.SATURATION -> HslAdjustment.Builder()
+            .adjustSaturation(spec.amount)
+            .build()
     }
 }
