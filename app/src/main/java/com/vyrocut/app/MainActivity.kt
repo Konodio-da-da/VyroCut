@@ -1092,6 +1092,28 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
 
+                                    val canvasVisualClips = exportRequirements.mapNotNull { requirement ->
+                                        val metadata = sourceMetadata[requirement.uri]
+                                            ?: return@mapNotNull null
+                                        val sourceWidth = metadata.videoWidthPx
+                                            ?: return@mapNotNull null
+                                        val sourceHeight = metadata.videoHeightPx
+                                            ?: return@mapNotNull null
+                                        ExportCanvasVisualClip(
+                                            durationMs = requirement.sourceEndMs - requirement.sourceStartMs,
+                                            sourceWidthPx = sourceWidth,
+                                            sourceHeightPx = sourceHeight,
+                                            sourceRotationDegrees = metadata.videoRotationDegrees,
+                                        )
+                                    }
+                                    val expectedBackgroundForVerification = when {
+                                        canvasVisualClips.size == exportRequirements.size -> exportBackgroundArgb
+                                        requiresCustomLetterboxBackground -> error(
+                                            "Source dimensions are unavailable for canvas background verification",
+                                        )
+                                        else -> null
+                                    }
+
                                     val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
                                         ?: File(context.filesDir, "Movies")
                                     val outputDirectory = File(outputRoot, "VyroCut")
@@ -1165,6 +1187,8 @@ private fun VyroCutApp() {
                                                                     sourceUris = sourceUris,
                                                                     expectedDurationMs = expectedDurationMs,
                                                                     expectedCanvasSize = exportCanvasSize,
+                                                                    canvasVisualClips = canvasVisualClips,
+                                                                    expectedBackgroundArgb = expectedBackgroundForVerification,
                                                                 )
                                                                 publishExportToMovies(context, outputFile)
                                                             }
@@ -1184,7 +1208,13 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            exportMessage = "Export complete • Video frames verified; source audio decoded when present • Saved to Movies/VyroCut"
+                                                            exportMessage = "Export complete • Video frames verified; " +
+                                                                (if (expectedBackgroundForVerification != null) {
+                                                                    "canvas background pixels checked where bars exist; "
+                                                                } else {
+                                                                    ""
+                                                                }) +
+                                                                "source audio decoded when present • Saved to Movies/VyroCut"
                                                         }.onFailure { error ->
                                                             exportedUri = null
                                                             exportMessage = "Export verification or saving failed: ${error.message}"
