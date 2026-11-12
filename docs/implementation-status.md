@@ -3,8 +3,8 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The latest verified code revision before the current export-validation work was `cc942221ee1d7098f9ae8697c4381c403df8739e` (run [43129792010](https://github.com/Konodio-da-da/VyroCut/actions/runs/43129792010)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- That revision's 31 timeline-domain unit tests passed. Seven new export-validation rule tests have been added since then (38 total unit tests); the latest export changes are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- The current branch head `02ba0e5671ea3c7056ffe3ea360c964537e8722f` passed `assembleDebug` and `testDebugUnitTest` in [run 43136495031](https://github.com/Konodio-da-da/VyroCut/actions/runs/43136495031); the debug APK artifact was uploaded.
+- All 38 tests passed on that revision (31 timeline-domain tests and 7 export-validation rule tests). The next preview-controller synchronization change is awaiting its own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -42,6 +42,8 @@
 - These checks validate container demuxing and track/sample presence; they do not prove every frame/audio packet decodes cleanly or that the exported file plays correctly on a physical device.
 - The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
 - Media3 preview errors are surfaced in the editor status line instead of failing silently.
+- The editor listens for position discontinuities from Media3's built-in PlayerView controller, so controller seeks update the selected timeline clip, project scrubber, and saved preview checkpoint; controller pauses also checkpoint the current position. The restored final playable frame is treated as project end so Play restarts from the beginning.
+- Controller-position mapping and end-of-project restart behavior are covered by four additional pure Kotlin tests (42 total); the integration is awaiting GitHub Actions verification.
 
 ## Still to implement
 - Automatic recovery snapshots beyond the persisted edit history, including recovery UI and interrupted-export recovery.

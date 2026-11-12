@@ -257,23 +257,40 @@ private fun VyroCutApp() {
             delay(200)
         }
     }
+    fun syncPlayerPosition(clipIndex: Int, clipPositionMs: Long) {
+        val position = resolvePlayerTimelinePosition(clipDurationsMs, clipIndex, clipPositionMs) ?: return
+        selectedIndex = position.clipIndex
+        timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
+        clips.getOrNull(position.clipIndex)?.let { clip ->
+            savePreviewPosition(preferences, activeProjectId, clip, position.clipPositionMs)
+        }
+    }
+
     DisposableEffect(player, clips, activeProjectId) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                // The built-in PlayerView controller can pause independently of
+                // the editor's Play button, so checkpoint that position too.
+                if (!playing) {
+                    syncPlayerPosition(player.currentMediaItemIndex, player.currentPosition)
+                }
             }
             override fun onPlayerError(error: PlaybackException) {
                 isPlaying = false
                 exportMessage = "Preview failed: ${error.errorCodeName}"
             }
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int,
+            ) {
+                // Keep the editor scrubber, selected clip and saved project
+                // preview in sync with seeks made inside Media3's own controls.
+                syncPlayerPosition(newPosition.mediaItemIndex, newPosition.positionMs)
+            }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                val activeIndex = player.currentMediaItemIndex
-                if (activeIndex >= 0) {
-                    selectedIndex = activeIndex
-                    clips.getOrNull(activeIndex)?.let { clip ->
-                        savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
-                    }
-                }
+                syncPlayerPosition(player.currentMediaItemIndex, player.currentPosition)
             }
         }
         player.addListener(listener)
@@ -480,7 +497,10 @@ private fun VyroCutApp() {
                             }
                             player.pause()
                         } else {
-                            if (player.playbackState == Player.STATE_ENDED) {
+                            if (
+                                player.playbackState == Player.STATE_ENDED ||
+                                isTimelinePositionAtEnd(timelinePositionMs.toLong(), timelineDurationMs)
+                            ) {
                                 player.seekTo(0, 0L)
                                 clips.firstOrNull()?.let { clip ->
                                     savePreviewPosition(preferences, activeProjectId, clip, 0L)

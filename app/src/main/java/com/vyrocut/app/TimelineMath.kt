@@ -9,6 +9,33 @@ internal data class TimelineSeekTarget(
     val positionMs: Long,
 )
 
+internal data class PlayerTimelinePosition(
+    val clipIndex: Int,
+    val clipPositionMs: Long,
+    val timelinePositionMs: Long,
+)
+
+/** Normalizes a Media3 position and maps it to the editor's project-wide scrubber. */
+internal fun resolvePlayerTimelinePosition(
+    clipDurationsMs: List<Long>,
+    clipIndex: Int,
+    playerPositionMs: Long,
+): PlayerTimelinePosition? {
+    if (clipIndex !in clipDurationsMs.indices) return null
+    val durationMs = clipDurationsMs[clipIndex].coerceAtLeast(0L)
+    if (durationMs == 0L) return null
+    val clipPositionMs = playerPositionMs.coerceIn(0L, durationMs)
+    return PlayerTimelinePosition(
+        clipIndex = clipIndex,
+        clipPositionMs = clipPositionMs,
+        timelinePositionMs = calculateTimelinePositionMs(clipDurationsMs, clipIndex, clipPositionMs),
+    )
+}
+
+/** Treat a restored final playable frame as the end so Play restarts the full project. */
+internal fun isTimelinePositionAtEnd(positionMs: Long, durationMs: Long): Boolean =
+    durationMs > 0L && positionMs >= (durationMs - 1L).coerceAtLeast(0L)
+
 /** Maps a clip-relative player position to an absolute position in the concatenated timeline. */
 internal fun calculateTimelinePositionMs(
     clipDurationsMs: List<Long>,

@@ -6,6 +6,41 @@ import org.junit.Test
 
 class TimelineMathTest {
     @Test
+    fun mapsMedia3ControllerPositionIntoProjectTimeline() {
+        assertEquals(
+            PlayerTimelinePosition(2, 1_250L, 4_250L),
+            resolvePlayerTimelinePosition(listOf(1_000L, 2_000L, 3_000L), 2, 1_250L),
+        )
+    }
+
+    @Test
+    fun clampsMedia3ControllerPositionToClipWindow() {
+        assertEquals(
+            PlayerTimelinePosition(1, 2_000L, 3_000L),
+            resolvePlayerTimelinePosition(listOf(1_000L, 2_000L), 1, Long.MAX_VALUE),
+        )
+        assertEquals(
+            PlayerTimelinePosition(0, 0L, 0L),
+            resolvePlayerTimelinePosition(listOf(1_000L), 0, -50L),
+        )
+    }
+
+    @Test
+    fun invalidMedia3PositionHasNoTimelineMapping() {
+        assertNull(resolvePlayerTimelinePosition(emptyList(), 0, 0L))
+        assertNull(resolvePlayerTimelinePosition(listOf(1_000L), -1, 0L))
+        assertNull(resolvePlayerTimelinePosition(listOf(0L), 0, 0L))
+    }
+
+    @Test
+    fun restoredFinalFrameCountsAsProjectEndForPlayRestart() {
+        assertTrue(isTimelinePositionAtEnd(999L, 1_000L))
+        assertTrue(isTimelinePositionAtEnd(1_000L, 1_000L))
+        assertFalse(isTimelinePositionAtEnd(998L, 1_000L))
+        assertFalse(isTimelinePositionAtEnd(0L, 0L))
+    }
+
+    @Test
     fun mapsPlayerPositionAfterEarlierClips() {
         assertEquals(
             4_250L,
