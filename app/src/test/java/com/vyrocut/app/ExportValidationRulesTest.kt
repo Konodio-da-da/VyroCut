@@ -6,11 +6,28 @@ import org.junit.Test
 
 class ExportValidationRulesTest {
     @Test
-    fun probesBeginningMiddleAndEndWithoutDuplicateTimestamps() {
-        assertEquals(listOf(0L, 2_000L, 3_999L), exportFrameProbePositionsMs(4_000L))
-        assertEquals(listOf(0L), exportFrameProbePositionsMs(1L))
-        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(0L))
-        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(-1L))
+    fun probesBeginningMiddleAndEndOfEveryClipWithoutDuplicateTimestamps() {
+        assertEquals(listOf(0L, 2_000L, 3_999L), exportFrameProbePositionsMs(listOf(4_000L)))
+        assertEquals(listOf(0L), exportFrameProbePositionsMs(listOf(1L)))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(emptyList()))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(listOf(0L)))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(listOf(-1L)))
+    }
+
+    @Test
+    fun probesEachClipInProjectTimelineOrder() {
+        assertEquals(
+            listOf(0L, 1_000L, 1_999L, 2_000L, 2_500L, 2_999L, 3_000L, 4_500L, 5_999L),
+            exportFrameProbePositionsMs(listOf(2_000L, 1_000L, 3_000L)),
+        )
+    }
+
+    @Test
+    fun rejectsClipProbeTimelinesThatOverflowLongMilliseconds() {
+        assertEquals(
+            emptyList<Long>(),
+            exportFrameProbePositionsMs(listOf(Long.MAX_VALUE, 1L)),
+        )
     }
 
     @Test
