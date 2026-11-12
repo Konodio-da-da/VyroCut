@@ -6,6 +6,40 @@ import org.junit.Test
 
 class ExportValidationRulesTest {
     @Test
+    fun acceptsMp4DimensionsMatchingTheSelectedCanvasPreset() {
+        val canvas = exportCanvasSizeForPreset("16:9")
+        assertNull(
+            validateExportTrackSummary(
+                ExportTrackSummary(120L, 480L, 4_000L, canvas.widthPx, canvas.heightPx),
+                expectedDurationMs = 4_000L,
+                sourceHasAudio = true,
+                expectedCanvasSize = canvas,
+            ),
+        )
+    }
+
+    @Test
+    fun rejectsMp4DimensionsThatDoNotMatchTheSelectedCanvasPreset() {
+        val canvas = exportCanvasSizeForPreset("9:16")
+        assertEquals(
+            "Export canvas 1920x1080 does not match selected 1080x1920 canvas",
+            validateExportTrackSummary(
+                ExportTrackSummary(120L, 480L, 4_000L, 1_920, 1_080),
+                expectedDurationMs = 4_000L,
+                sourceHasAudio = true,
+                expectedCanvasSize = canvas,
+            ),
+        )
+    }
+
+    @Test
+    fun mapsSupportedCanvasPresetsToFixedOutputDimensions() {
+        assertEquals(ExportCanvasSize(1_080, 1_920), exportCanvasSizeForPreset("9:16"))
+        assertEquals(ExportCanvasSize(1_920, 1_080), exportCanvasSizeForPreset("16:9"))
+        assertEquals(ExportCanvasSize(1_080, 1_080), exportCanvasSizeForPreset("1:1"))
+    }
+
+    @Test
     fun acceptsVideoAndAudioSamplesWhenSourceContainsAudio() {
         assertNull(
             validateExportTrackSummary(
