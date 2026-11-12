@@ -7,16 +7,27 @@ import android.media.MediaMetadataRetriever
 import java.io.File
 
 /**
- * Chooses three spread-out timestamps so an MP4 is checked at its beginning,
- * middle, and end rather than only trusting container track metadata.
+ * Builds decoder probes for every timeline clip. Each clip contributes its
+ * first, middle and final millisecond so a broken middle segment cannot pass
+ * merely because the project-wide beginning, midpoint and end decode.
+ *
+ * An empty result means the clip list is invalid or its total duration cannot
+ * be represented safely on the millisecond timeline.
  */
-internal fun exportFrameProbePositionsMs(expectedDurationMs: Long): List<Long> {
-    if (expectedDurationMs <= 0L) return emptyList()
-    return listOf(
-        0L,
-        expectedDurationMs / 2L,
-        (expectedDurationMs - 1L).coerceAtLeast(0L),
-    ).distinct()
+internal fun exportFrameProbePositionsMs(clipDurationsMs: List<Long>): List<Long> {
+    if (clipDurationsMs.isEmpty() || clipDurationsMs.any { it <= 0L }) return emptyList()
+
+    val probes = linkedSetOf<Long>()
+    var clipStartMs = 0L
+    clipDurationsMs.forEach { durationMs ->
+        if (durationMs > Long.MAX_VALUE - clipStartMs) return emptyList()
+        val clipEndExclusiveMs = clipStartMs + durationMs
+        probes += clipStartMs
+        probes += clipStartMs + durationMs / 2L
+        probes += clipEndExclusiveMs - 1L
+        clipStartMs = clipEndExclusiveMs
+    }
+    return probes.sorted()
 }
 
 /** Pure frame contract shared by runtime verification and local unit tests. */
@@ -125,11 +136,11 @@ internal fun validateDecodedAudioCoverage(
  */
 internal fun verifyExportedVideoFrames(
     file: File,
-    expectedDurationMs: Long,
+    clipDurationsMs: List<Long>,
     expectedCanvasSize: ExportCanvasSize,
 ) {
-    val probes = exportFrameProbePositionsMs(expectedDurationMs)
-    check(probes.isNotEmpty()) { "The project has no playable duration to decode" }
+    val probes = exportFrameProbePositionsMs(clipDurationsMs)
+    check(probes.isNotEmpty()) { "The project has invalid clip durations for video decoding" }
 
     val retriever = MediaMetadataRetriever()
     try {
