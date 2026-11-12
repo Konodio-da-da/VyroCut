@@ -98,10 +98,14 @@ internal data class EditClip(
     val fadeInMs: Long = 0L,
     val fadeOutMs: Long = 0L,
     val visualAdjustments: ClipVisualAdjustments = ClipVisualAdjustments(),
+    val textOverlay: ClipTextOverlay? = null,
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
         require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "Clip fade durations cannot be negative" }
+        require(textOverlay == null || isValidClipTextOverlayText(textOverlay.text)) {
+            "Clip text overlay is invalid"
+        }
     }
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
@@ -185,6 +189,9 @@ private fun VyroCutApp() {
     }
     var clipSaturationDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.saturation) {
         mutableFloatStateOf(selectedClip?.visualAdjustments?.saturation?.toFloat() ?: 0f)
+    }
+    var clipTextDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.text) {
+        mutableStateOf(selectedClip?.textOverlay?.text ?: "")
     }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
@@ -302,7 +309,7 @@ private fun VyroCutApp() {
             }
             player.playWhenReady = false
             val restoredClip = clips[restoreTarget.clipIndex]
-            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments))
+            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.textOverlay))
             player.setVolume(
                 clipAudioPlaybackGain(
                     restoredClip.audioVolume,
@@ -379,7 +386,7 @@ private fun VyroCutApp() {
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         clips.getOrNull(position.clipIndex)?.let { clip ->
-            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments))
+            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.textOverlay))
             player.setVolume(
                 clipAudioPlaybackGain(
                     clip.audioVolume,
@@ -543,6 +550,20 @@ private fun VyroCutApp() {
             this[selectedIndex] = clip.copy(visualAdjustments = next)
         })
         exportMessage = "Clip colour adjustments updated"
+    }
+    fun commitSelectedClipTextOverlay(rawText: String) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val normalizedText = rawText.trim()
+        val overlay = if (normalizedText.isBlank()) null else decodeClipTextOverlay(normalizedText)
+        if (normalizedText.isNotBlank() && overlay == null) {
+            exportMessage = "Text must be 1–120 characters and cannot contain control characters"
+            return
+        }
+        if (clip.textOverlay == overlay) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(textOverlay = overlay)
+        })
+        exportMessage = if (overlay == null) "Removed clip text overlay" else "Clip text overlay updated"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -1296,19 +1317,22 @@ private fun VyroCutApp() {
                         Text("Non-destructive • Smooth fades apply to preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                     }
                 }
-                if (activeTool == "Audio" || activeTool == "Text" || activeTool == "Stickers") {
-                    val options = when (activeTool) {
-                        "Audio" -> listOf("Music", "SFX", "Voiceover", "Extract")
-                        "Text" -> listOf("Add text", "Captions", "Styles", "Font")
-                        else -> listOf("Emoji", "Shapes", "Decorations", "Arrows")
+                if (activeTool == "Audio" || activeTool == "Stickers") {
+                    val options = if (activeTool == "Audio") {
+                        listOf("Music", "SFX", "Voiceover", "Extract")
+                    } else {
+                        listOf("Emoji", "Shapes", "Decorations", "Arrows")
                     }
                     Column(
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalArrangement = Arrangement.spacedBy(5.dp)
                     ) {
                         Text(
-                            when (activeTool) { "Audio" -> "ADD AUDIO"; "Text" -> "ADD TEXT"; else -> "ADD STICKER" },
-                            color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp
+                            if (activeTool == "Audio") "ADD AUDIO" else "ADD STICKER",
+                            color = StudioText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
                         )
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             options.forEach { option ->
@@ -1316,6 +1340,58 @@ private fun VyroCutApp() {
                                     Text(option, color = StudioText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
                                 }
                             }
+                        }
+                        Text(
+                            if (activeTool == "Audio") "Separate music, SFX and voiceover tracks are not implemented yet."
+                            else "Sticker rendering is not implemented yet.",
+                            color = StudioMuted,
+                            fontSize = 9.sp,
+                        )
+                    }
+                }
+                if (activeTool == "Text") {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Text("CLIP TEXT OVERLAY", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        if (selectedClip == null) {
+                            Text("Select a video clip before adding text.", color = StudioMuted, fontSize = 10.sp)
+                        } else {
+                            OutlinedTextField(
+                                value = clipTextDraft,
+                                onValueChange = { value ->
+                                    if (value.length <= MAX_CLIP_TEXT_OVERLAY_LENGTH + 16) clipTextDraft = value
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                label = { Text("Text shown over this clip") },
+                                placeholder = { Text("Type a title or caption") },
+                                minLines = 2,
+                                maxLines = 3,
+                                supportingText = {
+                                    Text("${clipTextDraft.trim().length}/${MAX_CLIP_TEXT_OVERLAY_LENGTH} characters • Bottom-centred")
+                                },
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Button(
+                                    onClick = { commitSelectedClipTextOverlay(clipTextDraft) },
+                                    enabled = clipTextDraft.trim().length <= MAX_CLIP_TEXT_OVERLAY_LENGTH,
+                                    colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Apply text") }
+                                TextButton(
+                                    onClick = {
+                                        clipTextDraft = ""
+                                        commitSelectedClipTextOverlay("")
+                                    },
+                                    enabled = selectedClip.textOverlay != null || clipTextDraft.isNotBlank(),
+                                ) { Text("Remove") }
+                            }
+                            Text(
+                                "Non-destructive • Appears for the full clip in preview and MP4 export",
+                                color = StudioMuted,
+                                fontSize = 9.sp,
+                            )
                         }
                     }
                 }
@@ -1429,6 +1505,7 @@ private fun VyroCutApp() {
                                                     backgroundColorArgb = exportBackgroundArgb,
                                                 )?.let(videoEffects::add)
                                             }
+                                            videoEffects += createClipTextOverlayEffects(clip.textOverlay)
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(
                                                     Effects(
@@ -1994,6 +2071,9 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("contrast", clip.visualAdjustments.contrast)
             put("saturation", clip.visualAdjustments.saturation)
         })
+        clip.textOverlay?.let { overlay ->
+            put("textOverlay", JSONObject().apply { put("text", overlay.text) })
+        }
     }) }
     return array.toString()
 }
@@ -2011,7 +2091,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 5)
+        put("version", 6)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -2022,7 +2102,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..5) { "Unsupported backup version" }
+    require(version in 1..6) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -2116,6 +2196,14 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                 contrast = if (visualJson?.has("contrast") == true) visualJson.optInt("contrast", Int.MIN_VALUE) else 0,
                 saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
             ) ?: error("A clip has invalid visual adjustments")
+            val textOverlay = if (!item.has("textOverlay") || item.isNull("textOverlay")) {
+                null
+            } else {
+                val overlayJson = item.optJSONObject("textOverlay")
+                    ?: error("A clip has an invalid text overlay")
+                decodeClipTextOverlay(overlayJson.optString("text"))
+                    ?: error("A clip has an invalid text overlay")
+            }
             add(
                 EditClip(
                     id = id,
@@ -2127,6 +2215,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     fadeInMs = fadeInMs,
                     fadeOutMs = fadeOutMs,
                     visualAdjustments = visualAdjustments,
+                    textOverlay = textOverlay,
                 ),
             )
         }

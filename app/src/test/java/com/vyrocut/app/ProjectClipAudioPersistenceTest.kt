@@ -18,6 +18,7 @@ class ProjectClipAudioPersistenceTest {
             fadeInMs = 750L,
             fadeOutMs = 1_250L,
             visualAdjustments = ClipVisualAdjustments(brightness = 35, contrast = -20, saturation = 55),
+            textOverlay = ClipTextOverlay("Interview highlight"),
         )
 
         val restored = decodeProjectStrict(encodeProject(listOf(original)))
@@ -27,6 +28,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(750L, restored.single().fadeInMs)
         assertEquals(1_250L, restored.single().fadeOutMs)
         assertEquals(original.visualAdjustments, restored.single().visualAdjustments)
+        assertEquals(original.textOverlay, restored.single().textOverlay)
         assertEquals(original.sourceStartMs, restored.single().sourceStartMs)
         assertEquals(original.sourceEndMs, restored.single().sourceEndMs)
     }
@@ -42,6 +44,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(0L, restored.single().fadeInMs)
         assertEquals(0L, restored.single().fadeOutMs)
         assertEquals(ClipVisualAdjustments(), restored.single().visualAdjustments)
+        assertNull(restored.single().textOverlay)
     }
 
     @Test
@@ -58,7 +61,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionFiveBackupPreservesClipAudioAndVisualAdjustments() {
+    fun versionSixBackupPreservesClipAudioVisualAdjustmentsAndTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -69,6 +72,7 @@ class ProjectClipAudioPersistenceTest {
             fadeInMs = 1_000L,
             fadeOutMs = 2_000L,
             visualAdjustments = ClipVisualAdjustments(brightness = -45, contrast = 25, saturation = 70),
+            textOverlay = ClipTextOverlay("Launch day"),
         )
         val backup = encodeProjectBackup(
             "Volume project",
@@ -77,13 +81,32 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(5, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(6, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
         assertEquals(2_000L, restored.clips.single().fadeOutMs)
         assertEquals(ClipVisualAdjustments(-45, 25, 70), restored.clips.single().visualAdjustments)
+        assertEquals(ClipTextOverlay("Launch day"), restored.clips.single().textOverlay)
         assertEquals(ProjectCanvasSettings("16:9", "DARK"), restored.canvasSettings)
+    }
+
+
+    @Test
+    fun versionFiveBackupWithoutTextOverlayRemainsCompatible() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":5,
+            "projectName":"Version five backup",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Old clip","start":0,"end":1000,"volume":0.4,"fadeInMs":100,"fadeOutMs":200,"visualAdjustments":{"brightness":10,"contrast":5,"saturation":-20}}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|16:9|DARK"
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals("Version five backup", restored.name)
+        assertEquals(ClipVisualAdjustments(10, 5, -20), restored.clips.single().visualAdjustments)
+        assertNull(restored.clips.single().textOverlay)
     }
 
     @Test
