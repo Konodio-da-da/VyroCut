@@ -30,7 +30,7 @@ class ProjectRecoveryJournalTest {
     @Test
     fun rejectsTruncatedOrModifiedRecoveryData() {
         val encoded = ProjectRecoveryJournal.encode("p1", "Project", 1234L, "[]")
-        val modified = encoded.replace("Project", "Changed")
+        val modified = encoded.dropLast(1) + if (encoded.last() == '0') "1" else "0"
 
         assertNull(ProjectRecoveryJournal.decode(encoded.substringBeforeLast('\n'), "p1"))
         assertNull(ProjectRecoveryJournal.decode(modified, "p1"))
