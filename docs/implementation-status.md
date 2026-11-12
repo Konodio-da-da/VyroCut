@@ -4,7 +4,7 @@
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
 - The latest verified code revision before the current export-validation work was `cc942221ee1d7098f9ae8697c4381c403df8739e` (run [43129792010](https://github.com/Konodio-da-da/VyroCut/actions/runs/43129792010)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- That revision's 29 timeline-domain unit tests passed. Seven new export-validation rule tests have been added since then; the latest export changes are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- That revision's 31 timeline-domain unit tests passed. Seven new export-validation rule tests have been added since then (38 total unit tests); the latest export changes are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
