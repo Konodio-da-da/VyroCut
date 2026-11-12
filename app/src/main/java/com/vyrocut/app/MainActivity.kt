@@ -931,6 +931,44 @@ private fun VyroCutApp() {
                         }
                     }
                 }
+                if (activeTool == "Audio" || activeTool == "Text" || activeTool == "Stickers") {
+                    val panelTitle = when (activeTool) {
+                        "Audio" -> "AUDIO WORKSPACE"
+                        "Text" -> "TEXT & TITLES"
+                        else -> "STICKER LIBRARY"
+                    }
+                    val panelDescription = when (activeTool) {
+                        "Audio" -> "Add music, sound effects and voiceover tracks."
+                        "Text" -> "Create titles, captions and on-screen labels."
+                        else -> "Decorate your video with visual overlays."
+                    }
+                    val panelOptions = when (activeTool) {
+                        "Audio" -> listOf("Music", "Sound effects", "Voiceover", "Extract audio")
+                        "Text" -> listOf("Add text", "Auto captions", "Title styles", "Font")
+                        else -> listOf("Emoji", "Shapes", "Decorations", "Arrows")
+                    }
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(panelTitle, color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Surface(color = StudioAccent.copy(alpha = 0.12f), shape = RoundedCornerShape(20.dp)) {
+                                Text("WORKSPACE PREVIEW", color = StudioAccent, fontSize = 8.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                            }
+                        }
+                        Text(panelDescription, color = StudioMuted, fontSize = 11.sp)
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                            panelOptions.forEach { option ->
+                                Surface(color = Color(0xFF29312E), shape = RoundedCornerShape(8.dp)) {
+                                    Text(option, color = StudioText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp))
+                                }
+                            }
+                        }
+                        Text("Layout preview only — editing controls for this workspace are not connected yet.", color = StudioMuted, fontSize = 9.sp)
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
