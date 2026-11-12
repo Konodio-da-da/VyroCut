@@ -88,3 +88,22 @@ internal fun createClipVisualEffects(
             .build()
     }
 }
+
+/**
+ * Quick tonal looks built from the same non-destructive controls used by Adjust.
+ * These are not LUTs or colour-temperature filters; they are portable presets
+ * for brightness, contrast and saturation only.
+ */
+internal enum class ClipVisualPreset(
+    val label: String,
+    val adjustments: ClipVisualAdjustments,
+) {
+    ORIGINAL("Original", ClipVisualAdjustments()),
+    CINEMA("Cinema", ClipVisualAdjustments(brightness = -8, contrast = 20, saturation = -12)),
+    VIVID("Vivid", ClipVisualAdjustments(brightness = 5, contrast = 12, saturation = 35)),
+    MUTED("Muted", ClipVisualAdjustments(brightness = 2, contrast = -8, saturation = -40)),
+    MONO("Mono", ClipVisualAdjustments(brightness = 0, contrast = 12, saturation = -100)),
+}
+
+internal fun clipVisualPresetAdjustments(label: String): ClipVisualAdjustments? =
+    ClipVisualPreset.values().firstOrNull { it.label == label }?.adjustments
