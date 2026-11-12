@@ -165,6 +165,50 @@ internal fun trimClipRange(
 }
 
 /** Moves an item to a new timeline index without mutating the original list. */
+/**
+ * Maps the project playhead to the horizontal pixel offset of the filmstrip.
+ * Exact clip boundaries begin at the next playable clip, matching timeline seeking.
+ * Zero-duration items keep their visual slot but do not consume playback time.
+ */
+internal fun calculateTimelinePlayheadOffsetPx(
+    clipDurationsMs: List<Long>,
+    clipWidthsPx: List<Float>,
+    playheadPositionMs: Long,
+    gapPx: Float,
+): Float {
+    val lastPlayableIndex = clipDurationsMs.indexOfLast { it > 0L }
+    if (lastPlayableIndex < 0) return 0f
+
+    val safeGap = if (gapPx.isFinite()) gapPx.coerceAtLeast(0f) else 0f
+    fun widthAt(index: Int): Float =
+        clipWidthsPx.getOrNull(index)?.let { if (it.isFinite()) it.coerceAtLeast(0f) else 0f } ?: 0f
+
+    val totalDurationMs = calculateTimelineDurationMs(clipDurationsMs)
+    if (playheadPositionMs.coerceAtLeast(0L) >= totalDurationMs) {
+        var endOffset = 0f
+        for (index in 0..lastPlayableIndex) {
+            endOffset += widthAt(index)
+            if (index < lastPlayableIndex) endOffset += safeGap
+        }
+        return endOffset
+    }
+
+    var remainingMs = playheadPositionMs.coerceAtLeast(0L)
+    var offsetPx = 0f
+    for (index in 0..lastPlayableIndex) {
+        val durationMs = clipDurationsMs[index].coerceAtLeast(0L)
+        val widthPx = widthAt(index)
+        if (durationMs > 0L && remainingMs < durationMs) {
+            val progress = remainingMs.toDouble() / durationMs.toDouble()
+            return offsetPx + widthPx * progress.toFloat()
+        }
+        if (durationMs > 0L) remainingMs -= durationMs
+        offsetPx += widthPx
+        if (index < lastPlayableIndex) offsetPx += safeGap
+    }
+    return offsetPx
+}
+
 internal fun <T> moveTimelineItem(items: List<T>, fromIndex: Int, toIndex: Int): List<T> {
     if (fromIndex !in items.indices || toIndex !in items.indices || fromIndex == toIndex) return items
     return items.toMutableList().apply {
@@ -285,3 +329,17 @@ internal fun <T> appendTimelineItemAndSelect(
     items: List<T>,
     item: T,
 ): TimelineAppendResult<T> = TimelineAppendResult(items + item, items.size)
+
+internal fun <T> duplicateTimelineItemAfter(
+    items: List<T>,
+    index: Int,
+    duplicate: (T) -> T,
+): TimelineAppendResult<T>? {
+    if (index !in items.indices) return null
+    val selectedIndex = index + 1
+    val copy = duplicate(items[index])
+    return TimelineAppendResult(
+        items = items.toMutableList().apply { add(selectedIndex, copy) },
+        selectedIndex = selectedIndex,
+    )
+}

@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
@@ -114,9 +115,19 @@ private fun VyroCutApp() {
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedEffect by remember { mutableStateOf("Edge Glow") }
     var effectIntensity by remember { mutableFloatStateOf(0.65f) }
-    var canvasAspectRatio by remember { mutableFloatStateOf(9f / 16f) }
-    var canvasBackground by remember { mutableStateOf(Color.Black) }
+    val initialCanvasSettings = remember {
+        decodeProjectCanvasSettings(
+            preferences.getString("project_" + activeProjectId + "_canvas_settings", null)
+        ) ?: ProjectCanvasSettings()
+    }
+    var canvasAspectRatio by remember {
+        mutableFloatStateOf(canvasAspectRatioForPreset(initialCanvasSettings.aspectRatioPreset))
+    }
+    var canvasBackground by remember {
+        mutableStateOf(canvasBackgroundForPreset(initialCanvasSettings.backgroundPreset))
+    }
     var showProjects by remember { mutableStateOf(false) }
+    var showClipActions by remember { mutableStateOf(false) }
     var showTrimDialog by remember { mutableStateOf(false) }
     var trimTargetClipId by remember { mutableStateOf<String?>(null) }
     var trimSourceDurationMs by remember { mutableLongStateOf(1L) }
@@ -343,6 +354,12 @@ private fun VyroCutApp() {
         persistProjectWithRecovery(preferences, activeProjectId, projectName, items)
         preferences.edit().putString("active_project_id", activeProjectId).apply()
     }
+    fun persistCanvasSettings(aspectRatio: Float, background: Color) {
+        val settings = projectCanvasSettingsFor(aspectRatio, background)
+        preferences.edit()
+            .putString("project_" + activeProjectId + "_canvas_settings", encodeProjectCanvasSettings(settings))
+            .apply()
+    }
     fun switchProject(project: ProjectInfo) {
         if (project.id == activeProjectId) return
         clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
@@ -351,6 +368,11 @@ private fun VyroCutApp() {
         saveProject(clips)
         activeProjectId = project.id
         preferences.edit().putString("active_project_id", project.id).apply()
+        val canvasSettings = decodeProjectCanvasSettings(
+            preferences.getString("project_" + project.id + "_canvas_settings", null)
+        ) ?: ProjectCanvasSettings()
+        canvasAspectRatio = canvasAspectRatioForPreset(canvasSettings.aspectRatioPreset)
+        canvasBackground = canvasBackgroundForPreset(canvasSettings.backgroundPreset)
         clips = loadProject(preferences, project.id)
         selectedIndex = 0
         // History state is keyed by activeProjectId and reloads from that
@@ -391,6 +413,7 @@ private fun VyroCutApp() {
             .remove("project_${project.id}_redo")
             .remove("project_${project.id}_recovery")
             .remove("project_${project.id}_recovery_dismissed")
+            .remove("project_" + project.id + "_canvas_settings")
             .apply()
         saveProjectIndex(preferences, projects)
         projectToDelete = null
@@ -734,6 +757,57 @@ private fun VyroCutApp() {
                         Text("Redo", fontSize = 11.sp)
                     }
                     Text("${clips.size} clips", color = StudioMuted, fontSize = 11.sp)
+                    Box {
+                        IconButton(
+                            onClick = { showClipActions = true },
+                            enabled = selectedClip != null,
+                            modifier = Modifier.size(36.dp),
+                        ) {
+                            Icon(Icons.Default.MoreHoriz, "Clip actions", tint = StudioMuted)
+                        }
+                        DropdownMenu(
+                            expanded = showClipActions,
+                            onDismissRequest = { showClipActions = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Move clip left") },
+                                enabled = selectedIndex > 0,
+                                onClick = {
+                                    showClipActions = false
+                                    val destination = selectedIndex - 1
+                                    if (destination in clips.indices) {
+                                        changed(moveTimelineItem(clips, selectedIndex, destination))
+                                        selectedIndex = destination
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Duplicate clip") },
+                                enabled = selectedClip != null,
+                                onClick = {
+                                    showClipActions = false
+                                    duplicateTimelineItemAfter(clips, selectedIndex) { clip ->
+                                        clip.copy(id = java.util.UUID.randomUUID().toString())
+                                    }?.let { duplicate ->
+                                        changed(duplicate.items)
+                                        selectedIndex = duplicate.selectedIndex
+                                    }
+                                },
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Move clip right") },
+                                enabled = selectedIndex < clips.lastIndex,
+                                onClick = {
+                                    showClipActions = false
+                                    val destination = selectedIndex + 1
+                                    if (destination in clips.indices) {
+                                        changed(moveTimelineItem(clips, selectedIndex, destination))
+                                        selectedIndex = destination
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
                 TimelineEditorStrip(
                     clips = clips,
@@ -821,7 +895,10 @@ private fun VyroCutApp() {
                                 listOf("9:16" to (9f / 16f), "16:9" to (16f / 9f), "1:1" to 1f).forEach { (label, ratio) ->
                                     FilterChip(
                                         selected = canvasAspectRatio == ratio,
-                                        onClick = { canvasAspectRatio = ratio },
+                                        onClick = {
+                                            canvasAspectRatio = ratio
+                                            persistCanvasSettings(ratio, canvasBackground)
+                                        },
                                         label = { Text(label) }
                                     )
                                 }
@@ -829,7 +906,10 @@ private fun VyroCutApp() {
                                 listOf("Black" to Color.Black, "Dark" to Color(0xFF202322), "White" to Color.White).forEach { (label, color) ->
                                     FilterChip(
                                         selected = canvasBackground == color,
-                                        onClick = { canvasBackground = color },
+                                        onClick = {
+                                            canvasBackground = color
+                                            persistCanvasSettings(canvasAspectRatio, color)
+                                        },
                                         label = { Text(label) }
                                     )
                                 }
@@ -1679,6 +1759,32 @@ private fun formatTime(milliseconds: Long): String {
     return "%02d:%02d".format(seconds / 60L, seconds % 60L)
 }
 
+private fun canvasAspectRatioForPreset(preset: String): Float = when (preset) {
+    "16:9" -> 16f / 9f
+    "1:1" -> 1f
+    else -> 9f / 16f
+}
+
+private fun canvasBackgroundForPreset(preset: String): Color = when (preset) {
+    "DARK" -> Color(0xFF202322)
+    "WHITE" -> Color.White
+    else -> Color.Black
+}
+
+private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): ProjectCanvasSettings {
+    val ratioPreset = when {
+        kotlin.math.abs(aspectRatio - (16f / 9f)) < 0.001f -> "16:9"
+        kotlin.math.abs(aspectRatio - 1f) < 0.001f -> "1:1"
+        else -> "9:16"
+    }
+    val backgroundPreset = when (background) {
+        Color.White -> "WHITE"
+        Color(0xFF202322) -> "DARK"
+        else -> "BLACK"
+    }
+    return ProjectCanvasSettings(ratioPreset, backgroundPreset)
+}
+
 
 @Composable
 private fun TimelineEditorStrip(
@@ -1696,20 +1802,14 @@ private fun TimelineEditorStrip(
     val clipWidths = clips.map { (it.durationMs / 1000f * pixelsPerSecond).coerceIn(120f, 320f) }
     val totalWidthPx = (clipWidths.sum() + (clips.size - 1).coerceAtLeast(0) * gap).coerceAtLeast(1f)
     val totalWidth = totalWidthPx.dp
-    val totalDuration = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
-
-    var markerX = 0f
-    var remainingMs = playheadPositionMs.coerceIn(0L, totalDuration)
-    for (index in clips.indices) {
-        val clip = clips[index]
-        val width = clipWidths[index]
-        if (remainingMs <= clip.durationMs || index == clips.lastIndex) {
-            markerX += width * (remainingMs.toFloat() / clip.durationMs.coerceAtLeast(1L)).coerceIn(0f, 1f)
-            break
-        }
-        markerX += width + gap
-        remainingMs -= clip.durationMs
-    }
+    val timelineClipDurationsMs = clips.map { it.durationMs }
+    val totalDuration = calculateTimelineDurationMs(timelineClipDurationsMs).coerceAtLeast(1L)
+    val markerX = calculateTimelinePlayheadOffsetPx(
+        clipDurationsMs = timelineClipDurationsMs,
+        clipWidthsPx = clipWidths,
+        playheadPositionMs = playheadPositionMs,
+        gapPx = gap,
+    )
 
     if (clips.isEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

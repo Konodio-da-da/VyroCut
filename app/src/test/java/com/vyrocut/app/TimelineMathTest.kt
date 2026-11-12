@@ -107,6 +107,78 @@ class TimelineMathTest {
     }
 
     @Test
+    fun playheadAtClipBoundaryStartsAtTheNextClipAfterItsGap() {
+        assertEquals(
+            106f,
+            calculateTimelinePlayheadOffsetPx(
+                clipDurationsMs = listOf(1_000L, 2_000L),
+                clipWidthsPx = listOf(100f, 200f),
+                playheadPositionMs = 1_000L,
+                gapPx = 6f,
+            ),
+            0.001f,
+        )
+    }
+
+    @Test
+    fun playheadInsideAClipUsesItsProportionalPixelPosition() {
+        assertEquals(
+            50f,
+            calculateTimelinePlayheadOffsetPx(
+                listOf(1_000L, 2_000L),
+                listOf(100f, 200f),
+                500L,
+                6f,
+            ),
+            0.001f,
+        )
+    }
+
+    @Test
+    fun playheadAtProjectEndStopsAtTheLastPlayableClipEnd() {
+        assertEquals(
+            306f,
+            calculateTimelinePlayheadOffsetPx(
+                listOf(1_000L, 2_000L),
+                listOf(100f, 200f),
+                3_000L,
+                6f,
+            ),
+            0.001f,
+        )
+    }
+
+    @Test
+    fun zeroDurationItemsKeepTheirVisualSlotWithoutConsumingTimelineTime() {
+        assertEquals(
+            85f,
+            calculateTimelinePlayheadOffsetPx(
+                listOf(0L, 1_000L, 0L),
+                listOf(80f, 120f, 90f),
+                0L,
+                5f,
+            ),
+            0.001f,
+        )
+        assertEquals(
+            0f,
+            calculateTimelinePlayheadOffsetPx(listOf(0L, 0L), listOf(50f, 60f), 0L, 5f),
+            0.001f,
+        )
+    }
+
+    @Test
+    fun duplicateInsertsASeparateItemAfterTheSelectedClipWithoutMutatingOriginal() {
+        val original = listOf("A", "B", "C")
+        val duplicate = duplicateTimelineItemAfter(original, 1) { it + " copy" }!!
+
+        assertEquals(listOf("A", "B", "B copy", "C"), duplicate.items)
+        assertEquals(2, duplicate.selectedIndex)
+        assertEquals(listOf("A", "B", "C"), original)
+        assertNull(duplicateTimelineItemAfter(original, -1) { it })
+    }
+
+    @Test
     fun durationSumSaturatesInsteadOfOverflowing() {
         assertEquals(
             Long.MAX_VALUE,

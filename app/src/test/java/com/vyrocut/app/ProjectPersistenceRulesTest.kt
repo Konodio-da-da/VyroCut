@@ -6,6 +6,28 @@ import org.junit.Test
 
 class ProjectPersistenceRulesTest {
     @Test
+    fun projectCanvasSettingsRoundTripEverySupportedPreset() {
+        val ratios = listOf("9:16", "16:9", "1:1")
+        val backgrounds = listOf("BLACK", "DARK", "WHITE")
+
+        ratios.forEach { ratio ->
+            backgrounds.forEach { background ->
+                val settings = ProjectCanvasSettings(ratio, background)
+                assertEquals(settings, decodeProjectCanvasSettings(encodeProjectCanvasSettings(settings)))
+            }
+        }
+    }
+
+    @Test
+    fun projectCanvasSettingsRejectUnknownVersionsAndPresets() {
+        assertEquals(null, decodeProjectCanvasSettings(null))
+        assertEquals(null, decodeProjectCanvasSettings("VYROCUT_CANVAS_V2|9:16|BLACK"))
+        assertEquals(null, decodeProjectCanvasSettings("VYROCUT_CANVAS_V1|4:3|BLACK"))
+        assertEquals(null, decodeProjectCanvasSettings("VYROCUT_CANVAS_V1|9:16|BLUE"))
+        assertEquals(null, decodeProjectCanvasSettings("VYROCUT_CANVAS_V1|9:16"))
+    }
+
+    @Test
     fun skipsCorruptSnapshotsWithoutReplacingThemWithEmptyProjects() {
         val decoded = decodeValidHistorySnapshots(
             rawSnapshots = listOf("[]", "broken", "[1]"),
