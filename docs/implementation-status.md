@@ -2,8 +2,8 @@
 
 ## Last verified build
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- Branch head `d6f425a581d254ee6724bfac6454b50febd4470e` passed both tasks in [run 43143355244](https://github.com/Konodio-da-da/VyroCut/actions/runs/43143355244); the debug APK artifact was uploaded (artifact ID `13910292703`).
-- All 42 tests passed on that revision (35 timeline-domain tests and 7 export-validation rule tests). The following media-relinking changes are awaiting their own CI run.
+- Branch head `f96cde791ea923c0399c26bbc3097d3d96596887` passed both tasks in [run 43150197626](https://github.com/Konodio-da-da/VyroCut/actions/runs/43150197626); the debug APK artifact was uploaded.
+- All 46 tests passed on that revision (35 timeline-domain tests, 7 export-validation rule tests, and 4 media-relinking tests).
 - CI confirms Android compilation and unit tests; it does not replace physical-device playback or a full exported-file decode/playback test.
 
 ## Editing workspace milestone (in progress)
@@ -48,9 +48,15 @@
 - The editor listens for position discontinuities from Media3's built-in PlayerView controller, so controller seeks update the selected timeline clip, project scrubber, and saved preview checkpoint; controller pauses also checkpoint the current position. The restored final playable frame is treated as project end so Play restarts from the beginning.
 - Controller-position mapping and end-of-project restart behavior are covered by four additional pure Kotlin tests (42 total); the integration is awaiting GitHub Actions verification.
 
-## Still to implement
-- Automatic recovery snapshots beyond the persisted edit history, including recovery UI and interrupted-export recovery.
+## Local project recovery milestone (implemented; awaiting CI)
+- Every project save writes the primary edit list and a separate versioned recovery journal in the same SharedPreferences edit.
+- The journal stores the last persisted clip list, project identity/name, timestamp, and SHA-256 integrity checksum; UTF-8 fields are URL-safe Base64 encoded.
+- At startup, a valid journal is offered only when the primary project value is missing or differs. The user can recover the saved clip list or dismiss that exact checkpoint; a later save clears the dismissal.
+- Recovery validates every clip entry strictly before replacing project data, preserving the current project if the checkpoint is malformed.
+- Five pure Kotlin tests cover Unicode round-tripping, truncation/tampering, project isolation, mismatch detection, and identical-checkpoint suppression.
+- This protects the last persisted edit list if the primary preference value is damaged or lost. It does not recover edits that had not yet been saved, source media bytes, or interrupted Transformer exports.
 - Physical-device validation of continuous multi-clip playback, source relinking, and actual MP4 decoding/audio continuity.
+- Recovery of unpersisted in-memory edits and interrupted Transformer exports; the current journal protects the last persisted project edit list only.
 - Audio, image, text, transitions, and effects tracks.
 
 A control is only considered complete when its operation is connected to the project state and verified by the Android build. Device playback and rendering still require hands-on testing on an Android device.
