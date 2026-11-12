@@ -207,7 +207,7 @@ class TimelineMathTest {
     @Test
     fun timelinePixelOffsetPastEndTargetsLastPlayableFrame() {
         assertEquals(
-            TimelineSeekTarget(1, 1_999L),
+            TimelineSeekTarget(2, 1_999L),
             resolveTimelineSeekTargetAtOffsetPx(
                 listOf(1_000L, 0L, 2_000L),
                 listOf(100f, 80f, 200f),
