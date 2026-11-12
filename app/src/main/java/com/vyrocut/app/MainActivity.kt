@@ -742,27 +742,39 @@ private fun VyroCutApp() {
                     }
                     OutlinedButton(onClick = {
                         val clip = selectedClip ?: return@OutlinedButton
-                        val midpoint = clip.sourceStartMs + clip.durationMs / 2
-                        val halves = splitClipRange(clip.sourceStartMs, clip.sourceEndMs, midpoint)
-                        if (halves != null) {
-                            val left = clip.copy(
-                                id = java.util.UUID.randomUUID().toString(),
-                                sourceStartMs = halves.first.startMs,
-                                sourceEndMs = halves.first.endMs
-                            )
-                            val right = clip.copy(
-                                id = java.util.UUID.randomUUID().toString(),
-                                sourceStartMs = halves.second.startMs,
-                                sourceEndMs = halves.second.endMs
-                            )
-                            changed(clips.toMutableList().apply {
-                                removeAt(selectedIndex)
-                                add(selectedIndex, left)
-                                add(selectedIndex + 1, right)
-                            })
+                        if (player.currentMediaItemIndex != selectedIndex) return@OutlinedButton
+                        val halves = splitClipRangeAtPlaybackPosition(
+                            clip.sourceStartMs,
+                            clip.sourceEndMs,
+                            player.currentPosition,
+                        ) ?: return@OutlinedButton
+                        val splitIndex = selectedIndex
+                        // Keep the left segment's stable identity; the new right
+                        // segment becomes selected at the exact split boundary.
+                        val left = clip.copy(
+                            sourceEndMs = halves.first.endMs,
+                        )
+                        val right = clip.copy(
+                            id = java.util.UUID.randomUUID().toString(),
+                            sourceStartMs = halves.second.startMs,
+                            sourceEndMs = halves.second.endMs,
+                        )
+                        val updated = clips.toMutableList().apply {
+                            removeAt(splitIndex)
+                            add(splitIndex, left)
+                            add(splitIndex + 1, right)
                         }
-                    }, enabled = selectedClip != null && selectedClip.durationMs >= 2L, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
-                        Icon(Icons.Default.ContentCut, null); Text("Split", maxLines = 1)
+                        selectedIndex = splitIndex + 1
+                        changed(updated)
+                    }, enabled = selectedClip?.let { clip ->
+                        player.currentMediaItemIndex == selectedIndex &&
+                            splitClipRangeAtPlaybackPosition(
+                                clip.sourceStartMs,
+                                clip.sourceEndMs,
+                                player.currentPosition,
+                            ) != null
+                    } == true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
+                        Icon(Icons.Default.ContentCut, null); Text("Split at playhead", maxLines = 1)
                     }
                     Box(Modifier.weight(1f)) {
                         OutlinedButton(
@@ -1368,26 +1380,12 @@ private fun loadProjectHistory(
 ): List<List<EditClip>> = runCatching {
     val raw = preferences.getString("project_${projectId}_${kind}", null) ?: return emptyList()
     val array = JSONArray(raw)
-    (0 until array.length()).mapNotNull { index ->
-        decodeProject(array.getString(index))
-    }.takeLast(50)
+    val snapshots = (0 until array.length()).map { index -> array.getString(index) }
+    decodeValidHistorySnapshots(snapshots, ::decodeProjectStrict)
 }.getOrDefault(emptyList())
 
-private fun decodeProject(raw: String): List<EditClip> = runCatching {
-    val array = JSONArray(raw)
-    (0 until array.length()).mapNotNull { index ->
-        val item = array.getJSONObject(index)
-        val start = item.getLong("start")
-        val end = item.getLong("end")
-        if (end <= start) null else EditClip(
-            item.getString("id"),
-            item.getString("uri"),
-            item.optString("name", "Imported video"),
-            start,
-            end
-        )
-    }
-}.getOrDefault(emptyList())
+private fun decodeProject(raw: String): List<EditClip> =
+    decodeProjectStrict(raw) ?: emptyList()
 
 private fun loadProjectIndex(preferences: android.content.SharedPreferences): List<ProjectInfo> {
     val raw = preferences.getString("project_index", null)
