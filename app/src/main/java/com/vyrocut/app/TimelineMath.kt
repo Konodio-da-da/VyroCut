@@ -131,6 +131,23 @@ internal fun splitClipRangeAtPlaybackPosition(
 internal const val MIN_CLIP_DURATION_MS = 100L
 
 /**
+ * A saved source range may only be edited when the original media duration is
+ * readable and still contains the complete range. If a provider now reports a
+ * shorter source, silently widening the trim limit would permit an invalid edit.
+ */
+internal fun isClipRangeWithinSourceDuration(
+    sourceDurationMs: Long?,
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+): Boolean {
+    val durationMs = sourceDurationMs ?: return false
+    return durationMs > 0L &&
+        sourceStartMs >= 0L &&
+        sourceEndMs > sourceStartMs &&
+        sourceEndMs <= durationMs
+}
+
+/**
  * Clamps a two-handle trim selection to the original source and rejects segments
  * shorter than [minimumDurationMs]. The source file itself is never modified.
  */
