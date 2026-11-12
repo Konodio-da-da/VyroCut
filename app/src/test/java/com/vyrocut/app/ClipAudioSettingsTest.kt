@@ -60,6 +60,72 @@ class ClipAudioSettingsTest {
     }
 
     @Test
+    fun frameDomainFadeDoesNotQuantizeNonIntegerMillisecondSamplePositions() {
+        val frame220 = clipAudioFadeGainAtFrame(
+            framePosition = 220L,
+            sampleRateHz = 44_100,
+            clipDurationMs = 1_000L,
+            fadeInMs = 10L,
+            fadeOutMs = 0L,
+        )
+        val frame221 = clipAudioFadeGainAtFrame(
+            framePosition = 221L,
+            sampleRateHz = 44_100,
+            clipDurationMs = 1_000L,
+            fadeInMs = 10L,
+            fadeOutMs = 0L,
+        )
+
+        assertEquals(220.0 / 441.0, frame220.toDouble(), 0.000001)
+        assertEquals(221.0 / 441.0, frame221.toDouble(), 0.000001)
+        assertTrue(frame221 > frame220)
+    }
+
+    @Test
+    fun frameDomainFadeOutUsesTheExactDecodedFramePosition() {
+        assertEquals(
+            1f,
+            clipAudioFadeGainAtFrame(47_520L, 48_000, 1_000L, 0L, 10L),
+            0.000001f,
+        )
+        assertEquals(
+            0.5f,
+            clipAudioFadeGainAtFrame(47_760L, 48_000, 1_000L, 0L, 10L),
+            0.000001f,
+        )
+        assertEquals(
+            1.0 / 480.0,
+            clipAudioFadeGainAtFrame(47_999L, 48_000, 1_000L, 0L, 10L).toDouble(),
+            0.000001,
+        )
+    }
+
+    @Test
+    fun pcmFadeUsesSmoothFrameDomainGainAt44100Hz() {
+        val output = processPcm(
+            samples = ShortArray(222) { 1_000 },
+            volume = 1f,
+            sampleRateHz = 44_100,
+            channelCount = 1,
+            clipDurationMs = 1_000L,
+            fadeInMs = 10L,
+        )
+
+        assertEquals(499, output[220])
+        assertEquals(501, output[221])
+    }
+
+    @Test
+    fun frameDomainFadeRejectsInvalidSampleRates() {
+        try {
+            clipAudioFadeGainAtFrame(0L, 0, 1_000L, 100L, 0L)
+            throw AssertionError("A zero sample rate cannot define an audio fade")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+    }
+
+    @Test
     fun rejectsNegativeFadeDurationsAndInvalidClipDuration() {
         assertFalse(isValidClipAudioFades(-1L, 0L))
         assertFalse(isValidClipAudioFades(0L, -1L))
