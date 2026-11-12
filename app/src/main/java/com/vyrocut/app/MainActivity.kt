@@ -590,7 +590,7 @@ private fun VyroCutApp() {
                     }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
-                Box(Modifier.fillMaxWidth().weight(1f).background(Color.Black, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(280.dp).background(Color.Black, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                     if (selectedClip == null) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(42.dp))
@@ -603,7 +603,7 @@ private fun VyroCutApp() {
                                 useController = true
                             } },
                             update = { it.player = player },
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier.fillMaxHeight().aspectRatio(9f / 16f)
                         )
                     }
                 }
