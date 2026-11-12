@@ -310,6 +310,62 @@ internal fun resolvePlaybackRestoreTarget(
 
 
 /**
+ * Maps a horizontal timeline pixel offset to a project-wide Media3 seek target.
+ * Clip widths represent the visible filmstrip (not source duration), so each
+ * playable clip is mapped proportionally. Gaps snap to the next clip boundary;
+ * zero-duration visual slots do not consume playback time.
+ */
+internal fun resolveTimelineSeekTargetAtOffsetPx(
+    clipDurationsMs: List<Long>,
+    clipWidthsPx: List<Float>,
+    offsetPx: Float,
+    gapPx: Float,
+): TimelineSeekTarget? {
+    if (clipDurationsMs.none { it > 0L }) return null
+
+    val safeOffset = if (offsetPx.isFinite()) offsetPx.coerceAtLeast(0f) else 0f
+    val safeGap = if (gapPx.isFinite()) gapPx.coerceAtLeast(0f) else 0f
+    fun widthAt(index: Int): Float =
+        clipWidthsPx.getOrNull(index)?.let { if (it.isFinite()) it.coerceAtLeast(0f) else 0f } ?: 0f
+
+    var cursorPx = 0f
+    var elapsedMs = 0L
+    clipDurationsMs.forEachIndexed { index, rawDuration ->
+        val durationMs = rawDuration.coerceAtLeast(0L)
+        val widthPx = widthAt(index)
+        val clipEndPx = cursorPx + widthPx
+
+        if (safeOffset <= clipEndPx) {
+            val progress = if (widthPx > 0f) {
+                ((safeOffset - cursorPx) / widthPx).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            val withinClipMs = (durationMs.toDouble() * progress.toDouble()).toLong()
+            return resolveTimelineSeekTarget(
+                clipDurationsMs,
+                addWithoutOverflow(elapsedMs, withinClipMs),
+            )
+        }
+
+        cursorPx = clipEndPx
+        elapsedMs = addWithoutOverflow(elapsedMs, durationMs)
+        if (index < clipDurationsMs.lastIndex) {
+            val gapEndPx = cursorPx + safeGap
+            if (safeOffset <= gapEndPx) {
+                return resolveTimelineSeekTarget(clipDurationsMs, elapsedMs)
+            }
+            cursorPx = gapEndPx
+        }
+    }
+
+    return resolveTimelineSeekTarget(
+        clipDurationsMs,
+        calculateTimelineDurationMs(clipDurationsMs),
+    )
+}
+
+/**
  * Moves the project playhead by a signed delta and resolves the result to a
  * Media3 playlist item. Seeking is project-wide, so crossing a clip boundary
  * naturally lands in the adjacent item. The final position stays on a playable
