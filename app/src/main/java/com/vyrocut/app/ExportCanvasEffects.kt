@@ -8,6 +8,8 @@ import androidx.media3.common.Effect
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 internal data class LetterboxContentRect(
     val leftPx: Float,
@@ -15,6 +17,85 @@ internal data class LetterboxContentRect(
     val rightPx: Float,
     val bottomPx: Float,
 )
+
+internal data class LetterboxPixelProbe(val x: Int, val y: Int)
+
+/** Selects one interior pixel from each letterbox/pillarbox region, away from edges. */
+internal fun letterboxBackgroundProbePoints(
+    canvasWidthPx: Int,
+    canvasHeightPx: Int,
+    sourceWidthPx: Int,
+    sourceHeightPx: Int,
+    sourceRotationDegrees: Int = 0,
+): List<LetterboxPixelProbe> {
+    if (canvasWidthPx <= 0 || canvasHeightPx <= 0) return emptyList()
+    val content = calculateLetterboxContentRect(
+        canvasWidthPx,
+        canvasHeightPx,
+        sourceWidthPx,
+        sourceHeightPx,
+        sourceRotationDegrees,
+    ) ?: return emptyList()
+    val probes = buildList {
+        if (content.topPx > 0f) {
+            add(LetterboxPixelProbe(canvasWidthPx / 2, (content.topPx / 2f).roundToInt()))
+        }
+        if (content.bottomPx < canvasHeightPx.toFloat()) {
+            add(
+                LetterboxPixelProbe(
+                    canvasWidthPx / 2,
+                    ((content.bottomPx + canvasHeightPx) / 2f).roundToInt(),
+                ),
+            )
+        }
+        if (content.leftPx > 0f) {
+            add(LetterboxPixelProbe((content.leftPx / 2f).roundToInt(), canvasHeightPx / 2))
+        }
+        if (content.rightPx < canvasWidthPx.toFloat()) {
+            add(
+                LetterboxPixelProbe(
+                    ((content.rightPx + canvasWidthPx) / 2f).roundToInt(),
+                    canvasHeightPx / 2,
+                ),
+            )
+        }
+    }
+    return probes.map { probe ->
+        LetterboxPixelProbe(
+            x = probe.x.coerceIn(0, canvasWidthPx - 1),
+            y = probe.y.coerceIn(0, canvasHeightPx - 1),
+        )
+    }.distinct()
+}
+
+/**
+ * Allows small H.264 colour shifts while rejecting a missing or wrong canvas
+ * background. Empty samples mean the source fills the canvas and has no bars.
+ */
+internal fun validateLetterboxBackgroundPixels(
+    actualPixelsArgb: List<Int>,
+    expectedArgb: Int,
+    maxChannelDifference: Int = 32,
+): String? {
+    if (actualPixelsArgb.isEmpty()) return null
+    if (maxChannelDifference !in 0..255) return "The canvas background pixel tolerance is invalid"
+    val expectedRed = (expectedArgb shr 16) and 0xFF
+    val expectedGreen = (expectedArgb shr 8) and 0xFF
+    val expectedBlue = expectedArgb and 0xFF
+    val mismatch = actualPixelsArgb.any { actual ->
+        val red = (actual shr 16) and 0xFF
+        val green = (actual shr 8) and 0xFF
+        val blue = actual and 0xFF
+        abs(red - expectedRed) > maxChannelDifference ||
+            abs(green - expectedGreen) > maxChannelDifference ||
+            abs(blue - expectedBlue) > maxChannelDifference
+    }
+    return if (mismatch) {
+        "The exported MP4 canvas background pixels do not match the selected background"
+    } else {
+        null
+    }
+}
 
 /**
  * Calculates the content bounds produced by Media3's scale-to-fit presentation.
