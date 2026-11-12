@@ -40,8 +40,45 @@ class ClipAudioSettingsTest {
     }
 
     @Test
-    fun unityGainDoesNotCreateAnUnnecessaryTransformerProcessor() {
+    fun fadeEnvelopeReachesSilenceAtBothBoundaries() {
+        assertEquals(0f, clipAudioFadeGainAtMs(0L, 1_000L, 200L, 300L), 0f)
+        assertEquals(1f, clipAudioFadeGainAtMs(200L, 1_000L, 200L, 300L), 0f)
+        assertEquals(1f, clipAudioFadeGainAtMs(700L, 1_000L, 200L, 300L), 0f)
+        assertEquals(0f, clipAudioFadeGainAtMs(1_000L, 1_000L, 200L, 300L), 0f)
+    }
+
+    @Test
+    fun overlappingFadesUseTheLowerRampAndRemainBounded() {
+        assertEquals(0f, clipAudioFadeGainAtMs(0L, 1_000L, 800L, 800L), 0f)
+        assertEquals(0.625f, clipAudioFadeGainAtMs(500L, 1_000L, 800L, 800L), 0.0001f)
+        assertEquals(0f, clipAudioFadeGainAtMs(1_000L, 1_000L, 800L, 800L), 0f)
+    }
+
+    @Test
+    fun playbackGainCombinesClipVolumeAndFadeEnvelope() {
+        assertEquals(0.25f, clipAudioPlaybackGain(0.5f, 500L, 1_000L, 1_000L, 0L), 0.0001f)
+    }
+
+    @Test
+    fun rejectsNegativeFadeDurationsAndInvalidClipDuration() {
+        assertFalse(isValidClipAudioFades(-1L, 0L))
+        assertFalse(isValidClipAudioFades(0L, -1L))
+        try {
+            clipAudioFadeGainAtMs(0L, 0L, 0L, 0L)
+            throw AssertionError("Zero-duration clips cannot be faded")
+        } catch (_: IllegalArgumentException) {
+            // Expected.
+        }
+    }
+
+    @Test
+    fun unityGainWithoutFadesDoesNotCreateAnUnnecessaryTransformerProcessor() {
         assertTrue(createClipAudioProcessors(1f).isEmpty())
+    }
+
+    @Test
+    fun fadeAtUnityGainStillCreatesTheTransformerProcessorChain() {
+        assertEquals(2, createClipAudioProcessors(1f, 1_000L, 250L, 0L).size)
     }
 
     @Test
@@ -63,6 +100,45 @@ class ClipAudioSettingsTest {
     }
 
     @Test
+    fun appliesFadeInAtIndividualPcmFrameBoundaries() {
+        val output = processPcm(
+            samples = shortArrayOf(1_000, 1_000, 1_000, 1_000),
+            volume = 1f,
+            sampleRateHz = 1_000,
+            channelCount = 1,
+            clipDurationMs = 4L,
+            fadeInMs = 4L,
+        )
+        assertEquals(listOf(0, 250, 500, 750), output)
+    }
+
+    @Test
+    fun appliesFadeOutAtIndividualPcmFrameBoundaries() {
+        val output = processPcm(
+            samples = shortArrayOf(1_000, 1_000, 1_000, 1_000),
+            volume = 1f,
+            sampleRateHz = 1_000,
+            channelCount = 1,
+            clipDurationMs = 4L,
+            fadeOutMs = 4L,
+        )
+        assertEquals(listOf(1_000, 750, 500, 250), output)
+    }
+
+    @Test
+    fun fadesKeepTheOriginalPcmBufferLength() {
+        val output = processPcm(
+            samples = shortArrayOf(10_000, -10_000, 10_000, -10_000),
+            volume = 0.5f,
+            sampleRateHz = 1_000,
+            channelCount = 2,
+            clipDurationMs = 2L,
+            fadeInMs = 2L,
+        )
+        assertEquals(listOf(0, 0, 2_500, -2_500), output)
+    }
+
+    @Test
     fun unityProcessorIsInactiveAndUnsupportedPcmEncodingIsRejected() {
         val unity = ClipGainAudioProcessor(1f)
         val unityFormat = unity.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT))
@@ -78,9 +154,17 @@ class ClipAudioSettingsTest {
         }
     }
 
-    private fun processPcm(samples: ShortArray, volume: Float): List<Int> {
-        val processor = ClipGainAudioProcessor(volume)
-        processor.configure(AudioProcessor.AudioFormat(48_000, 2, C.ENCODING_PCM_16BIT))
+    private fun processPcm(
+        samples: ShortArray,
+        volume: Float,
+        sampleRateHz: Int = 48_000,
+        channelCount: Int = 2,
+        clipDurationMs: Long = 0L,
+        fadeInMs: Long = 0L,
+        fadeOutMs: Long = 0L,
+    ): List<Int> {
+        val processor = ClipGainAudioProcessor(volume, clipDurationMs, fadeInMs, fadeOutMs)
+        processor.configure(AudioProcessor.AudioFormat(sampleRateHz, channelCount, C.ENCODING_PCM_16BIT))
         processor.flush()
         val input = ByteBuffer.allocateDirect(samples.size * 2).order(ByteOrder.nativeOrder())
         samples.forEach(input::putShort)

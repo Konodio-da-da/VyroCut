@@ -95,9 +95,12 @@ internal data class EditClip(
     val sourceStartMs: Long,
     val sourceEndMs: Long,
     val audioVolume: Float = DEFAULT_CLIP_AUDIO_VOLUME,
+    val fadeInMs: Long = 0L,
+    val fadeOutMs: Long = 0L,
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
+        require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "Clip fade durations cannot be negative" }
     }
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
@@ -166,6 +169,12 @@ private fun VyroCutApp() {
     val selectedClip = clips.getOrNull(selectedIndex)
     var clipVolumeDraft by remember(selectedClip?.id, selectedClip?.audioVolume) {
         mutableFloatStateOf(selectedClip?.audioVolume ?: DEFAULT_CLIP_AUDIO_VOLUME)
+    }
+    var clipFadeInDraft by remember(selectedClip?.id, selectedClip?.fadeInMs, selectedClip?.durationMs) {
+        mutableFloatStateOf(selectedClip?.fadeInMs?.toFloat() ?: 0f)
+    }
+    var clipFadeOutDraft by remember(selectedClip?.id, selectedClip?.fadeOutMs, selectedClip?.durationMs) {
+        mutableFloatStateOf(selectedClip?.fadeOutMs?.toFloat() ?: 0f)
     }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
@@ -282,7 +291,16 @@ private fun VyroCutApp() {
                     .build()
             }
             player.playWhenReady = false
-            player.setVolume(clips[restoreTarget.clipIndex].audioVolume)
+            val restoredClip = clips[restoreTarget.clipIndex]
+            player.setVolume(
+                clipAudioPlaybackGain(
+                    restoredClip.audioVolume,
+                    restoreTarget.positionMs,
+                    restoredClip.durationMs,
+                    restoredClip.fadeInMs,
+                    restoredClip.fadeOutMs,
+                ),
+            )
             player.setMediaItems(items, restoreTarget.clipIndex, restoreTarget.positionMs)
             player.prepare()
             player.playWhenReady = wasPlaying
@@ -323,12 +341,42 @@ private fun VyroCutApp() {
             delay(200)
         }
     }
+    LaunchedEffect(player, clips) {
+        var lastAppliedGain = Float.NaN
+        while (true) {
+            val currentIndex = player.currentMediaItemIndex
+            val clip = clips.getOrNull(currentIndex)
+            if (clip != null && clip.durationMs > 0L) {
+                val nextGain = clipAudioPlaybackGain(
+                    clip.audioVolume,
+                    player.currentPosition,
+                    clip.durationMs,
+                    clip.fadeInMs,
+                    clip.fadeOutMs,
+                )
+                if (lastAppliedGain.isNaN() || kotlin.math.abs(nextGain - lastAppliedGain) > 0.001f) {
+                    player.setVolume(nextGain)
+                    lastAppliedGain = nextGain
+                }
+            }
+            delay(if (player.isPlaying) 16L else 80L)
+        }
+    }
+
     fun syncPlayerPosition(clipIndex: Int, clipPositionMs: Long) {
         val position = resolvePlayerTimelinePosition(clipDurationsMs, clipIndex, clipPositionMs) ?: return
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         clips.getOrNull(position.clipIndex)?.let { clip ->
-            player.setVolume(clip.audioVolume)
+            player.setVolume(
+                clipAudioPlaybackGain(
+                    clip.audioVolume,
+                    position.clipPositionMs,
+                    clip.durationMs,
+                    clip.fadeInMs,
+                    clip.fadeOutMs,
+                ),
+            )
             savePreviewPosition(preferences, activeProjectId, clip, position.clipPositionMs)
         }
     }
@@ -450,8 +498,26 @@ private fun VyroCutApp() {
         changed(clips.toMutableList().apply {
             this[selectedIndex] = clip.copy(audioVolume = volume)
         })
-        player.setVolume(volume)
+        val currentPosition = if (player.currentMediaItem?.mediaId == clip.id) player.currentPosition else 0L
+        player.setVolume(
+            clipAudioPlaybackGain(
+                volume,
+                currentPosition,
+                clip.durationMs,
+                clip.fadeInMs,
+                clip.fadeOutMs,
+            ),
+        )
         exportMessage = "Clip volume set to ${clipAudioVolumePercent(volume)}%"
+    }
+    fun commitSelectedClipAudioFades(fadeInMs: Long, fadeOutMs: Long) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        if (!isValidClipAudioFades(fadeInMs, fadeOutMs)) return
+        if (clip.fadeInMs == fadeInMs && clip.fadeOutMs == fadeOutMs) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(fadeInMs = fadeInMs, fadeOutMs = fadeOutMs)
+        })
+        exportMessage = "Clip fades updated"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -941,11 +1007,13 @@ private fun VyroCutApp() {
                         // segment becomes selected at the exact split boundary.
                         val left = clip.copy(
                             sourceEndMs = halves.first.endMs,
+                            fadeOutMs = 0L,
                         )
                         val right = clip.copy(
                             id = java.util.UUID.randomUUID().toString(),
                             sourceStartMs = halves.second.startMs,
                             sourceEndMs = halves.second.endMs,
+                            fadeInMs = 0L,
                         )
                         val updated = clips.toMutableList().apply {
                             removeAt(splitIndex)
@@ -1082,7 +1150,36 @@ private fun VyroCutApp() {
                             steps = 19,
                             colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                         )
-                        Text("Non-destructive • Applies to this clip in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
+                        val fadeRangeMaxMs = selectedClip.durationMs.toFloat().coerceAtLeast(1f)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("FADE IN", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text(String.format("%.1fs", clipFadeInDraft / 1_000f), color = StudioAccent, fontSize = 11.sp)
+                        }
+                        Slider(
+                            value = clipFadeInDraft.coerceIn(0f, fadeRangeMaxMs),
+                            onValueChange = { clipFadeInDraft = it },
+                            onValueChangeFinished = {
+                                commitSelectedClipAudioFades(clipFadeInDraft.toLong(), clipFadeOutDraft.toLong())
+                            },
+                            valueRange = 0f..fadeRangeMaxMs,
+                            colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("FADE OUT", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text(String.format("%.1fs", clipFadeOutDraft / 1_000f), color = StudioAccent, fontSize = 11.sp)
+                        }
+                        Slider(
+                            value = clipFadeOutDraft.coerceIn(0f, fadeRangeMaxMs),
+                            onValueChange = { clipFadeOutDraft = it },
+                            onValueChangeFinished = {
+                                commitSelectedClipAudioFades(clipFadeInDraft.toLong(), clipFadeOutDraft.toLong())
+                            },
+                            valueRange = 0f..fadeRangeMaxMs,
+                            colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                        )
+                        Text("Non-destructive • Smooth fades apply to preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                     }
                 }
                 if (activeTool == "Audio" || activeTool == "Text" || activeTool == "Stickers") {
@@ -1218,7 +1315,17 @@ private fun VyroCutApp() {
                                                 )?.let(videoEffects::add)
                                             }
                                             EditedMediaItem.Builder(source)
-                                                .setEffects(Effects(createClipAudioProcessors(clip.audioVolume), videoEffects))
+                                                .setEffects(
+                                                    Effects(
+                                                        createClipAudioProcessors(
+                                                            volume = clip.audioVolume,
+                                                            clipDurationMs = clip.durationMs,
+                                                            fadeInMs = clip.fadeInMs,
+                                                            fadeOutMs = clip.fadeOutMs,
+                                                        ),
+                                                        videoEffects,
+                                                    ),
+                                                )
                                                 .build()
                                         }
                                         // Media3 1.5.1 exposes the list-based sequence builder.
@@ -1765,6 +1872,8 @@ internal fun encodeProject(clips: List<EditClip>): String {
         put("id", clip.id); put("uri", clip.uri); put("name", clip.name)
         put("start", clip.sourceStartMs); put("end", clip.sourceEndMs)
         put("volume", clip.audioVolume.toDouble())
+        put("fadeInMs", clip.fadeInMs)
+        put("fadeOutMs", clip.fadeOutMs)
     }) }
     return array.toString()
 }
@@ -1782,7 +1891,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 3)
+        put("version", 4)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -1793,7 +1902,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..3) { "Unsupported backup version" }
+    require(version in 1..4) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -1878,7 +1987,21 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
             val audioVolume = decodeClipAudioVolume(
                 if (item.has("volume")) item.optDouble("volume", Double.NaN) else null,
             ) ?: error("A clip has an invalid audio volume")
-            add(EditClip(id, uri, item.optString("name", "Imported video"), start, end, audioVolume))
+            val fadeInMs = if (item.has("fadeInMs")) item.optLong("fadeInMs", Long.MIN_VALUE) else 0L
+            val fadeOutMs = if (item.has("fadeOutMs")) item.optLong("fadeOutMs", Long.MIN_VALUE) else 0L
+            require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "A clip has invalid fade durations" }
+            add(
+                EditClip(
+                    id = id,
+                    uri = uri,
+                    name = item.optString("name", "Imported video"),
+                    sourceStartMs = start,
+                    sourceEndMs = end,
+                    audioVolume = audioVolume,
+                    fadeInMs = fadeInMs,
+                    fadeOutMs = fadeOutMs,
+                ),
+            )
         }
     }
 }.getOrNull()
