@@ -820,104 +820,151 @@ private fun VyroCutApp() {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
-                            if (clips.isNotEmpty() && !isExporting) {
-                                val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-                                    ?: File(context.filesDir, "Movies")
-                                val outputDirectory = File(outputRoot, "VyroCut").apply { mkdirs() }
-                                val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
+                            if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
                                 val exportSession = java.util.UUID.randomUUID().toString()
                                 val exportClips = clips.toList()
-                                val sourceUris = exportClips.map { it.uri }
-                                val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
-                                val editedItems = exportClips.map { clip ->
-                                    val source = MediaItem.Builder()
-                                        .setUri(Uri.parse(clip.uri))
-                                        .setClippingConfiguration(
-                                            MediaItem.ClippingConfiguration.Builder()
-                                                .setStartPositionMs(clip.sourceStartMs)
-                                                .setEndPositionMs(clip.sourceEndMs)
-                                                .build()
-                                        ).build()
-                                    EditedMediaItem.Builder(source).build()
+                                val exportRequirements = exportClips.map { clip ->
+                                    ExportClipRequirement(
+                                        id = clip.id,
+                                        uri = clip.uri,
+                                        name = clip.name,
+                                        sourceStartMs = clip.sourceStartMs,
+                                        sourceEndMs = clip.sourceEndMs,
+                                    )
                                 }
-                                // Media3 1.5.1 exposes the list-based sequence builder.
-                                @Suppress("DEPRECATION")
-                                val sequence = EditedMediaItemSequence.Builder(editedItems).build()
-                                val composition = Composition.Builder(sequence).build()
-                                val transformer = Transformer.Builder(context)
-                                    .addListener(object : Transformer.Listener {
-                                        override fun onCompleted(composition: Composition, result: ExportResult) {
-                                            if (exportSessionId != exportSession) {
-                                                outputFile.delete()
-                                                return
-                                            }
-                                            exportScope.launch {
-                                                val publishResult = runCatching {
-                                                    withContext(Dispatchers.IO) {
-                                                        verifyExportedMp4(
-                                                            context = context,
-                                                            file = outputFile,
-                                                            sourceUris = sourceUris,
-                                                            expectedDurationMs = expectedDurationMs,
-                                                        )
-                                                        publishExportToMovies(context, outputFile)
-                                                    }
-                                                }
-                                                if (exportSessionId != exportSession) {
-                                                    publishResult.getOrNull()?.let { uri ->
-                                                        withContext(Dispatchers.IO) {
-                                                            runCatching { context.contentResolver.delete(uri, null, null) }
-                                                        }
-                                                    }
-                                                    outputFile.delete()
-                                                    return@launch
-                                                }
-                                                isExporting = false
-                                                activeTransformer = null
-                                                activeExportFile = null
-                                                exportSessionId = null
-                                                publishResult.onSuccess { uri ->
-                                                    exportedUri = uri
-                                                    exportMessage = "Export complete • Video/audio samples and duration verified • Saved to Movies/VyroCut"
-                                                }.onFailure { error ->
-                                                    exportedUri = null
-                                                    exportMessage = "Export verification or saving failed: ${error.message}"
-                                                }
-                                                outputFile.delete()
-                                            }
+                                exportSessionId = exportSession
+                                isExporting = true
+                                exportedUri = null
+                                player.pause()
+                                exportMessage = "Checking source videos…"
+
+                                exportScope.launch {
+                                    val preflightError = withContext(Dispatchers.IO) {
+                                        val sourceMetadata = inspectExportSources(context, exportRequirements)
+                                        validateExportPreflight(exportRequirements, sourceMetadata)
+                                    }
+                                    if (exportSessionId != exportSession) return@launch
+                                    if (preflightError != null) {
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Export stopped: $preflightError"
+                                        return@launch
+                                    }
+
+                                    val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+                                        ?: File(context.filesDir, "Movies")
+                                    val outputDirectory = File(outputRoot, "VyroCut")
+                                    if (!outputDirectory.isDirectory && !outputDirectory.mkdirs()) {
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Could not create the temporary export directory"
+                                        return@launch
+                                    }
+                                    val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
+                                    val sourceUris = exportClips.map { it.uri }
+                                    val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
+                                    val composition = try {
+                                        val editedItems = exportClips.map { clip ->
+                                            val source = MediaItem.Builder()
+                                                .setUri(Uri.parse(clip.uri))
+                                                .setClippingConfiguration(
+                                                    MediaItem.ClippingConfiguration.Builder()
+                                                        .setStartPositionMs(clip.sourceStartMs)
+                                                        .setEndPositionMs(clip.sourceEndMs)
+                                                        .build()
+                                                ).build()
+                                            EditedMediaItem.Builder(source).build()
                                         }
-                                        override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
-                                            outputFile.delete()
+                                        // Media3 1.5.1 exposes the list-based sequence builder.
+                                        @Suppress("DEPRECATION")
+                                        val sequence = EditedMediaItemSequence.Builder(editedItems).build()
+                                        Composition.Builder(sequence).build()
+                                    } catch (error: Exception) {
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Could not prepare export: ${error.message}"
+                                        return@launch
+                                    }
+                                    val transformer = try {
+                                        Transformer.Builder(context)
+                                            .addListener(object : Transformer.Listener {
+                                                override fun onCompleted(composition: Composition, result: ExportResult) {
+                                                    if (exportSessionId != exportSession) {
+                                                        outputFile.delete()
+                                                        return
+                                                    }
+                                                    exportScope.launch {
+                                                        val publishResult = runCatching {
+                                                            withContext(Dispatchers.IO) {
+                                                                verifyExportedMp4(
+                                                                    context = context,
+                                                                    file = outputFile,
+                                                                    sourceUris = sourceUris,
+                                                                    expectedDurationMs = expectedDurationMs,
+                                                                )
+                                                                publishExportToMovies(context, outputFile)
+                                                            }
+                                                        }
+                                                        if (exportSessionId != exportSession) {
+                                                            publishResult.getOrNull()?.let { uri ->
+                                                                withContext(Dispatchers.IO) {
+                                                                    runCatching { context.contentResolver.delete(uri, null, null) }
+                                                                }
+                                                            }
+                                                            outputFile.delete()
+                                                            return@launch
+                                                        }
+                                                        isExporting = false
+                                                        activeTransformer = null
+                                                        activeExportFile = null
+                                                        exportSessionId = null
+                                                        publishResult.onSuccess { uri ->
+                                                            exportedUri = uri
+                                                            exportMessage = "Export complete • Video/audio samples and duration verified • Saved to Movies/VyroCut"
+                                                        }.onFailure { error ->
+                                                            exportedUri = null
+                                                            exportMessage = "Export verification or saving failed: ${error.message}"
+                                                        }
+                                                        outputFile.delete()
+                                                    }
+                                                }
+                                                override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
+                                                    outputFile.delete()
+                                                    if (exportSessionId == exportSession) {
+                                                        isExporting = false
+                                                        activeTransformer = null
+                                                        activeExportFile = null
+                                                        exportSessionId = null
+                                                        exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
+                                                    }
+                                                }
+                                            }).build()
+                                    } catch (error: Exception) {
+                                        outputFile.delete()
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Could not initialize export: ${error.message}"
+                                        return@launch
+                                    }
+                                    activeTransformer = transformer
+                                    activeExportFile = outputFile
+                                    exportMessage = "Rendering MP4…"
+                                    runCatching { transformer.start(composition, outputFile.absolutePath) }
+                                        .onFailure { error ->
                                             if (exportSessionId == exportSession) {
                                                 isExporting = false
                                                 activeTransformer = null
                                                 activeExportFile = null
                                                 exportSessionId = null
-                                                exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
+                                                exportMessage = "Could not start export: ${error.message}"
                                             }
+                                            outputFile.delete()
                                         }
-                                    }).build()
-                                activeTransformer = transformer
-                                activeExportFile = outputFile
-                                exportSessionId = exportSession
-                                exportedUri = null
-                                exportMessage = "Preparing MP4 export…"
-                                isExporting = true
-                                player.pause()
-                                runCatching { transformer.start(composition, outputFile.absolutePath) }
-                                    .onFailure { error ->
-                                        if (exportSessionId == exportSession) {
-                                            isExporting = false
-                                            activeTransformer = null
-                                            activeExportFile = null
-                                            exportSessionId = null
-                                            exportMessage = "Could not start export: ${error.message}"
-                                        }
-                                        outputFile.delete()
-                                    }
+                                }
                             }
+                        }
                         },
-                        enabled = clips.isNotEmpty() && !isExporting,
+                        enabled = clips.isNotEmpty() && !isExporting && !isReadingMedia,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))
                     ) {

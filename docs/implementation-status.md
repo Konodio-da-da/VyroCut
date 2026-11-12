@@ -38,7 +38,7 @@
 - Rebuilding the Media3 playlist after a timeline edit preserves the active clip's source-time playhead when that clip remains in the project; reorders and trims no longer automatically jump playback back to the beginning. If the active clip is removed, playback falls back to the selected remaining clip. Switching projects starts the new project at its beginning.
 - Playback restoration is isolated in pure Kotlin and covered by tests for reordering, trim-start/trim-end clamping, deleted clips, and empty projects.
 - Each project now remembers its preview location by stable clip ID and absolute source timestamp. The preview location is checkpointed during playback and on timeline seeks, clip changes, manual pause, and app backgrounding; reopening or switching back to a project restores the saved location and clamps it if the source range was trimmed.
-- Saved preview restoration is covered by five additional timeline-domain tests (29 total); the new code is awaiting GitHub Actions verification.
+- Saved preview restoration is covered by five additional timeline-domain tests and is included in the latest successful branch-head build.
 
 ## Implemented in code; awaiting verification
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
@@ -47,11 +47,12 @@
 - Seven pure Kotlin tests cover missing video/audio samples, duration mismatch, video-only sources, and frame-boundary tolerance.
 - These checks validate container demuxing and track/sample presence; they do not prove every frame/audio packet decodes cleanly or that the exported file plays correctly on a physical device.
 - The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
+- Before Transformer starts, export preflight re-opens each distinct source on an IO dispatcher, checks duration and a readable video track, and rejects duplicate clip IDs, blank source references, invalid trims, unavailable media, trims beyond the current source duration, and timeline-duration overflow. A failed preflight stops before rendering; the export action is disabled while import metadata is being read.
 - Media3 preview errors are surfaced in the editor status line instead of failing silently.
 - The editor listens for position discontinuities from Media3's built-in PlayerView controller, so controller seeks update the selected timeline clip, project scrubber, and saved preview checkpoint; controller pauses also checkpoint the current position. The restored final playable frame is treated as project end so Play restarts from the beginning.
-- Controller-position mapping and end-of-project restart behavior are covered by four additional pure Kotlin tests (42 total); the integration is awaiting GitHub Actions verification.
+- Controller-position mapping and end-of-project restart behavior are covered by four additional pure Kotlin tests and are included in the latest successful branch-head build.
 
-## Local project recovery milestone (implemented; awaiting CI)
+## Local project recovery milestone (implemented; Android build and unit-test workflow passed)
 - Every project save writes the primary edit list and a separate versioned recovery journal in the same SharedPreferences edit.
 - The journal stores the last persisted clip list, project identity/name, timestamp, and SHA-256 integrity checksum; UTF-8 fields are URL-safe Base64 encoded.
 - At startup, a valid journal is offered only when the primary project value is missing or differs. The user can recover the saved clip list or dismiss that exact checkpoint; a later save clears the dismissal.
