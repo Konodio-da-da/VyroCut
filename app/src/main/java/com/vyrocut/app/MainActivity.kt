@@ -1687,8 +1687,9 @@ private fun TimelineEditorStrip(
     playheadPositionMs: Long,
     onSelectClip: (Int) -> Unit,
 ) {
-    // One scroll state keeps the ruler, video thumbnails, playhead and audio
-    // waveform locked together like a real multitrack timeline.
+    // A single horizontal scroll viewport keeps every track and ruler at the
+    // same origin and offset. Multiple scroll containers sharing one state
+    // can fight over viewport measurements on smaller devices.
     val timelineScroll = rememberScrollState()
     val pixelsPerSecond = 24f
     val gap = 6f
@@ -1710,107 +1711,96 @@ private fun TimelineEditorStrip(
         remainingMs -= clip.durationMs
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("VIDEO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp))
+    if (clips.isEmpty()) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("VIDEO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("Import footage to build your timeline", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
+        }
+        return
+    }
+
+    Column(
+        Modifier.fillMaxWidth().horizontalScroll(timelineScroll),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
+            Text("VIDEO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
             Text("Main track", color = StudioMuted, fontSize = 9.sp)
             Spacer(Modifier.weight(1f))
             Text("Swipe timeline", color = StudioMuted, fontSize = 9.sp)
         }
 
-        if (clips.isEmpty()) {
-            Text("Import footage to build your timeline", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
-        } else {
-            // Time ruler shares the exact horizontal offset with both tracks.
-            Row(Modifier.fillMaxWidth().horizontalScroll(timelineScroll)) {
-                Box(Modifier.width(totalWidth).height(22.dp)) {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Start) {
-                        var elapsed = 0L
-                        clips.forEachIndexed { index, clip ->
-                            val width = clipWidths[index]
-                            Box(Modifier.width(width.dp).fillMaxHeight()) {
-                                val seconds = (clip.durationMs / 1000L).toInt().coerceAtLeast(1)
-                                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    for (tick in 0..seconds) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Box(Modifier.width(1.dp).height(if ((elapsed / 1000L + tick) % 5L == 0L) 9.dp else 5.dp).background(StudioMuted.copy(alpha = 0.65f)))
-                                            if ((elapsed / 1000L + tick) % 5L == 0L) {
-                                                Text(formatTime((elapsed / 1000L + tick) * 1000L), color = StudioMuted, fontSize = 7.sp)
-                                            }
-                                        }
+        // Ruler, video and audio are children of the same scrolling viewport.
+        Box(Modifier.width(totalWidth).height(22.dp)) {
+            Row(Modifier.fillMaxSize()) {
+                var elapsed = 0L
+                clips.forEachIndexed { index, clip ->
+                    val seconds = (clip.durationMs / 1000L).toInt().coerceAtLeast(1)
+                    Box(Modifier.width(clipWidths[index].dp).fillMaxHeight()) {
+                        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            for (tick in 0..seconds) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(Modifier.width(1.dp).height(if ((elapsed / 1000L + tick) % 5L == 0L) 9.dp else 5.dp).background(StudioMuted.copy(alpha = 0.65f)))
+                                    if ((elapsed / 1000L + tick) % 5L == 0L) {
+                                        Text(formatTime((elapsed / 1000L + tick) * 1000L), color = StudioMuted, fontSize = 7.sp)
                                     }
                                 }
                             }
-                            if (index != clips.lastIndex) Spacer(Modifier.width(gap.dp))
-                            elapsed += clip.durationMs
                         }
                     }
-                }
-            }
-
-            Row(Modifier.fillMaxWidth().horizontalScroll(timelineScroll)) {
-                Box(Modifier.width(totalWidth).height(76.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
-                        clips.forEachIndexed { index, clip ->
-                            Column(
-                                Modifier.width(clipWidths[index].dp)
-                                    .background(if (index == selectedIndex) Color(0xFF16483D) else Color(0xFF252A28), RoundedCornerShape(5.dp))
-                                    .clickable { onSelectClip(index) }
-                                    .padding(3.dp)
-                            ) {
-                                Box(Modifier.fillMaxWidth().height(49.dp)) {
-                                    ClipThumbnail(clip, Modifier.fillMaxSize())
-                                    Text(
-                                        "V" + (index + 1),
-                                        color = Color.White,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.align(Alignment.TopStart)
-                                            .background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp))
-                                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    )
-                                    Text(
-                                        formatTime(clip.durationMs),
-                                        color = Color.White,
-                                        fontSize = 8.sp,
-                                        modifier = Modifier.align(Alignment.BottomEnd)
-                                            .background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp))
-                                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                                    )
-                                }
-                                Text(clip.name, color = if (index == selectedIndex) StudioAccent else StudioText, fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                    }
-                    Box(
-                        Modifier.offset(x = markerX.dp).width(2.dp).height(76.dp)
-                            .background(StudioAccent)
-                    )
-                    Box(
-                        Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp)
-                            .background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                    )
-                }
-            }
-
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("AUDIO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp))
-                Row(Modifier.weight(1f).horizontalScroll(timelineScroll), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
-                    clips.forEachIndexed { index, clip ->
-                        Box(
-                            Modifier.width(clipWidths[index].dp).height(32.dp)
-                                .background(if (index == selectedIndex) Color(0xFF1B4239) else Color(0xFF172C28), RoundedCornerShape(4.dp))
-                                .clickable { onSelectClip(index) }.padding(horizontal = 5.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AudioWaveform(clip, Modifier.fillMaxWidth().height(24.dp))
-                        }
-                    }
+                    if (index != clips.lastIndex) Spacer(Modifier.width(gap.dp))
+                    elapsed += clip.durationMs
                 }
             }
         }
 
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Box(Modifier.width(totalWidth).height(76.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    Column(
+                        Modifier.width(clipWidths[index].dp)
+                            .background(if (index == selectedIndex) Color(0xFF16483D) else Color(0xFF252A28), RoundedCornerShape(5.dp))
+                            .clickable { onSelectClip(index) }
+                            .padding(3.dp)
+                    ) {
+                        Box(Modifier.fillMaxWidth().height(49.dp)) {
+                            ClipThumbnail(clip, Modifier.fillMaxSize())
+                            Text(
+                                "V" + (index + 1), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                            Text(
+                                formatTime(clip.durationMs), color = Color.White, fontSize = 8.sp,
+                                modifier = Modifier.align(Alignment.BottomEnd).background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                        Text(clip.name, color = if (index == selectedIndex) StudioAccent else StudioText, fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(76.dp).background(StudioAccent))
+            Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
+        }
+
+        Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
+            Text("AUDIO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("Source waveform", color = StudioMuted, fontSize = 9.sp)
+        }
+        Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+            clips.forEachIndexed { index, clip ->
+                Box(
+                    Modifier.width(clipWidths[index].dp).height(32.dp)
+                        .background(if (index == selectedIndex) Color(0xFF1B4239) else Color(0xFF172C28), RoundedCornerShape(4.dp))
+                        .clickable { onSelectClip(index) }.padding(horizontal = 5.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AudioWaveform(clip, Modifier.fillMaxWidth().height(24.dp))
+                }
+            }
+        }
+        Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("00:00", color = StudioMuted, fontSize = 9.sp)
             Text(formatTime(totalDuration), color = StudioMuted, fontSize = 9.sp)
         }
