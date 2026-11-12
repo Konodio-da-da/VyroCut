@@ -126,7 +126,7 @@ private fun VyroCutApp() {
     var activeExportFile by remember { mutableStateOf<File?>(null) }
     var exportSessionId by remember { mutableStateOf<String?>(null) }
     var relinkTargetClipId by remember { mutableStateOf<String?>(null) }
-    var missingMediaClipIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
@@ -137,22 +137,20 @@ private fun VyroCutApp() {
     val clipDurationsMs = remember(clips) { clips.map { it.durationMs } }
     val timelineDurationMs = calculateTimelineDurationMs(clipDurationsMs).coerceAtLeast(1L)
 
-    // Re-check persisted document URIs when a project's source ranges change.
-    // Providers may revoke access or the original file may have been moved/deleted.
-    LaunchedEffect(clips.map { it.uri to it.sourceEndMs }) {
+    // Check each project's persisted document URIs when opening or switching projects.
+    // Keep this off the main thread; edits such as reorder/split do not need to re-probe files.
+    LaunchedEffect(activeProjectId) {
         val projectClips = clips
-        val unavailableIds = withContext(Dispatchers.IO) {
-            projectClips.mapNotNull { clip ->
-                val durationMs = MediaMetadataReader.videoDurationMs(context, Uri.parse(clip.uri))
-                if (durationMs == null || !isClipSourceCompatible(
-                        clip.sourceStartMs,
-                        clip.sourceEndMs,
-                        durationMs,
-                    )
-                ) clip.id else null
+        val unavailableUris = withContext(Dispatchers.IO) {
+            projectClips.groupBy { it.uri }.mapNotNull { (uri, uriClips) ->
+                val durationMs = MediaMetadataReader.videoDurationMs(context, Uri.parse(uri))
+                if (durationMs == null || uriClips.any { clip ->
+                        !isClipSourceCompatible(clip.sourceStartMs, clip.sourceEndMs, durationMs)
+                    }
+                ) uri else null
             }.toSet()
         }
-        missingMediaClipIds = unavailableIds
+        missingMediaUris = unavailableUris
     }
 
     val player = remember {
@@ -443,6 +441,7 @@ private fun VyroCutApp() {
         } else {
             val selectedUri = uri
             val targetClipId = relinkTargetClipId
+            val projectIdAtPick = activeProjectId
             relinkTargetClipId = null
             val permission = runCatching {
                 context.contentResolver.takePersistableUriPermission(
@@ -465,7 +464,9 @@ private fun VyroCutApp() {
                         }
                     }
                     isReadingMedia = false
-                    if (metadata == null) {
+                    if (activeProjectId != projectIdAtPick) {
+                        exportMessage = "The active project changed while the video was being read. Choose the source again."
+                    } else if (metadata == null) {
                         exportMessage = "Could not read this video's duration. It was not added."
                     } else {
                         val (durationMs, name) = metadata
@@ -481,6 +482,9 @@ private fun VyroCutApp() {
                             ) {
                                 exportMessage = "Replacement video is too short for this clip's existing trim. The edit was left unchanged."
                             } else {
+                                val oldUriStillUsed = clips.any { clip ->
+                                    clip.id != relinkTarget.id && clip.uri == relinkTarget.uri
+                                }
                                 changed(clips.map { clip ->
                                     if (clip.id == relinkTarget.id) {
                                         clip.copy(uri = selectedUri.toString(), name = name)
@@ -488,7 +492,11 @@ private fun VyroCutApp() {
                                         clip
                                     }
                                 })
-                                missingMediaClipIds = missingMediaClipIds - relinkTarget.id
+                                missingMediaUris = if (oldUriStillUsed) {
+                                    missingMediaUris - selectedUri.toString()
+                                } else {
+                                    missingMediaUris - relinkTarget.uri - selectedUri.toString()
+                                }
                                 exportMessage = "Relinked ${relinkTarget.name} • Existing trim preserved"
                             }
                         } else {
@@ -542,7 +550,7 @@ private fun VyroCutApp() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(selectedClip?.name ?: "No media selected", color = StudioText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val sourceMissing = selectedClip?.id?.let { it in missingMediaClipIds } == true
+                        val sourceMissing = selectedClip?.uri?.let { it in missingMediaUris } == true
                         Text(
                             when {
                                 selectedClip == null -> "Your project is stored locally"
@@ -553,7 +561,7 @@ private fun VyroCutApp() {
                             fontSize = 11.sp
                         )
                     }
-                    if (selectedClip != null && selectedClip.id in missingMediaClipIds) {
+                    if (selectedClip != null && selectedClip.uri in missingMediaUris) {
                         TextButton(
                             onClick = {
                                 relinkTargetClipId = selectedClip.id
