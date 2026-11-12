@@ -1,5 +1,21 @@
 package com.vyrocut.app
 
+internal data class ExportCanvasSize(
+    val widthPx: Int,
+    val heightPx: Int,
+) {
+    init {
+        require(widthPx > 0 && heightPx > 0)
+    }
+}
+
+/** Uses a fixed landscape, square, or portrait frame so every clip exports consistently. */
+internal fun exportCanvasSizeForPreset(preset: String): ExportCanvasSize = when (preset) {
+    "16:9" -> ExportCanvasSize(widthPx = 1_920, heightPx = 1_080)
+    "1:1" -> ExportCanvasSize(widthPx = 1_080, heightPx = 1_080)
+    else -> ExportCanvasSize(widthPx = 1_080, heightPx = 1_920)
+}
+
 internal data class ExportClipRequirement(
     val id: String,
     val uri: String,
