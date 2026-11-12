@@ -1,12 +1,12 @@
 package com.vyrocut.app
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint
-import android.graphics.PorterDuff
 import androidx.media3.common.Effect
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.CanvasOverlay
+import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 
 internal data class LetterboxContentRect(
@@ -71,44 +71,52 @@ internal fun exportCanvasBackgroundArgbForPreset(preset: String): Int = when (pr
  */
 @OptIn(UnstableApi::class)
 internal fun createLetterboxBackgroundEffect(
+    canvasWidthPx: Int,
+    canvasHeightPx: Int,
     sourceWidthPx: Int,
     sourceHeightPx: Int,
     sourceRotationDegrees: Int,
     backgroundColorArgb: Int,
-): Effect {
+): Effect? {
+    require(canvasWidthPx > 0 && canvasHeightPx > 0) {
+        "Canvas dimensions must be positive before creating a background"
+    }
     require(sourceWidthPx > 0 && sourceHeightPx > 0) {
         "Source dimensions must be positive before creating a canvas background"
     }
+    val content = calculateLetterboxContentRect(
+        canvasWidthPx = canvasWidthPx,
+        canvasHeightPx = canvasHeightPx,
+        sourceWidthPx = sourceWidthPx,
+        sourceHeightPx = sourceHeightPx,
+        sourceRotationDegrees = sourceRotationDegrees,
+    ) ?: return null
+    val hasLetterboxBars = content.leftPx > 0f || content.topPx > 0f ||
+        content.rightPx < canvasWidthPx.toFloat() || content.bottomPx < canvasHeightPx.toFloat()
+    if (!hasLetterboxBars) return null
+
+    // BitmapOverlay is available in the project's pinned Media3 1.5.1 API.
+    // The transparent center lets the fitted source video remain visible.
+    val bitmap = Bitmap.createBitmap(canvasWidthPx, canvasHeightPx, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
     val paint = Paint().apply {
         color = backgroundColorArgb
         style = Paint.Style.FILL
         isAntiAlias = false
     }
-    val overlay = object : CanvasOverlay(true) {
-        override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
-            canvas.drawColor(AndroidColor.TRANSPARENT, PorterDuff.Mode.CLEAR)
-            val content = calculateLetterboxContentRect(
-                canvasWidthPx = canvas.width,
-                canvasHeightPx = canvas.height,
-                sourceWidthPx = sourceWidthPx,
-                sourceHeightPx = sourceHeightPx,
-                sourceRotationDegrees = sourceRotationDegrees,
-            ) ?: return
-            val width = canvas.width.toFloat()
-            val height = canvas.height.toFloat()
-            if (content.topPx > 0f) {
-                canvas.drawRect(0f, 0f, width, content.topPx, paint)
-            }
-            if (content.bottomPx < height) {
-                canvas.drawRect(0f, content.bottomPx, width, height, paint)
-            }
-            if (content.leftPx > 0f) {
-                canvas.drawRect(0f, content.topPx, content.leftPx, content.bottomPx, paint)
-            }
-            if (content.rightPx < width) {
-                canvas.drawRect(content.rightPx, content.topPx, width, content.bottomPx, paint)
-            }
-        }
+    val width = canvasWidthPx.toFloat()
+    val height = canvasHeightPx.toFloat()
+    if (content.topPx > 0f) {
+        canvas.drawRect(0f, 0f, width, content.topPx, paint)
     }
-    return OverlayEffect(listOf(overlay))
+    if (content.bottomPx < height) {
+        canvas.drawRect(0f, content.bottomPx, width, height, paint)
+    }
+    if (content.leftPx > 0f) {
+        canvas.drawRect(0f, content.topPx, content.leftPx, content.bottomPx, paint)
+    }
+    if (content.rightPx < width) {
+        canvas.drawRect(content.rightPx, content.topPx, width, content.bottomPx, paint)
+    }
+    return OverlayEffect(listOf(BitmapOverlay.createStaticBitmapOverlay(bitmap)))
 }

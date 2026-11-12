@@ -1123,14 +1123,16 @@ private fun VyroCutApp() {
                                             if (requiresCustomLetterboxBackground) {
                                                 val metadata = sourceMetadata[clip.uri]
                                                     ?: error("Could not read source dimensions for ${clip.name}")
-                                                videoEffects += createLetterboxBackgroundEffect(
+                                                createLetterboxBackgroundEffect(
+                                                    canvasWidthPx = exportCanvasSize.widthPx,
+                                                    canvasHeightPx = exportCanvasSize.heightPx,
                                                     sourceWidthPx = metadata.videoWidthPx
                                                         ?: error("Could not read source width for ${clip.name}"),
                                                     sourceHeightPx = metadata.videoHeightPx
                                                         ?: error("Could not read source height for ${clip.name}"),
                                                     sourceRotationDegrees = metadata.videoRotationDegrees,
                                                     backgroundColorArgb = exportBackgroundArgb,
-                                                )
+                                                )?.let(videoEffects::add)
                                             }
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(Effects(emptyList(), videoEffects))
