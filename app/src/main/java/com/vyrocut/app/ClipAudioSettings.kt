@@ -55,6 +55,40 @@ internal fun clipAudioFadeGainAtMs(
     return min(fadeInGain, fadeOutGain).toFloat()
 }
 
+/**
+ * Computes the fade envelope directly in decoded PCM frames. Keeping the
+ * cursor in the sample-rate domain avoids the 1 ms stair-stepping that occurs
+ * when 44.1/48 kHz frames are repeatedly rounded down to integer milliseconds.
+ */
+internal fun clipAudioFadeGainAtFrame(
+    framePosition: Long,
+    sampleRateHz: Int,
+    clipDurationMs: Long,
+    fadeInMs: Long,
+    fadeOutMs: Long,
+): Float {
+    require(sampleRateHz > 0) { "Sample rate must be positive for audio fades" }
+    require(clipDurationMs > 0L) { "Clip duration must be positive for audio fades" }
+    require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "Clip fade durations cannot be negative" }
+
+    val sampleRate = sampleRateHz.toDouble()
+    val durationFrames = clipDurationMs.toDouble() * sampleRate / 1_000.0
+    val positionFrames = framePosition.coerceAtLeast(0L).toDouble().coerceIn(0.0, durationFrames)
+    val fadeInFrames = fadeInMs.toDouble() * sampleRate / 1_000.0
+    val fadeOutFrames = fadeOutMs.toDouble() * sampleRate / 1_000.0
+    val fadeInGain = if (fadeInMs == 0L) {
+        1.0
+    } else {
+        (positionFrames / fadeInFrames).coerceIn(0.0, 1.0)
+    }
+    val fadeOutGain = if (fadeOutMs == 0L) {
+        1.0
+    } else {
+        ((durationFrames - positionFrames) / fadeOutFrames).coerceIn(0.0, 1.0)
+    }
+    return min(fadeInGain, fadeOutGain).toFloat()
+}
+
 internal fun clipAudioPlaybackGain(
     volume: Float,
     positionMs: Long,
@@ -128,8 +162,9 @@ internal class ClipGainAudioProcessor(
             val envelope = if (fadeInMs == 0L && fadeOutMs == 0L) {
                 1f
             } else {
-                clipAudioFadeGainAtMs(
-                    positionMs = framePositionToMs(framePosition, sampleRateHz),
+                clipAudioFadeGainAtFrame(
+                    framePosition = framePosition,
+                    sampleRateHz = sampleRateHz,
                     clipDurationMs = clipDurationMs,
                     fadeInMs = fadeInMs,
                     fadeOutMs = fadeOutMs,
@@ -147,13 +182,6 @@ internal class ClipGainAudioProcessor(
         output.flip()
     }
 
-    private fun framePositionToMs(frame: Long, sampleRate: Int): Long {
-        val rate = sampleRate.toLong()
-        val wholeSeconds = frame / rate
-        val remainderFrames = frame % rate
-        if (wholeSeconds > Long.MAX_VALUE / 1_000L) return Long.MAX_VALUE
-        return wholeSeconds * 1_000L + remainderFrames * 1_000L / rate
-    }
 }
 
 /** Builds the per-item Transformer processor chain. Unity gain without fades needs no work. */
