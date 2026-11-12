@@ -342,6 +342,16 @@ class TimelineMathTest {
     }
 
     @Test
+    fun trimRequiresReadableSourceThatStillContainsSavedRange() {
+        assertTrue(isClipRangeWithinSourceDuration(10_000L, 1_000L, 9_000L))
+        assertTrue(isClipRangeWithinSourceDuration(9_000L, 1_000L, 9_000L))
+        assertFalse(isClipRangeWithinSourceDuration(null, 1_000L, 9_000L))
+        assertFalse(isClipRangeWithinSourceDuration(8_999L, 1_000L, 9_000L))
+        assertFalse(isClipRangeWithinSourceDuration(10_000L, -1L, 9_000L))
+        assertFalse(isClipRangeWithinSourceDuration(10_000L, 9_000L, 9_000L))
+    }
+
+    @Test
     fun trimRangeClampsBothHandlesToTheOriginalSourceDuration() {
         assertEquals(
             ClipRange(0L, 9_000L),
