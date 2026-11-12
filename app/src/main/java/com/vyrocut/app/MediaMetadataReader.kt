@@ -1,6 +1,8 @@
 package com.vyrocut.app
 
 import android.content.ContentResolver
+import android.content.Context
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
 
@@ -15,4 +17,22 @@ object MediaMetadataReader {
 
     fun mimeType(contentResolver: ContentResolver, uri: Uri): String? =
         contentResolver.getType(uri)
+
+    /**
+     * Reads duration without retaining a native retriever. Call from Dispatchers.IO:
+     * document providers may perform disk or cloud-backed work while opening a URI.
+     */
+    fun videoDurationMs(context: Context, uri: Uri): Long? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(context, uri)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+                ?.takeIf { it > 0L }
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }
 }
