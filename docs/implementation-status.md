@@ -3,8 +3,8 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The latest verified code revision before this update was `7eae0c0231a7fb0acd6165dcb9c24de363922b70` (run [43128381476](https://github.com/Konodio-da-da/VyroCut/actions/runs/43128381476)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- That revision's 24 timeline-domain unit tests passed as part of `testDebugUnitTest`. The current preview-position persistence changes add five more unit tests and are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- The latest verified code revision before the current export-validation work was `cc942221ee1d7098f9ae8697c4381c403df8739e` (run [43129792010](https://github.com/Konodio-da-da/VyroCut/actions/runs/43129792010)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
+- That revision's 29 timeline-domain unit tests passed. Seven new export-validation rule tests have been added since then; the latest export changes are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -36,7 +36,10 @@
 
 ## Implemented in code; awaiting verification
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
-- Before publishing, the completed file is checked for a non-empty MP4, a readable video track, and at least one video sample. This is a container/track check, not a substitute for decoding and watching the exported file on an Android device.
+- Before publishing, the latest export path demuxes the complete output, counts readable video/audio samples, compares the video duration against the expected project timeline, and requires audio samples when any source clip has an audio track.
+- Export validation and MediaStore copying run on an IO dispatcher rather than the Compose UI thread. A per-export session token invalidates late completion callbacks after cancellation, preventing a cancelled render from being published.
+- Seven pure Kotlin tests cover missing video/audio samples, duration mismatch, video-only sources, and frame-boundary tolerance.
+- These checks validate container demuxing and track/sample presence; they do not prove every frame/audio packet decodes cleanly or that the exported file plays correctly on a physical device.
 - The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
 - Media3 preview errors are surfaced in the editor status line instead of failing silently.
 
