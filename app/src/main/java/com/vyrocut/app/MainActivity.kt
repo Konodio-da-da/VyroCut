@@ -9,11 +9,8 @@ import android.media.MediaCodec
 import android.media.MediaFormat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.content.ContentValues
 import android.os.Environment
-import android.provider.MediaStore
 import java.io.File
-import java.io.FileInputStream
 import java.security.MessageDigest
 import java.nio.ByteOrder
 import androidx.activity.ComponentActivity
@@ -73,6 +70,7 @@ import org.json.JSONObject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 private val StudioBackground = Color(0xFF111313)
 private val StudioPanel = Color(0xFF1C2221)
@@ -103,6 +101,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
+    val exportScope = rememberCoroutineScope()
     val lifecycleOwner = LocalLifecycleOwner.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
     val projects = remember { mutableStateListOf<ProjectInfo>().apply { addAll(loadProjectIndex(preferences)) } }
@@ -124,6 +123,8 @@ private fun VyroCutApp() {
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var exportedUri by remember { mutableStateOf<Uri?>(null) }
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
+    var activeExportFile by remember { mutableStateOf<File?>(null) }
+    var exportSessionId by remember { mutableStateOf<String?>(null) }
     val selectedClip = clips.getOrNull(selectedIndex)
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
@@ -674,7 +675,11 @@ private fun VyroCutApp() {
                                     ?: File(context.filesDir, "Movies")
                                 val outputDirectory = File(outputRoot, "VyroCut").apply { mkdirs() }
                                 val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
-                                val editedItems = clips.map { clip ->
+                                val exportSession = java.util.UUID.randomUUID().toString()
+                                val exportClips = clips.toList()
+                                val sourceUris = exportClips.map { it.uri }
+                                val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
+                                val editedItems = exportClips.map { clip ->
                                     val source = MediaItem.Builder()
                                         .setUri(Uri.parse(clip.uri))
                                         .setClippingConfiguration(
@@ -692,59 +697,73 @@ private fun VyroCutApp() {
                                 val transformer = Transformer.Builder(context)
                                     .addListener(object : Transformer.Listener {
                                         override fun onCompleted(composition: Composition, result: ExportResult) {
-                                            isExporting = false
-                                            activeTransformer = null
-                                            var pendingDestination: Uri? = null
-                                            runCatching {
-                                                verifyExportedMp4(outputFile)
-                                                val values = ContentValues().apply {
-                                                    put(MediaStore.Video.Media.DISPLAY_NAME, outputFile.name)
-                                                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
-                                                    put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/VyroCut")
-                                                    put(MediaStore.Video.Media.IS_PENDING, 1)
-                                                }
-                                                pendingDestination = context.contentResolver.insert(
-                                                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values
-                                                ) ?: error("Could not create a Movies library entry")
-                                                context.contentResolver.openOutputStream(pendingDestination!!)?.use { output ->
-                                                    FileInputStream(outputFile).use { input -> input.copyTo(output) }
-                                                } ?: error("Could not write the exported video")
-                                                val publishedRows = context.contentResolver.update(
-                                                    pendingDestination!!,
-                                                    ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) },
-                                                    null,
-                                                    null
-                                                )
-                                                check(publishedRows > 0) { "Could not finish publishing the video" }
-                                                exportedUri = pendingDestination
-                                                exportMessage = "Export complete • Video track verified • Saved to Movies/VyroCut"
+                                            if (exportSessionId != exportSession) {
                                                 outputFile.delete()
-                                            }.onFailure { error ->
-                                                pendingDestination?.let { uri ->
-                                                    runCatching { context.contentResolver.delete(uri, null, null) }
+                                                return
+                                            }
+                                            exportScope.launch {
+                                                val publishResult = runCatching {
+                                                    withContext(Dispatchers.IO) {
+                                                        verifyExportedMp4(
+                                                            context = context,
+                                                            file = outputFile,
+                                                            sourceUris = sourceUris,
+                                                            expectedDurationMs = expectedDurationMs,
+                                                        )
+                                                        publishExportToMovies(context, outputFile)
+                                                    }
+                                                }
+                                                if (exportSessionId != exportSession) {
+                                                    publishResult.getOrNull()?.let { uri ->
+                                                        withContext(Dispatchers.IO) {
+                                                            runCatching { context.contentResolver.delete(uri, null, null) }
+                                                        }
+                                                    }
+                                                    outputFile.delete()
+                                                    return@launch
+                                                }
+                                                isExporting = false
+                                                activeTransformer = null
+                                                activeExportFile = null
+                                                exportSessionId = null
+                                                publishResult.onSuccess { uri ->
+                                                    exportedUri = uri
+                                                    exportMessage = "Export complete • Video/audio samples and duration verified • Saved to Movies/VyroCut"
+                                                }.onFailure { error ->
+                                                    exportedUri = null
+                                                    exportMessage = "Export verification or saving failed: ${error.message}"
                                                 }
                                                 outputFile.delete()
-                                                exportMessage = "Export verification or saving failed: ${error.message}"
                                             }
                                         }
                                         override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
-                                            isExporting = false
-                                            activeTransformer = null
-                                            exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
                                             outputFile.delete()
+                                            if (exportSessionId == exportSession) {
+                                                isExporting = false
+                                                activeTransformer = null
+                                                activeExportFile = null
+                                                exportSessionId = null
+                                                exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
+                                            }
                                         }
                                     }).build()
                                 activeTransformer = transformer
+                                activeExportFile = outputFile
+                                exportSessionId = exportSession
                                 exportedUri = null
                                 exportMessage = "Preparing MP4 export…"
                                 isExporting = true
                                 player.pause()
                                 runCatching { transformer.start(composition, outputFile.absolutePath) }
                                     .onFailure { error ->
-                                        isExporting = false
-                                        activeTransformer = null
+                                        if (exportSessionId == exportSession) {
+                                            isExporting = false
+                                            activeTransformer = null
+                                            activeExportFile = null
+                                            exportSessionId = null
+                                            exportMessage = "Could not start export: ${error.message}"
+                                        }
                                         outputFile.delete()
-                                        exportMessage = "Could not start export: ${error.message}"
                                     }
                             }
                         },
@@ -756,9 +775,12 @@ private fun VyroCutApp() {
                     }
                     if (isExporting) {
                         OutlinedButton(onClick = {
+                            exportSessionId = null
                             activeTransformer?.cancel()
-                            isExporting = false
                             activeTransformer = null
+                            activeExportFile?.delete()
+                            activeExportFile = null
+                            isExporting = false
                             exportMessage = "Export cancelled"
                         }) {
                             Text("Cancel")
