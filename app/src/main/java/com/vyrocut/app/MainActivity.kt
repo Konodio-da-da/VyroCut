@@ -58,6 +58,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.util.UnstableApi
@@ -234,6 +235,10 @@ private fun VyroCutApp() {
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
             }
+            override fun onPlayerError(error: PlaybackException) {
+                isPlaying = false
+                exportMessage = "Preview failed: ${error.errorCodeName}"
+            }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
                 val activeIndex = player.currentMediaItemIndex
                 if (activeIndex >= 0) selectedIndex = activeIndex
@@ -392,8 +397,9 @@ private fun VyroCutApp() {
                 0L,
                 duration
             )
-            changed(clips + importedClip)
-            selectedIndex = clips.lastIndex
+            val appendResult = appendTimelineItemAndSelect(clips, importedClip)
+            changed(appendResult.items)
+            selectedIndex = appendResult.selectedIndex
             exportMessage = "Imported $name"
         }
     }
