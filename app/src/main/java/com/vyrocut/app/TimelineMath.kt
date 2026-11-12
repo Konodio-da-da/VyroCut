@@ -309,6 +309,33 @@ internal fun resolvePlaybackRestoreTarget(
 }
 
 
+/**
+ * Moves the project playhead by a signed delta and resolves the result to a
+ * Media3 playlist item. Seeking is project-wide, so crossing a clip boundary
+ * naturally lands in the adjacent item. The final position stays on a playable
+ * millisecond rather than seeking beyond the playlist.
+ */
+internal fun resolveTimelineSeekTargetAfterDelta(
+    clipDurationsMs: List<Long>,
+    currentTimelinePositionMs: Long,
+    deltaMs: Long,
+): TimelineSeekTarget? {
+    val totalDurationMs = calculateTimelineDurationMs(clipDurationsMs)
+    if (totalDurationMs <= 0L) return null
+
+    val current = currentTimelinePositionMs.coerceIn(0L, totalDurationMs - 1L)
+    val requested = if (deltaMs >= 0L) {
+        addWithoutOverflow(current, deltaMs)
+    } else {
+        val magnitude = if (deltaMs == Long.MIN_VALUE) Long.MAX_VALUE else -deltaMs
+        (current - magnitude).coerceAtLeast(0L)
+    }
+    return resolveTimelineSeekTarget(
+        clipDurationsMs,
+        requested.coerceIn(0L, totalDurationMs - 1L),
+    )
+}
+
 /** Computes total timeline length without overflowing when adding clip durations. */
 internal fun calculateTimelineDurationMs(clipDurationsMs: List<Long>): Long =
     clipDurationsMs.fold(0L) { total, duration ->
