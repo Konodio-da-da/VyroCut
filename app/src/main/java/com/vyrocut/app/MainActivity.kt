@@ -20,7 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -65,9 +65,11 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
+import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
@@ -1908,7 +1910,7 @@ private fun TimelineEditorStrip(
             Spacer(Modifier.width(8.dp))
             Text("Main track", color = StudioMuted, fontSize = 9.sp)
             Spacer(Modifier.weight(1f))
-            Text("Swipe timeline", color = StudioMuted, fontSize = 9.sp)
+            Text("Tap to seek • hold to scrub", color = StudioMuted, fontSize = 9.sp)
         }
 
         // Ruler, video and audio are children of the same scrolling viewport.
@@ -1976,7 +1978,7 @@ private fun TimelineEditorStrip(
                         }
                     }
                     .pointerInput(timelineClipDurationsMs, clipWidthsPx, gapPx, timelineScroll) {
-                        detectDragGestures(
+                        detectDragGesturesAfterLongPress(
                             onDragStart = { position ->
                                 resolveTimelineSeekTargetAtOffsetPx(
                                     timelineClipDurationsMs,
