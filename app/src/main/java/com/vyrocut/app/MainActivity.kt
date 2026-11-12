@@ -709,6 +709,52 @@ private fun VyroCutApp() {
                             contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
                         ) { Text(if (isReadingMedia) "Reading…" else "Relink", fontSize = 11.sp) }
                     }
+                    IconButton(
+                        onClick = {
+                            resolveTimelineSeekTargetAfterDelta(
+                                clipDurationsMs,
+                                timelinePositionMs.toLong(),
+                                -5_000L,
+                            )?.let { target ->
+                                selectedIndex = target.clipIndex
+                                player.seekTo(target.clipIndex, target.positionMs)
+                                timelinePositionMs = calculateTimelinePositionMs(
+                                    clipDurationsMs,
+                                    target.clipIndex,
+                                    target.positionMs,
+                                ).toFloat()
+                                clips.getOrNull(target.clipIndex)?.let { clip ->
+                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
+                                }
+                            }
+                        },
+                        enabled = clips.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back 5 seconds", tint = StudioAccent)
+                    }
+                    IconButton(
+                        onClick = {
+                            resolveTimelineSeekTargetAfterDelta(
+                                clipDurationsMs,
+                                timelinePositionMs.toLong(),
+                                5_000L,
+                            )?.let { target ->
+                                selectedIndex = target.clipIndex
+                                player.seekTo(target.clipIndex, target.positionMs)
+                                timelinePositionMs = calculateTimelinePositionMs(
+                                    clipDurationsMs,
+                                    target.clipIndex,
+                                    target.positionMs,
+                                ).toFloat()
+                                clips.getOrNull(target.clipIndex)?.let { clip ->
+                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
+                                }
+                            }
+                        },
+                        enabled = clips.isNotEmpty(),
+                    ) {
+                        Icon(Icons.Default.ArrowForward, contentDescription = "Forward 5 seconds", tint = StudioAccent)
+                    }
                     FilledTonalButton(onClick = {
                         if (player.isPlaying) {
                             clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
