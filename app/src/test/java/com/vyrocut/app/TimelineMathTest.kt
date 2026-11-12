@@ -226,4 +226,21 @@ class TimelineMathTest {
         )
     }
 
+
+    @Test
+    fun appendingToEmptyTimelineSelectsTheFirstClip() {
+        assertEquals(
+            TimelineAppendResult(listOf("first"), 0),
+            appendTimelineItemAndSelect(emptyList(), "first"),
+        )
+    }
+
+    @Test
+    fun appendingToPopulatedTimelinePreservesOrderAndSelectsNewClip() {
+        assertEquals(
+            TimelineAppendResult(listOf("a", "b", "c"), 2),
+            appendTimelineItemAndSelect(listOf("a", "b"), "c"),
+        )
+    }
+
 }
