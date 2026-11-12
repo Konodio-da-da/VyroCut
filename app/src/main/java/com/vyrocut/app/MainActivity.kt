@@ -114,6 +114,8 @@ private fun VyroCutApp() {
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedEffect by remember { mutableStateOf("Edge Glow") }
     var effectIntensity by remember { mutableFloatStateOf(0.65f) }
+    var canvasAspectRatio by remember { mutableFloatStateOf(9f / 16f) }
+    var canvasBackground by remember { mutableStateOf(Color.Black) }
     var showProjects by remember { mutableStateOf(false) }
     var showTrimMenu by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
@@ -596,7 +598,7 @@ private fun VyroCutApp() {
                     }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
-                Box(Modifier.fillMaxWidth().height(280.dp).background(Color.Black, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+                Box(Modifier.fillMaxWidth().height(280.dp).background(canvasBackground, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
                     if (selectedClip == null) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(42.dp))
@@ -609,7 +611,7 @@ private fun VyroCutApp() {
                                 useController = true
                             } },
                             update = { it.player = player },
-                            modifier = Modifier.fillMaxHeight().aspectRatio(9f / 16f)
+                            modifier = Modifier.fillMaxHeight().aspectRatio(canvasAspectRatio)
                         )
                     }
                 }
@@ -844,6 +846,33 @@ private fun VyroCutApp() {
                     activeTool = activeTool,
                     onToolSelected = { activeTool = it }
                 )
+                if (activeTool == "Ratio" || activeTool == "Canvas") {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(if (activeTool == "Ratio") "ASPECT RATIO" else "CANVAS BACKGROUND", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (activeTool == "Ratio") {
+                                listOf("9:16" to (9f / 16f), "16:9" to (16f / 9f), "1:1" to 1f).forEach { (label, ratio) ->
+                                    FilterChip(
+                                        selected = canvasAspectRatio == ratio,
+                                        onClick = { canvasAspectRatio = ratio },
+                                        label = { Text(label) }
+                                    )
+                                }
+                            } else {
+                                listOf("Black" to Color.Black, "Dark" to Color(0xFF202322), "White" to Color.White).forEach { (label, color) ->
+                                    FilterChip(
+                                        selected = canvasBackground == color,
+                                        onClick = { canvasBackground = color },
+                                        label = { Text(label) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
                 if (activeTool == "Effects" || activeTool == "Filters" || activeTool == "Adjust") {
                     Column(
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(12.dp),
