@@ -20,6 +20,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +48,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -869,11 +873,16 @@ private fun VyroCutApp() {
                     clips = clips,
                     selectedIndex = selectedIndex,
                     playheadPositionMs = timelinePositionMs.toLong(),
-                    onSelectClip = { index ->
-                        selectedIndex = index
-                        clips.getOrNull(index)?.let { clip ->
-                            player.seekTo(index, 0L)
-                            savePreviewPosition(preferences, activeProjectId, clip, 0L)
+                    onSeek = { target ->
+                        selectedIndex = target.clipIndex
+                        player.seekTo(target.clipIndex, target.positionMs)
+                        timelinePositionMs = calculateTimelinePositionMs(
+                            clipDurationsMs,
+                            target.clipIndex,
+                            target.positionMs,
+                        ).coerceIn(0L, timelineDurationMs).toFloat()
+                        clips.getOrNull(target.clipIndex)?.let { clip ->
+                            savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
                         }
                     }
                 )
@@ -1859,18 +1868,21 @@ private fun TimelineEditorStrip(
     clips: List<EditClip>,
     selectedIndex: Int,
     playheadPositionMs: Long,
-    onSelectClip: (Int) -> Unit,
+    onSeek: (TimelineSeekTarget) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
     // can fight over viewport measurements on smaller devices.
     val timelineScroll = rememberScrollState()
+    val density = LocalDensity.current
     val pixelsPerSecond = 24f
     val gap = 6f
     val clipWidths = clips.map { (it.durationMs / 1000f * pixelsPerSecond).coerceIn(120f, 320f) }
     val totalWidthPx = (clipWidths.sum() + (clips.size - 1).coerceAtLeast(0) * gap).coerceAtLeast(1f)
     val totalWidth = totalWidthPx.dp
     val timelineClipDurationsMs = clips.map { it.durationMs }
+    val clipWidthsPx = with(density) { clipWidths.map { it.dp.toPx() } }
+    val gapPx = with(density) { gap.dp.toPx() }
     val totalDuration = calculateTimelineDurationMs(timelineClipDurationsMs).coerceAtLeast(1L)
     val markerX = calculateTimelinePlayheadOffsetPx(
         clipDurationsMs = timelineClipDurationsMs,
@@ -1929,7 +1941,6 @@ private fun TimelineEditorStrip(
                     Column(
                         Modifier.width(clipWidths[index].dp)
                             .background(if (index == selectedIndex) Color(0xFF16483D) else Color(0xFF252A28), RoundedCornerShape(5.dp))
-                            .clickable { onSelectClip(index) }
                             .padding(3.dp)
                     ) {
                         Box(Modifier.fillMaxWidth().height(38.dp)) {
@@ -1949,6 +1960,43 @@ private fun TimelineEditorStrip(
             }
             Box(Modifier.offset(x = markerX.dp).width(2.dp).height(60.dp).background(StudioAccent))
             Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
+            // The overlay makes the entire video strip a direct-manipulation
+            // scrub surface. Dragging and tapping use the same pixel-to-time map.
+            val latestOnSeek by rememberUpdatedState(onSeek)
+            Box(
+                Modifier.fillMaxSize()
+                    .pointerInput(timelineClipDurationsMs, clipWidthsPx, gapPx, timelineScroll) {
+                        detectTapGestures { position ->
+                            resolveTimelineSeekTargetAtOffsetPx(
+                                timelineClipDurationsMs,
+                                clipWidthsPx,
+                                timelineScroll.value + position.x,
+                                gapPx,
+                            )?.let(latestOnSeek)
+                        }
+                    }
+                    .pointerInput(timelineClipDurationsMs, clipWidthsPx, gapPx, timelineScroll) {
+                        detectDragGestures(
+                            onDragStart = { position ->
+                                resolveTimelineSeekTargetAtOffsetPx(
+                                    timelineClipDurationsMs,
+                                    clipWidthsPx,
+                                    timelineScroll.value + position.x,
+                                    gapPx,
+                                )?.let(latestOnSeek)
+                            },
+                            onDrag = { change, _ ->
+                                change.consume()
+                                resolveTimelineSeekTargetAtOffsetPx(
+                                    timelineClipDurationsMs,
+                                    clipWidthsPx,
+                                    timelineScroll.value + change.position.x,
+                                    gapPx,
+                                )?.let(latestOnSeek)
+                            },
+                        )
+                    }
+            )
         }
 
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
@@ -1961,7 +2009,7 @@ private fun TimelineEditorStrip(
                 Box(
                     Modifier.width(clipWidths[index].dp).height(26.dp)
                         .background(if (index == selectedIndex) Color(0xFF1B4239) else Color(0xFF172C28), RoundedCornerShape(4.dp))
-                        .clickable { onSelectClip(index) }.padding(horizontal = 5.dp),
+                        .padding(horizontal = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     AudioWaveform(clip, Modifier.fillMaxWidth().height(20.dp))
