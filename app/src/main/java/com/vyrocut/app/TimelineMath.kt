@@ -109,6 +109,25 @@ internal fun splitClipRange(
     return ClipRange(sourceStartMs, splitPositionMs) to ClipRange(splitPositionMs, sourceEndMs)
 }
 
+/**
+ * Splits at the active Media3 item's current position. The player position is
+ * relative to the clipped item, while the edit decision list stores source time.
+ */
+internal fun splitClipRangeAtPlaybackPosition(
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    playbackPositionMs: Long,
+): Pair<ClipRange, ClipRange>? {
+    if (sourceStartMs < 0L || sourceEndMs <= sourceStartMs) return null
+    val sourceDurationMs = sourceEndMs - sourceStartMs
+    if (playbackPositionMs <= 0L || playbackPositionMs >= sourceDurationMs) return null
+    return splitClipRange(
+        sourceStartMs = sourceStartMs,
+        sourceEndMs = sourceEndMs,
+        splitPositionMs = sourceStartMs + playbackPositionMs,
+    )
+}
+
 /** Trims one edge without mutating the source file or allowing an empty segment. */
 internal fun trimClipRange(
     sourceStartMs: Long,
