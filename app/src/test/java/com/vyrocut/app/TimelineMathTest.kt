@@ -129,6 +129,21 @@ class TimelineMathTest {
     }
 
     @Test
+    fun splitAtPlaybackPositionConvertsClipRelativeTimeToSourceTime() {
+        assertEquals(
+            ClipRange(5_000L, 6_750L) to ClipRange(6_750L, 9_000L),
+            splitClipRangeAtPlaybackPosition(5_000L, 9_000L, 1_750L),
+        )
+    }
+
+    @Test
+    fun splitAtPlaybackPositionRejectsTheClipEdges() {
+        assertNull(splitClipRangeAtPlaybackPosition(5_000L, 9_000L, 0L))
+        assertNull(splitClipRangeAtPlaybackPosition(5_000L, 9_000L, 4_000L))
+        assertNull(splitClipRangeAtPlaybackPosition(5_000L, 9_000L, -1L))
+    }
+
+    @Test
     fun trimStartMovesOnlyTheSourceInPoint() {
         assertEquals(
             ClipRange(2_000L, 4_000L),
