@@ -3,8 +3,8 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The latest verified code revision before this update was `bdf06fb578f7d0f1a912d5dddb7034115f80c45d` (run [43122179138](https://github.com/Konodio-da-da/VyroCut/actions/runs/43122179138)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- The revision's 24 timeline-domain unit tests passed as part of `testDebugUnitTest`. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- The latest verified code revision before this update was `7eae0c0231a7fb0acd6165dcb9c24de363922b70` (run [43128381476](https://github.com/Konodio-da-da/VyroCut/actions/runs/43128381476)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
+- That revision's 24 timeline-domain unit tests passed as part of `testDebugUnitTest`. The current preview-position persistence changes add five more unit tests and are awaiting their own CI run. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -31,6 +31,8 @@
 - Project edit decisions autosaved locally in app preferences.
 - Rebuilding the Media3 playlist after a timeline edit preserves the active clip's source-time playhead when that clip remains in the project; reorders and trims no longer automatically jump playback back to the beginning. If the active clip is removed, playback falls back to the selected remaining clip. Switching projects starts the new project at its beginning.
 - Playback restoration is isolated in pure Kotlin and covered by tests for reordering, trim-start/trim-end clamping, deleted clips, and empty projects.
+- Each project now remembers its preview location by stable clip ID and absolute source timestamp. The preview location is checkpointed during playback and on timeline seeks, clip changes, manual pause, and app backgrounding; reopening or switching back to a project restores the saved location and clamps it if the source range was trimmed.
+- Saved preview restoration is covered by five additional timeline-domain tests (29 total); the new code is awaiting GitHub Actions verification.
 
 ## Implemented in code; awaiting verification
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
