@@ -220,6 +220,31 @@ class ClipAudioSettingsTest {
         }
     }
 
+    @Test
+    fun visualAdjustmentValuesAreBoundedAndLegacyDefaultsAreNeutral() {
+        assertTrue(isValidClipVisualAdjustments(0, 0, 0))
+        assertTrue(isValidClipVisualAdjustments(-100, 100, -100))
+        assertFalse(isValidClipVisualAdjustments(-101, 0, 0))
+        assertFalse(isValidClipVisualAdjustments(0, 101, 0))
+        assertFalse(isValidClipVisualAdjustments(0, 0, 101))
+        assertEquals(ClipVisualAdjustments(), decodeClipVisualAdjustments(0, 0, 0))
+        assertEquals(null, decodeClipVisualAdjustments(101, 0, 0))
+    }
+
+    @Test
+    fun buildsOnlyTheRequestedMedia3ColourEffects() {
+        assertTrue(createClipVisualEffects(ClipVisualAdjustments()).isEmpty())
+
+        val effects = createClipVisualEffects(
+            ClipVisualAdjustments(brightness = 35, contrast = -20, saturation = 55),
+        )
+
+        assertEquals(3, effects.size)
+        assertTrue(effects[0] is androidx.media3.effect.Brightness)
+        assertTrue(effects[1] is androidx.media3.effect.Contrast)
+        assertTrue(effects[2] is androidx.media3.effect.HslAdjustment)
+    }
+
     private fun processPcm(
         samples: ShortArray,
         volume: Float,
