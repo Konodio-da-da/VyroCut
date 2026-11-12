@@ -27,6 +27,9 @@ internal data class ExportClipRequirement(
 internal data class ExportSourceMetadata(
     val durationMs: Long?,
     val hasVideoTrack: Boolean,
+    val videoWidthPx: Int? = null,
+    val videoHeightPx: Int? = null,
+    val videoRotationDegrees: Int = 0,
 )
 
 /**
@@ -37,6 +40,7 @@ internal data class ExportSourceMetadata(
 internal fun validateExportPreflight(
     clips: List<ExportClipRequirement>,
     sources: Map<String, ExportSourceMetadata>,
+    requireVideoDimensions: Boolean = false,
 ): String? {
     if (clips.isEmpty()) return "The project has no clips to export"
 
@@ -56,6 +60,11 @@ internal fun validateExportPreflight(
         val sourceDurationMs = source.durationMs?.takeIf { it > 0L }
             ?: return "Could not read the duration of $label's source video"
         if (!source.hasVideoTrack) return "$label's source has no readable video track"
+        if (requireVideoDimensions &&
+            ((source.videoWidthPx ?: 0) <= 0 || (source.videoHeightPx ?: 0) <= 0)
+        ) {
+            return "$label's video dimensions are unavailable for the selected canvas background"
+        }
         if (clip.sourceEndMs > sourceDurationMs) {
             return "$label's trim extends beyond its source video"
         }

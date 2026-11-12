@@ -1053,9 +1053,13 @@ private fun VyroCutApp() {
                             if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
                                 val exportSession = java.util.UUID.randomUUID().toString()
                                 val exportClips = clips.toList()
-                                val exportCanvasSize = exportCanvasSizeForPreset(
-                                    projectCanvasSettingsFor(canvasAspectRatio, canvasBackground).aspectRatioPreset,
+                                val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
+                                val exportCanvasSize = exportCanvasSizeForPreset(exportCanvasSettings.aspectRatioPreset)
+                                val exportBackgroundArgb = exportCanvasBackgroundArgbForPreset(
+                                    exportCanvasSettings.backgroundPreset,
                                 )
+                                val requiresCustomLetterboxBackground =
+                                    exportCanvasSettings.backgroundPreset != "BLACK"
                                 val exportRequirements = exportClips.map { clip ->
                                     ExportClipRequirement(
                                         id = clip.id,
@@ -1072,10 +1076,14 @@ private fun VyroCutApp() {
                                 exportMessage = "Checking source videos…"
 
                                 exportScope.launch exportPreparation@ {
-                                    val preflightError = withContext(Dispatchers.IO) {
-                                        val sourceMetadata = inspectExportSources(context, exportRequirements)
-                                        validateExportPreflight(exportRequirements, sourceMetadata)
+                                    val sourceMetadata = withContext(Dispatchers.IO) {
+                                        inspectExportSources(context, exportRequirements)
                                     }
+                                    val preflightError = validateExportPreflight(
+                                        exportRequirements,
+                                        sourceMetadata,
+                                        requireVideoDimensions = requiresCustomLetterboxBackground,
+                                    )
                                     if (exportSessionId != exportSession) return@exportPreparation
                                     if (preflightError != null) {
                                         isExporting = false
@@ -1106,19 +1114,26 @@ private fun VyroCutApp() {
                                                         .setEndPositionMs(clip.sourceEndMs)
                                                         .build()
                                                 ).build()
-                                            EditedMediaItem.Builder(source)
-                                                .setEffects(
-                                                    Effects(
-                                                        emptyList(),
-                                                        listOf(
-                                                            Presentation.createForWidthAndHeight(
-                                                                exportCanvasSize.widthPx,
-                                                                exportCanvasSize.heightPx,
-                                                                Presentation.LAYOUT_SCALE_TO_FIT,
-                                                            ),
-                                                        ),
-                                                    ),
+                                            val videoEffects = mutableListOf<androidx.media3.common.Effect>()
+                                            videoEffects += Presentation.createForWidthAndHeight(
+                                                exportCanvasSize.widthPx,
+                                                exportCanvasSize.heightPx,
+                                                Presentation.LAYOUT_SCALE_TO_FIT,
+                                            )
+                                            if (requiresCustomLetterboxBackground) {
+                                                val metadata = sourceMetadata[clip.uri]
+                                                    ?: error("Could not read source dimensions for ${clip.name}")
+                                                videoEffects += createLetterboxBackgroundEffect(
+                                                    sourceWidthPx = metadata.videoWidthPx
+                                                        ?: error("Could not read source width for ${clip.name}"),
+                                                    sourceHeightPx = metadata.videoHeightPx
+                                                        ?: error("Could not read source height for ${clip.name}"),
+                                                    sourceRotationDegrees = metadata.videoRotationDegrees,
+                                                    backgroundColorArgb = exportBackgroundArgb,
                                                 )
+                                            }
+                                            EditedMediaItem.Builder(source)
+                                                .setEffects(Effects(emptyList(), videoEffects))
                                                 .build()
                                         }
                                         // Media3 1.5.1 exposes the list-based sequence builder.
