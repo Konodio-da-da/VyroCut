@@ -472,7 +472,11 @@ private fun VyroCutApp() {
     val backupExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "VyroCut project"
-            val backup = encodeProjectBackup(projectName, clips)
+            val backup = encodeProjectBackup(
+                projectName,
+                clips,
+                projectCanvasSettingsFor(canvasAspectRatio, canvasBackground),
+            )
             val result = runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
                     ?: error("Could not open the backup destination")
@@ -491,6 +495,12 @@ private fun VyroCutApp() {
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
                 persistProjectWithRecovery(preferences, imported.id, imported.name, backup.clips)
+                preferences.edit()
+                    .putString(
+                        "project_" + imported.id + "_canvas_settings",
+                        encodeProjectCanvasSettings(backup.canvasSettings),
+                    )
+                    .apply()
                 switchProject(imported)
                 showProjects = false
                 exportMessage = "Restored ${imported.name} (${backup.clips.size} clips)"
@@ -1575,26 +1585,38 @@ private fun encodeProject(clips: List<EditClip>): String {
     return array.toString()
 }
 
-private data class ProjectBackup(val name: String, val clips: List<EditClip>)
+private data class ProjectBackup(
+    val name: String,
+    val clips: List<EditClip>,
+    val canvasSettings: ProjectCanvasSettings,
+)
 
-private fun encodeProjectBackup(name: String, clips: List<EditClip>): String =
+private fun encodeProjectBackup(
+    name: String,
+    clips: List<EditClip>,
+    canvasSettings: ProjectCanvasSettings,
+): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 1)
+        put("version", 2)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
+        put("canvasSettings", encodeProjectCanvasSettings(canvasSettings))
     }.toString(2)
 
 private fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
-    require(root.getInt("version") == 1) { "Unsupported backup version" }
+    val version = root.getInt("version")
+    require(version == 1 || version == 2) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
     require(clips.size == clipsJson.length()) { "The backup contains invalid clip entries" }
-    return ProjectBackup(name, clips)
+    val canvasSettings = decodeProjectCanvasSettings(root.optString("canvasSettings", ""))
+        ?: ProjectCanvasSettings()
+    return ProjectBackup(name, clips, canvasSettings)
 }
 
 private fun saveProjectHistory(
