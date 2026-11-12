@@ -1053,6 +1053,9 @@ private fun VyroCutApp() {
                             if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
                                 val exportSession = java.util.UUID.randomUUID().toString()
                                 val exportClips = clips.toList()
+                                val exportCanvasSize = exportCanvasSizeForPreset(
+                                    projectCanvasSettingsFor(canvasAspectRatio, canvasBackground).aspectRatioPreset,
+                                )
                                 val exportRequirements = exportClips.map { clip ->
                                     ExportClipRequirement(
                                         id = clip.id,
@@ -1103,7 +1106,20 @@ private fun VyroCutApp() {
                                                         .setEndPositionMs(clip.sourceEndMs)
                                                         .build()
                                                 ).build()
-                                            EditedMediaItem.Builder(source).build()
+                                            EditedMediaItem.Builder(source)
+                                                .setEffects(
+                                                    Effects(
+                                                        emptyList(),
+                                                        listOf(
+                                                            Presentation.createForWidthAndHeight(
+                                                                exportCanvasSize.widthPx,
+                                                                exportCanvasSize.heightPx,
+                                                                Presentation.LAYOUT_SCALE_TO_FIT,
+                                                            ),
+                                                        ),
+                                                    ),
+                                                )
+                                                .build()
                                         }
                                         // Media3 1.5.1 exposes the list-based sequence builder.
                                         @Suppress("DEPRECATION")
@@ -1131,6 +1147,7 @@ private fun VyroCutApp() {
                                                                     file = outputFile,
                                                                     sourceUris = sourceUris,
                                                                     expectedDurationMs = expectedDurationMs,
+                                                                    expectedCanvasSize = exportCanvasSize,
                                                                 )
                                                                 publishExportToMovies(context, outputFile)
                                                             }
