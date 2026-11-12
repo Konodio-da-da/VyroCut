@@ -2,9 +2,10 @@
 
 ## Last verified build
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- Branch head `f96cde791ea923c0399c26bbc3097d3d96596887` passed both tasks in [run 43150197626](https://github.com/Konodio-da-da/VyroCut/actions/runs/43150197626); the debug APK artifact was uploaded.
-- All 46 tests passed on that revision (35 timeline-domain tests, 7 export-validation rule tests, and 4 media-relinking tests).
+- Branch head `175888447af2db0a9f884884ceaeb6a3e85cafe2` passed both tasks in [run 43156283559](https://github.com/Konodio-da-da/VyroCut/actions/runs/43156283559); the debug APK artifact was uploaded.
+- All 51 tests passed on that revision (35 timeline-domain tests, 7 export-validation rule tests, 4 media-relinking tests, and 5 recovery-journal tests).
 - CI confirms Android compilation and unit tests; it does not replace physical-device playback or a full exported-file decode/playback test.
+- The next revision adds playhead-based splitting and stricter project-history decoding; its CI result is pending.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -24,7 +25,9 @@
 - Importing a clip selects the newly appended segment, including when importing into an empty project; the selected index is calculated from the pre-append list size rather than the stale Compose state.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
-- Split selected segments at their midpoint while preserving left-to-right source order.
+- Split the selected segment at the active Media3 playhead, converting clip-relative playback time to source time; the left segment retains its stable ID and the right segment becomes selected at the split boundary.
+- Project and undo/redo snapshots are decoded strictly. Corrupt history entries are skipped instead of being interpreted as valid empty projects; an intentionally empty project remains a valid undo state.
+- History decoding retains the newest 50 valid snapshots.
 - Move the selected clip earlier or later in the ordered timeline without changing its source range.
 - Duplicate a selected segment as a separate edit-decision-list entry while retaining the same source URI and in/out points.
 - Trim either the selected segment's start or end by one second without modifying source media.
@@ -54,7 +57,7 @@
 - At startup, a valid journal is offered only when the primary project value is missing or differs. The user can recover the saved clip list or dismiss that exact checkpoint; a later save clears the dismissal.
 - Recovery validates every clip entry strictly before replacing project data, preserving the current project if the checkpoint is malformed.
 - Five pure Kotlin tests cover Unicode round-tripping, truncation/tampering, project isolation, mismatch detection, and identical-checkpoint suppression.
-- This protects the last persisted edit list if the primary preference value is damaged or lost. It does not recover edits that had not yet been saved, source media bytes, or interrupted Transformer exports.
+- This protects the last persisted edit list if the primary project preference value is damaged or lost. The journal is stored as a separate key in the same SharedPreferences file, so it does not survive loss of the entire preference file. It does not recover edits that had not yet been saved, source media bytes, or interrupted Transformer exports.
 - Physical-device validation of continuous multi-clip playback, source relinking, and actual MP4 decoding/audio continuity.
 - Recovery of unpersisted in-memory edits and interrupted Transformer exports; the current journal protects the last persisted project edit list only.
 - Audio, image, text, transitions, and effects tracks.
