@@ -97,6 +97,7 @@ internal data class EditClip(
     val audioVolume: Float = DEFAULT_CLIP_AUDIO_VOLUME,
     val fadeInMs: Long = 0L,
     val fadeOutMs: Long = 0L,
+    val visualAdjustments: ClipVisualAdjustments = ClipVisualAdjustments(),
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
@@ -175,6 +176,15 @@ private fun VyroCutApp() {
     }
     var clipFadeOutDraft by remember(selectedClip?.id, selectedClip?.fadeOutMs, selectedClip?.durationMs) {
         mutableFloatStateOf(selectedClip?.fadeOutMs?.toFloat() ?: 0f)
+    }
+    var clipBrightnessDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.brightness) {
+        mutableFloatStateOf(selectedClip?.visualAdjustments?.brightness?.toFloat() ?: 0f)
+    }
+    var clipContrastDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.contrast) {
+        mutableFloatStateOf(selectedClip?.visualAdjustments?.contrast?.toFloat() ?: 0f)
+    }
+    var clipSaturationDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.saturation) {
+        mutableFloatStateOf(selectedClip?.visualAdjustments?.saturation?.toFloat() ?: 0f)
     }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
@@ -292,6 +302,7 @@ private fun VyroCutApp() {
             }
             player.playWhenReady = false
             val restoredClip = clips[restoreTarget.clipIndex]
+            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments))
             player.setVolume(
                 clipAudioPlaybackGain(
                     restoredClip.audioVolume,
@@ -368,6 +379,7 @@ private fun VyroCutApp() {
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         clips.getOrNull(position.clipIndex)?.let { clip ->
+            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments))
             player.setVolume(
                 clipAudioPlaybackGain(
                     clip.audioVolume,
@@ -518,6 +530,19 @@ private fun VyroCutApp() {
             this[selectedIndex] = clip.copy(fadeInMs = fadeInMs, fadeOutMs = fadeOutMs)
         })
         exportMessage = "Clip fades updated"
+    }
+    fun commitSelectedClipVisualAdjustments(
+        brightness: Int,
+        contrast: Int,
+        saturation: Int,
+    ) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val next = decodeClipVisualAdjustments(brightness, contrast, saturation) ?: return
+        if (clip.visualAdjustments == next) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(visualAdjustments = next)
+        })
+        exportMessage = "Clip colour adjustments updated"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -1047,7 +1072,12 @@ private fun VyroCutApp() {
                 }
                 VyroCutToolDock(
                     activeTool = activeTool,
-                    onToolSelected = { activeTool = it }
+                    onToolSelected = { tool ->
+                        activeTool = tool
+                        if (tool == "Adjust" && selectedEffect !in setOf("Brightness", "Contrast", "Saturation")) {
+                            selectedEffect = "Brightness"
+                        }
+                    }
                 )
                 if (activeTool == "Ratio" || activeTool == "Canvas") {
                     Column(
@@ -1091,7 +1121,7 @@ private fun VyroCutApp() {
                             when (activeTool) {
                                 "Effects" -> "VIDEO EFFECTS"
                                 "Filters" -> "FILTERS"
-                                else -> "ADJUST"
+                                else -> "CLIP ADJUSTMENTS"
                             },
                             color = StudioText,
                             fontSize = 11.sp,
@@ -1099,7 +1129,12 @@ private fun VyroCutApp() {
                             letterSpacing = 1.sp
                         )
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            (if (activeTool == "Effects") listOf("Edge Glow", "Blur", "Glitch", "Vignette", "Shake") else if (activeTool == "Filters") listOf("Original", "Cinema", "Warm", "Cool", "Mono") else listOf("Brightness", "Contrast", "Saturation", "Sharpness")).forEach { item ->
+                            val options = when (activeTool) {
+                                "Effects" -> listOf("Edge Glow", "Blur", "Glitch", "Vignette", "Shake")
+                                "Filters" -> listOf("Original", "Cinema", "Warm", "Cool", "Mono")
+                                else -> listOf("Brightness", "Contrast", "Saturation")
+                            }
+                            options.forEach { item ->
                                 FilterChip(
                                     selected = selectedEffect == item,
                                     onClick = { selectedEffect = item },
@@ -1107,9 +1142,58 @@ private fun VyroCutApp() {
                                 )
                             }
                         }
-                        if (activeTool == "Effects" || activeTool == "Adjust") {
+                        if (activeTool == "Adjust") {
+                            if (selectedClip == null) {
+                                Text("Select a video clip to adjust its colour.", color = StudioMuted, fontSize = 10.sp)
+                            } else {
+                                val adjustmentValue = when (selectedEffect) {
+                                    "Contrast" -> clipContrastDraft
+                                    "Saturation" -> clipSaturationDraft
+                                    else -> clipBrightnessDraft
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(selectedEffect, color = StudioMuted, fontSize = 11.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${adjustmentValue.toInt()}%", color = StudioAccent, fontSize = 11.sp)
+                                    TextButton(
+                                        onClick = {
+                                            clipBrightnessDraft = 0f
+                                            clipContrastDraft = 0f
+                                            clipSaturationDraft = 0f
+                                            commitSelectedClipVisualAdjustments(0, 0, 0)
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                    ) { Text("Reset", fontSize = 10.sp) }
+                                }
+                                Slider(
+                                    value = adjustmentValue.coerceIn(-100f, 100f),
+                                    onValueChange = { value ->
+                                        when (selectedEffect) {
+                                            "Contrast" -> clipContrastDraft = value
+                                            "Saturation" -> clipSaturationDraft = value
+                                            else -> clipBrightnessDraft = value
+                                        }
+                                    },
+                                    onValueChangeFinished = {
+                                        commitSelectedClipVisualAdjustments(
+                                            brightness = clipBrightnessDraft.toInt(),
+                                            contrast = clipContrastDraft.toInt(),
+                                            saturation = clipSaturationDraft.toInt(),
+                                        )
+                                    },
+                                    valueRange = -100f..100f,
+                                    steps = 199,
+                                    colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
+                                )
+                                Text(
+                                    "Non-destructive • Applied to this clip in preview and MP4 export",
+                                    color = StudioMuted,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        } else if (activeTool == "Effects") {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(if (activeTool == "Effects") "Intensity" else selectedEffect, color = StudioMuted, fontSize = 11.sp)
+                                Text("Intensity", color = StudioMuted, fontSize = 11.sp)
                                 Spacer(Modifier.weight(1f))
                                 Text("${(effectIntensity * 100).toInt()}%", color = StudioAccent, fontSize = 11.sp)
                             }
@@ -1118,7 +1202,9 @@ private fun VyroCutApp() {
                                 onValueChange = { effectIntensity = it },
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
                             )
-                            Text("Control panel layout is in place; effect rendering is a separate implementation step.", color = StudioMuted, fontSize = 10.sp)
+                            Text("Effect rendering is not implemented yet.", color = StudioMuted, fontSize = 10.sp)
+                        } else {
+                            Text("Filter rendering is not implemented yet.", color = StudioMuted, fontSize = 10.sp)
                         }
                     }
                 }
@@ -1295,6 +1381,7 @@ private fun VyroCutApp() {
                                                         .build()
                                                 ).build()
                                             val videoEffects = mutableListOf<androidx.media3.common.Effect>()
+                                            videoEffects += createClipVisualEffects(clip.visualAdjustments)
                                             videoEffects += Presentation.createForWidthAndHeight(
                                                 exportCanvasSize.widthPx,
                                                 exportCanvasSize.heightPx,
@@ -1874,6 +1961,11 @@ internal fun encodeProject(clips: List<EditClip>): String {
         put("volume", clip.audioVolume.toDouble())
         put("fadeInMs", clip.fadeInMs)
         put("fadeOutMs", clip.fadeOutMs)
+        put("visualAdjustments", JSONObject().apply {
+            put("brightness", clip.visualAdjustments.brightness)
+            put("contrast", clip.visualAdjustments.contrast)
+            put("saturation", clip.visualAdjustments.saturation)
+        })
     }) }
     return array.toString()
 }
@@ -1891,7 +1983,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 4)
+        put("version", 5)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -1902,7 +1994,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..4) { "Unsupported backup version" }
+    require(version in 1..5) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -1990,6 +2082,12 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
             val fadeInMs = if (item.has("fadeInMs")) item.optLong("fadeInMs", Long.MIN_VALUE) else 0L
             val fadeOutMs = if (item.has("fadeOutMs")) item.optLong("fadeOutMs", Long.MIN_VALUE) else 0L
             require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "A clip has invalid fade durations" }
+            val visualJson = item.optJSONObject("visualAdjustments")
+            val visualAdjustments = decodeClipVisualAdjustments(
+                brightness = if (visualJson?.has("brightness") == true) visualJson.optInt("brightness", Int.MIN_VALUE) else 0,
+                contrast = if (visualJson?.has("contrast") == true) visualJson.optInt("contrast", Int.MIN_VALUE) else 0,
+                saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
+            ) ?: error("A clip has invalid visual adjustments")
             add(
                 EditClip(
                     id = id,
@@ -2000,6 +2098,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     audioVolume = audioVolume,
                     fadeInMs = fadeInMs,
                     fadeOutMs = fadeOutMs,
+                    visualAdjustments = visualAdjustments,
                 ),
             )
         }
