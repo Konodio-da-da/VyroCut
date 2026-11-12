@@ -109,6 +109,7 @@ private fun VyroCutApp() {
         mutableStateOf(preferences.getString("active_project_id", projects.first().id) ?: projects.first().id)
     }
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
+    var showHome by remember { mutableStateOf(true) }
     var showProjects by remember { mutableStateOf(false) }
     var showTrimMenu by remember { mutableStateOf(false) }
     var newProjectName by remember { mutableStateOf("") }
@@ -552,8 +553,32 @@ private fun VyroCutApp() {
 
     MaterialTheme {
         Surface(Modifier.fillMaxSize(), color = StudioBackground) {
+            if (showHome) {
+                VyroCutProjectsHome(
+                    projects = projects.map { it.id to it.name },
+                    activeProjectId = activeProjectId,
+                    onNewProject = {
+                        newProjectName = "Untitled project"
+                        createProject()
+                        showHome = false
+                        mediaPicker.launch(arrayOf("video/*"))
+                    },
+                    onImportVideo = {
+                        showHome = false
+                        mediaPicker.launch(arrayOf("video/*"))
+                    },
+                    onOpenProject = { id ->
+                        projects.firstOrNull { it.id == id }?.let { switchProject(it) }
+                        showHome = false
+                    }
+                )
+            } else {
             Column(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = { saveProject(clips); player.pause(); showHome = true },
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                    ) { Text("‹ Projects", color = StudioAccent, fontSize = 12.sp) }
                     Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(28.dp))
                     Text("VyroCut", color = StudioText, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 9.dp))
                     Spacer(Modifier.weight(1f))
@@ -1146,6 +1171,7 @@ private fun VyroCutApp() {
                         }
                     )
                 }
+            }
             }
         }
     }
