@@ -3,8 +3,8 @@
 ## Last verified build
 - The Android foundation and initial editing workspace build completed successfully on GitHub Actions.
 - The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- The latest previously verified code revision was `b6b0f7c5e2be54c8d2a44cee8894c745697edc01` (run [43114554052](https://github.com/Konodio-da-da/VyroCut/actions/runs/43114554052)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
-- The previous revision's 18 timeline-domain unit tests passed as part of `testDebugUnitTest`. The CI build confirms compilation and unit tests; it does not replace physical-device playback or export testing.
+- The latest verified code revision before this update was `bdf06fb578f7d0f1a912d5dddb7034115f80c45d` (run [43122179138](https://github.com/Konodio-da-da/VyroCut/actions/runs/43122179138)). Both `assembleDebug` and `testDebugUnitTest` completed successfully, and the `vyrocut-debug-apk` artifact was uploaded.
+- The revision's 24 timeline-domain unit tests passed as part of `testDebugUnitTest`. CI confirms compilation and unit tests; it does not replace physical-device playback or export testing.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
@@ -18,6 +18,7 @@
 - Undo/redo supports up to 50 timeline edit states per project and persists its history across app restarts.
 - Timeline audio waveforms are decoded from each clip's source audio on a background dispatcher, bucketed into 48 peak-amplitude samples, and aligned to the clip's trimmed source range.
 - Video import through Android's Storage Access Framework with persisted read permission.
+- Importing a clip selects the newly appended segment, including when importing into an empty project; the selected index is calculated from the pre-append list size rather than the stale Compose state.
 - Timeline segment cards and selection.
 - Non-destructive source in/out ranges for segments.
 - Split selected segments at their midpoint while preserving left-to-right source order.
@@ -35,6 +36,7 @@
 - Media3 Transformer MP4 export wiring for the ordered clip composition, with completion/error handling, safer MediaStore publishing, temporary-file cleanup, and share flow.
 - Before publishing, the completed file is checked for a non-empty MP4, a readable video track, and at least one video sample. This is a container/track check, not a substitute for decoding and watching the exported file on an Android device.
 - The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
+- Media3 preview errors are surfaced in the editor status line instead of failing silently.
 
 ## Still to implement
 - Automatic recovery snapshots beyond the persisted edit history, including recovery UI and interrupted-export recovery.
