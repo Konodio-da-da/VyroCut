@@ -99,7 +99,7 @@ internal fun verifyExportedMp4(
         verifyExportedVideoFrames(file, expectedDurationMs, canvas)
     }
     if (sourceHasAudio) {
-        verifyExportedAudioSamples(file)
+        verifyExportedAudioSamples(file, expectedDurationMs)
     }
 }
 
