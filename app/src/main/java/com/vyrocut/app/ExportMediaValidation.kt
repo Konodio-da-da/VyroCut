@@ -17,6 +17,8 @@ internal fun verifyExportedMp4(
     sourceUris: List<String>,
     expectedDurationMs: Long,
     expectedCanvasSize: ExportCanvasSize? = null,
+    canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
+    expectedBackgroundArgb: Int? = null,
 ) {
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
@@ -97,6 +99,18 @@ internal fun verifyExportedMp4(
     // publishing so a structurally valid but undecodable MP4 is never exposed.
     expectedCanvasSize?.let { canvas ->
         verifyExportedVideoFrames(file, expectedDurationMs, canvas)
+    }
+    if (expectedBackgroundArgb != null) {
+        check(canvasVisualClips.isNotEmpty()) {
+            "Source dimensions are unavailable for canvas background verification"
+        }
+        verifyExportedCanvasBackgroundPixels(
+            file = file,
+            canvasSize = expectedCanvasSize
+                ?: error("Canvas dimensions are required for background verification"),
+            clips = canvasVisualClips,
+            expectedBackgroundArgb = expectedBackgroundArgb,
+        )
     }
     if (sourceHasAudio) {
         verifyExportedAudioSamples(file, expectedDurationMs)
