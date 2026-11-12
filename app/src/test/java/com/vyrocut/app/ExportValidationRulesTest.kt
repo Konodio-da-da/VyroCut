@@ -54,7 +54,7 @@ class ExportValidationRulesTest {
     @Test
     fun rejectsMateriallyTruncatedOrExtendedExports() {
         assertEquals(
-            "Export duration 2_000ms does not match the 4_000ms timeline",
+            "Export duration 2000ms does not match the 4000ms timeline",
             validateExportTrackSummary(
                 ExportTrackSummary(24L, 0L, 2_000L),
                 expectedDurationMs = 4_000L,
@@ -62,7 +62,7 @@ class ExportValidationRulesTest {
             ),
         )
         assertEquals(
-            "Export duration 5_000ms does not match the 4_000ms timeline",
+            "Export duration 5000ms does not match the 4000ms timeline",
             validateExportTrackSummary(
                 ExportTrackSummary(24L, 0L, 5_000L),
                 expectedDurationMs = 4_000L,
