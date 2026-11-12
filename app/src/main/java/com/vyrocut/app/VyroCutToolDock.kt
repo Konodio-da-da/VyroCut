@@ -47,8 +47,8 @@ internal fun VyroCutToolDock(
                 if (activeTool == tool) {
                     androidx.compose.foundation.layout.Box(
                         Modifier.padding(horizontal = 12.dp)
-                            .background(Color(0xFF0FE8B8), RoundedCornerShape(2.dp))
                             .padding(horizontal = 10.dp, vertical = 1.dp)
+                            .background(Color(0xFF0FE8B8), RoundedCornerShape(2.dp))
                     )
                 }
             }
