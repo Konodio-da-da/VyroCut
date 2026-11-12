@@ -6,6 +6,33 @@ import org.junit.Test
 
 class ExportValidationRulesTest {
     @Test
+    fun probesBeginningMiddleAndEndWithoutDuplicateTimestamps() {
+        assertEquals(listOf(0L, 2_000L, 3_999L), exportFrameProbePositionsMs(4_000L))
+        assertEquals(listOf(0L), exportFrameProbePositionsMs(1L))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(0L))
+        assertEquals(emptyList<Long>(), exportFrameProbePositionsMs(-1L))
+    }
+
+    @Test
+    fun acceptsDecodedFramesWithTheSelectedCanvasDimensions() {
+        val canvas = exportCanvasSizeForPreset("9:16")
+        assertNull(validateDecodedExportFrameDimensions(1_080, 1_920, canvas))
+    }
+
+    @Test
+    fun rejectsDecodedFramesWithInvalidOrUnexpectedDimensions() {
+        val canvas = exportCanvasSizeForPreset("9:16")
+        assertEquals(
+            "The exported MP4 contains an unreadable video frame",
+            validateDecodedExportFrameDimensions(0, 1_920, canvas),
+        )
+        assertEquals(
+            "Decoded frame 1920x1080 does not match selected 1080x1920 canvas",
+            validateDecodedExportFrameDimensions(1_920, 1_080, canvas),
+        )
+    }
+
+    @Test
     fun acceptsMp4DimensionsMatchingTheSelectedCanvasPreset() {
         val canvas = exportCanvasSizeForPreset("16:9")
         assertNull(
