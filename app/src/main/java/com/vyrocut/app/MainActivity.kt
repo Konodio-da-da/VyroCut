@@ -1624,3 +1624,91 @@ private fun formatTime(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0L) / 1000L
     return "%02d:%02d".format(seconds / 60L, seconds % 60L)
 }
+
+
+@Composable
+private fun TimelineEditorStrip(
+    clips: List<EditClip>,
+    selectedIndex: Int,
+    onSelectClip: (Int) -> Unit,
+) {
+    val clipWidths = clips.map { (it.durationMs / 1000f * 18f).coerceIn(108f, 240f) }
+    val totalWidth = (clipWidths.sum() + (clips.size - 1).coerceAtLeast(0) * 6f).dp
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("VIDEO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp))
+            Text("Continuous clip track", color = StudioMuted, fontSize = 9.sp)
+            Spacer(Modifier.weight(1f))
+            Text("Swipe to browse", color = StudioMuted, fontSize = 9.sp)
+        }
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
+            if (clips.isEmpty()) {
+                Text("Import footage to build your timeline", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
+            } else {
+                Box(Modifier.width(totalWidth).height(72.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        clips.forEachIndexed { index, clip ->
+                            Column(
+                                Modifier.width(clipWidths[index].dp)
+                                    .background(if (index == selectedIndex) Color(0xFF16483D) else Color(0xFF252A28), RoundedCornerShape(4.dp))
+                                    .clickable { onSelectClip(index) }
+                                    .padding(3.dp)
+                            ) {
+                                Box(Modifier.fillMaxWidth().height(46.dp)) {
+                                    ClipThumbnail(clip, Modifier.fillMaxSize())
+                                    Text(
+                                        "V" + (index + 1),
+                                        color = Color.White,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.align(Alignment.TopStart)
+                                            .background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(2.dp))
+                                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Text(
+                                    clip.name,
+                                    color = if (index == selectedIndex) StudioAccent else StudioText,
+                                    fontSize = 8.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                    val totalDuration = clips.sumOf { it.durationMs }.coerceAtLeast(1L)
+                    val elapsedBeforeSelection = clips.take(selectedIndex.coerceAtLeast(0)).sumOf { it.durationMs }
+                    val fraction = (elapsedBeforeSelection.toFloat() / totalDuration).coerceIn(0f, 1f)
+                    Box(
+                        Modifier.offset(x = (totalWidth.value * fraction).dp)
+                            .width(2.dp)
+                            .height(72.dp)
+                            .background(StudioAccent)
+                    )
+                }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("AUDIO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(42.dp))
+            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    Box(
+                        Modifier.width(clipWidths[index].dp)
+                            .height(30.dp)
+                            .background(Color(0xFF172C28), RoundedCornerShape(4.dp))
+                            .clickable { onSelectClip(index) }
+                            .padding(horizontal = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AudioWaveform(clip, Modifier.fillMaxWidth().height(22.dp))
+                    }
+                }
+                if (clips.isEmpty()) Text("Audio waveform appears with imported video", color = StudioMuted, fontSize = 9.sp)
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("00:00", color = StudioMuted, fontSize = 9.sp)
+            Text(formatTime(clips.sumOf { it.durationMs }), color = StudioMuted, fontSize = 9.sp)
+        }
+    }
+}
