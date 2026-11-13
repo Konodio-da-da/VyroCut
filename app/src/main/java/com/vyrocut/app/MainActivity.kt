@@ -3023,15 +3023,11 @@ private fun loadProjectAudioTracks(
     projectId: String,
     projectDurationMs: Long,
 ): List<AudioTrackClip> {
-    val primary = decodeAudioTrackClips(
-        preferences.getString("project_${projectId}_audio_tracks", null),
-        projectDurationMs,
-    )
+    val primaryRaw = preferences.getString("project_${projectId}_audio_tracks", null)
+    val primary = primaryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) }
     if (primary != null) return primary
-    return decodeAudioTrackClips(
-        preferences.getString("project_${projectId}_audio_tracks_recovery", null),
-        projectDurationMs,
-    ) ?: emptyList()
+    val recoveryRaw = preferences.getString("project_${projectId}_audio_tracks_recovery", null)
+    return recoveryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) } ?: emptyList()
 }
 
 private fun findProjectRecoveryCandidate(
