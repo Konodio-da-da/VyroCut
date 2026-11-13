@@ -175,7 +175,7 @@ private fun VyroCutApp() {
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
-    var selectedTextLayerIndex by remember(selectedClip?.id) { mutableIntStateOf(0) }
+    var selectedTextLayerIndex by remember { mutableIntStateOf(0) }
     val selectedTextOverlay = selectedClip?.allTextOverlays?.getOrNull(selectedTextLayerIndex)
     LaunchedEffect(selectedClip?.id, selectedClip?.allTextOverlays?.size) {
         selectedTextLayerIndex = selectedTextLayerIndex.coerceIn(
