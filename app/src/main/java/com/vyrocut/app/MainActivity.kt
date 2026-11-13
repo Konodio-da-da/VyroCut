@@ -1075,25 +1075,24 @@ private fun VyroCutApp() {
                             selectedType == AudioTrackType.MUSIC &&
                             audioTrackClips.none { it.type == selectedType }
                         ) 0L else timelinePositionMs.toLong().coerceAtLeast(0L)
-                        val desiredDurationMs = minOf(sourceDurationMs, (projectDurationMs - requestedStartMs).coerceAtLeast(0L))
-                        val startMs = resolveAudioTrackInsertionStartMs(
+                        val insertionSlot = resolveAudioTrackInsertionSlot(
                             audioTrackClips,
                             selectedType,
                             requestedStartMs,
-                            desiredDurationMs,
+                            sourceDurationMs,
                             projectDurationMs,
                         )
-                        if (startMs == null || desiredDurationMs <= 0L) {
+                        if (insertionSlot == null) {
                             exportMessage = "There is no free space on the ${selectedType.name.lowercase()} lane for this audio file."
                         } else {
                             val inserted = AudioTrackClip(
                                 id = java.util.UUID.randomUUID().toString(),
                                 type = selectedType,
                                 uri = uri.toString(),
-                                name = name,
-                                startMs = startMs,
+                                name = name.ifBlank { "Imported audio" },
+                                startMs = insertionSlot.startMs,
                                 sourceStartMs = 0L,
-                                sourceEndMs = desiredDurationMs,
+                                sourceEndMs = insertionSlot.durationMs,
                             )
                             changedAudioTracks(audioTrackClips + inserted)
                             selectedAudioTrackType = selectedType
