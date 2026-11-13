@@ -80,6 +80,86 @@ class ClipTextOverlayTest {
     }
 
     @Test
+    fun timedOverlayUsesInclusiveStartAndExclusiveEndBoundaries() {
+        val overlay = ClipTextOverlay("Timed caption", startMs = 1_000L, endMs = 2_500L)
+
+        assertFalse(isClipTextOverlayVisibleAtMs(overlay, 999L))
+        assertTrue(isClipTextOverlayVisibleAtMs(overlay, 1_000L))
+        assertTrue(isClipTextOverlayVisibleAtMs(overlay, 2_499L))
+        assertFalse(isClipTextOverlayVisibleAtMs(overlay, 2_500L))
+        assertFalse(isClipTextOverlayVisibleAtUs(overlay, -1L))
+        assertTrue(isClipTextOverlayVisibleAtUs(overlay, 1_500_000L))
+        assertFalse(isClipTextOverlayVisibleAtUs(overlay, 2_500_000L))
+    }
+
+    @Test
+    fun fullClipOverlayRemainsVisibleWithoutAnExplicitEndTime() {
+        val overlay = ClipTextOverlay("Full clip")
+
+        assertTrue(isClipTextOverlayVisibleAtMs(overlay, 0L))
+        assertTrue(isClipTextOverlayVisibleAtMs(overlay, Long.MAX_VALUE))
+    }
+
+    @Test
+    fun rejectsNegativeOrReversedTextTiming() {
+        assertFalse(isValidClipTextOverlayTiming(-1L, 1_000L))
+        assertFalse(isValidClipTextOverlayTiming(1_000L, 1_000L))
+        assertFalse(isValidClipTextOverlayTiming(2_000L, 1_000L))
+        assertTrue(isValidClipTextOverlayTiming(0L, null))
+        assertNull(decodeClipTextOverlay("Bad range", startMs = 500L, endMs = 200L))
+    }
+
+    @Test
+    fun timelineBoundsMapClipLocalCaptionTimeToSegmentPixels() {
+        val overlay = ClipTextOverlay("Segment", startMs = 2_000L, endMs = 7_000L)
+
+        assertEquals(
+            ClipTextOverlayTimelineBounds(startOffsetPx = 20f, widthPx = 50f),
+            calculateClipTextOverlayTimelineBounds(100f, 10_000L, overlay),
+        )
+        assertEquals(
+            ClipTextOverlayTimelineBounds(startOffsetPx = 0f, widthPx = 100f),
+            calculateClipTextOverlayTimelineBounds(100f, 10_000L, ClipTextOverlay("Full clip")),
+        )
+        assertNull(calculateClipTextOverlayTimelineBounds(100f, 0L, overlay))
+    }
+
+    @Test
+    fun splittingCaptionKeepsOnlyTheVisibleIntersectionOnEachVideoHalf() {
+        val overlay = ClipTextOverlay("Middle caption", 1.25f, ClipTextPosition.TOP, 2_000L, 7_000L)
+
+        val (left, right) = splitClipTextOverlayAt(overlay, splitPositionMs = 5_000L, clipDurationMs = 10_000L)
+
+        assertEquals(ClipTextOverlay("Middle caption", 1.25f, ClipTextPosition.TOP, 2_000L, 5_000L), left)
+        assertEquals(ClipTextOverlay("Middle caption", 1.25f, ClipTextPosition.TOP, 0L, 2_000L), right)
+    }
+
+    @Test
+    fun trimmingClipRebasesCaptionAgainstTheNewSourceInPoint() {
+        val overlay = ClipTextOverlay("Trimmed caption", startMs = 2_000L, endMs = 7_000L)
+
+        assertEquals(
+            ClipTextOverlay("Trimmed caption", startMs = 0L, endMs = 4_000L),
+            rebaseClipTextOverlayForTrim(
+                overlay,
+                oldSourceStartMs = 0L,
+                oldSourceEndMs = 10_000L,
+                newSourceStartMs = 3_000L,
+                newSourceEndMs = 8_000L,
+            ),
+        )
+        assertNull(
+            rebaseClipTextOverlayForTrim(
+                overlay,
+                oldSourceStartMs = 0L,
+                oldSourceEndMs = 10_000L,
+                newSourceStartMs = 8_000L,
+                newSourceEndMs = 9_000L,
+            ),
+        )
+    }
+
+    @Test
     fun overlayFontScaleAndPositionAreValidatedAndDecoded() {
         assertEquals(
             ClipTextOverlay("Styled title", 1.25f, ClipTextPosition.TOP),
