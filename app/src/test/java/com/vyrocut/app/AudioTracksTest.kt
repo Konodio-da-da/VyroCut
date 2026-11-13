@@ -334,6 +334,7 @@ class AudioTracksTest {
                 segmentCount = segments.size,
                 lastResyncAtMs = 2_000L,
                 nowMs = 2_249L,
+                lastResyncSegmentIndex = expectedTarget?.segmentIndex,
             ),
         )
         assertTrue(
@@ -345,6 +346,47 @@ class AudioTracksTest {
                 segmentCount = segments.size,
                 lastResyncAtMs = 2_000L,
                 nowMs = 2_250L,
+                lastResyncSegmentIndex = expectedTarget?.segmentIndex,
+            ),
+        )
+    }
+
+    @Test
+    fun audioLaneResyncBypassesPreviousCooldownWhenTheTargetSegmentChanges() {
+        assertTrue(
+            shouldResyncAudioTrack(
+                projectPositionMs = 2_000L,
+                trackPositionMs = 2_000L,
+                currentSegmentIndex = 0,
+                expectedSegmentIndex = 2,
+                segmentCount = 3,
+                lastResyncAtMs = 1_000L,
+                nowMs = 1_100L,
+                lastResyncSegmentIndex = 1,
+            ),
+        )
+        assertTrue(
+            shouldResyncAudioTrack(
+                projectPositionMs = 2_000L,
+                trackPositionMs = 1_500L,
+                currentSegmentIndex = 2,
+                expectedSegmentIndex = 2,
+                segmentCount = 3,
+                lastResyncAtMs = 1_000L,
+                nowMs = 1_100L,
+                lastResyncSegmentIndex = 1,
+            ),
+        )
+        assertFalse(
+            shouldResyncAudioTrack(
+                projectPositionMs = 2_000L,
+                trackPositionMs = 1_500L,
+                currentSegmentIndex = 2,
+                expectedSegmentIndex = 2,
+                segmentCount = 3,
+                lastResyncAtMs = 1_000L,
+                nowMs = 1_100L,
+                lastResyncSegmentIndex = 2,
             ),
         )
     }

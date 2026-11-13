@@ -271,6 +271,7 @@ internal fun shouldResyncAudioTrack(
     segmentCount: Int,
     lastResyncAtMs: Long?,
     nowMs: Long,
+    lastResyncSegmentIndex: Int? = null,
 ): Boolean {
     if (segmentCount <= 0) return false
     val expectedSegment = expectedSegmentIndex?.takeIf { it in 0 until segmentCount } ?: return false
@@ -284,6 +285,12 @@ internal fun shouldResyncAudioTrack(
             trackPosition - projectPosition
         }
         if (driftMs <= AUDIO_TRACK_SYNC_TOLERANCE_MS) return false
+    }
+    // A new target segment usually means the user crossed or sought across a
+    // clip boundary. Do not carry the previous segment's cooldown into that
+    // discontinuity; the same target remains throttled below while Media3 settles.
+    if (lastResyncSegmentIndex != null && lastResyncSegmentIndex != expectedSegment) {
+        return true
     }
     // A wrong playlist item is a sync error even when its local clock happens
     // to equal project time (for example, the previous item at an exact boundary).

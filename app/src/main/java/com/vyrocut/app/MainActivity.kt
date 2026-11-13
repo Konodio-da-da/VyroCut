@@ -565,6 +565,7 @@ private fun VyroCutApp() {
 
     LaunchedEffect(audioTrackSegments, clips, player) {
         val lastAudioResyncAtMs = mutableMapOf<AudioTrackType, Long>()
+        val lastAudioResyncSegmentIndex = mutableMapOf<AudioTrackType, Int>()
         while (true) {
             val currentIndex = player.currentMediaItemIndex
             val projectPositionMs = if (currentIndex in clips.indices) {
@@ -597,11 +598,13 @@ private fun VyroCutApp() {
                             segmentCount = segments.size,
                             lastResyncAtMs = lastAudioResyncAtMs[type],
                             nowMs = nowMs,
+                            lastResyncSegmentIndex = lastAudioResyncSegmentIndex[type],
                         )
                     ) {
                         expectedTrackTarget?.let { target ->
                             audioPlayer.seekTo(target.segmentIndex, target.positionMs)
                             lastAudioResyncAtMs[type] = nowMs
+                            lastAudioResyncSegmentIndex[type] = target.segmentIndex
                         }
                     }
                     val activeSegment = segments.firstOrNull {
