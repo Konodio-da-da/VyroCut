@@ -3209,9 +3209,14 @@ private fun persistProjectAudioTracks(
         "Audio track clips must fit inside the project and cannot overlap on one lane"
     }
     val encoded = encodeAudioTrackClips(clips)
+    val recoveryJournal = encodeAudioTrackRecoveryJournal(
+        projectId = projectId,
+        audioTracksJson = encoded,
+        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
+    )
     preferences.edit()
         .putString("project_${projectId}_audio_tracks", encoded)
-        .putString("project_${projectId}_audio_tracks_recovery", encoded)
+        .putString("project_${projectId}_audio_tracks_recovery", recoveryJournal)
         .apply()
 }
 
@@ -3224,7 +3229,11 @@ private fun loadProjectAudioTracks(
     val primary = primaryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) }
     if (primary != null) return primary
     val recoveryRaw = preferences.getString("project_${projectId}_audio_tracks_recovery", null)
-    return recoveryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) } ?: emptyList()
+    return decodeAudioTrackRecoveryJournal(
+        raw = recoveryRaw,
+        projectId = projectId,
+        projectDurationMs = projectDurationMs,
+    ) ?: emptyList()
 }
 
 private fun findProjectRecoveryCandidate(
