@@ -78,4 +78,53 @@ class ClipTextOverlayTest {
         assertNull(calculateClipTextOverlayLayout(1_920, 0, 100))
         assertNull(calculateClipTextOverlayLayout(1_920, 1_080, 0))
     }
+
+    @Test
+    fun overlayFontScaleAndPositionAreValidatedAndDecoded() {
+        assertEquals(
+            ClipTextOverlay("Styled title", 1.25f, ClipTextPosition.TOP),
+            decodeClipTextOverlay("Styled title", fontScale = 1.25f, position = "TOP"),
+        )
+        assertEquals(
+            ClipTextOverlay("Default title"),
+            decodeClipTextOverlay("Default title"),
+        )
+        assertFalse(isValidClipTextOverlayFontScale(Float.NaN))
+        assertFalse(isValidClipTextOverlayFontScale(0.5f))
+        assertFalse(isValidClipTextOverlayFontScale(1.6f))
+        assertNull(decodeClipTextOverlay("Styled title", fontScale = 2f))
+        assertNull(decodeClipTextOverlay("Styled title", position = "LEFT"))
+    }
+
+    @Test
+    fun overlayLayoutHonoursTopCenterAndBottomPositionsAndFontScale() {
+        val top = calculateClipTextOverlayLayout(
+            frameWidthPx = 1_920,
+            frameHeightPx = 1_080,
+            textHeightPx = 120,
+            position = ClipTextPosition.TOP,
+        )!!
+        val center = calculateClipTextOverlayLayout(
+            frameWidthPx = 1_920,
+            frameHeightPx = 1_080,
+            textHeightPx = 120,
+            position = ClipTextPosition.CENTER,
+        )!!
+        val bottom = calculateClipTextOverlayLayout(
+            frameWidthPx = 1_920,
+            frameHeightPx = 1_080,
+            textHeightPx = 120,
+            position = ClipTextPosition.BOTTOM,
+        )!!
+        val large = calculateClipTextOverlayLayout(
+            frameWidthPx = 1_920,
+            frameHeightPx = 1_080,
+            textHeightPx = 160,
+            fontScale = 1.25f,
+        )!!
+
+        assertTrue(top.topPx < center.topPx)
+        assertTrue(center.topPx < bottom.topPx)
+        assertEquals(1.25f, large.textSizePx / bottom.textSizePx, 0.001f)
+    }
 }
