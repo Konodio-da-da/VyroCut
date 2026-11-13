@@ -68,7 +68,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionTenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
+    fun versionElevenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -88,7 +88,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
@@ -103,7 +103,7 @@ class ProjectClipAudioPersistenceTest {
 
 
     @Test
-    fun multipleTextLayersSurviveProjectSerializationAndVersionTenBackup() {
+    fun multipleTextLayersSurviveProjectSerializationAndVersionElevenBackup() {
         val original = EditClip(
             id = "layered",
             uri = "content://media/layered",
@@ -122,7 +122,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(original.allTextOverlays, restoredProject!!.single().allTextOverlays)
 
         val backup = encodeProjectBackup("Layered project", listOf(original), ProjectCanvasSettings())
-        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
         val restoredBackup = decodeProjectBackup(backup)
         assertEquals(original.allTextOverlays, restoredBackup.clips.single().allTextOverlays)
     }
@@ -261,7 +261,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionTenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
+    fun versionElevenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
         val video = EditClip(
             id = "video",
             uri = "content://media/video",
@@ -278,6 +278,7 @@ class ProjectClipAudioPersistenceTest {
                 startMs = 0L,
                 sourceStartMs = 1_000L,
                 sourceEndMs = 9_000L,
+                sourceDurationMs = 12_000L,
                 volume = 0.65f,
                 fadeInMs = 800L,
                 fadeOutMs = 1_200L,
@@ -312,9 +313,28 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
         assertEquals(tracks, restored.audioTracks)
         assertTrue(validateAudioTrackClips(restored.audioTracks, 12_000L))
+    }
+
+    @Test
+    fun versionTenAudioTrackBackupDefaultsOriginalSourceDurationToSavedOutPoint() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":10,
+            "projectName":"Legacy audio trim",
+            "clips":[{"id":"video","uri":"content://media/video","name":"Video","start":0,"end":5000}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK",
+            "audioTracks":[{"id":"music","type":"MUSIC","uri":"content://media/music","name":"Music","startMs":0,"sourceStartMs":500,"sourceEndMs":2500,"volume":0.75,"fadeInMs":100,"fadeOutMs":200}]
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals(10, org.json.JSONObject(legacy).getInt("version"))
+        assertEquals(500L, restored.audioTracks.single().sourceStartMs)
+        assertEquals(2_500L, restored.audioTracks.single().sourceEndMs)
+        assertEquals(2_500L, restored.audioTracks.single().sourceDurationMs)
     }
 
     @Test
