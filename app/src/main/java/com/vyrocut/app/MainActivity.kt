@@ -12,7 +12,6 @@ import android.graphics.BitmapFactory
 import android.os.Environment
 import android.os.SystemClock
 import java.io.File
-import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.ByteOrder
 import androidx.activity.ComponentActivity
@@ -3298,61 +3297,7 @@ private fun readAudioDurationMs(context: android.content.Context, uri: Uri): Lon
     }
 }
 
-/**
- * Writes a small 8 kHz, mono, 16-bit PCM WAV silence source. It is shared by
- * every lane and clipped to individual gaps, avoiding network assets and
- * keeping project-time offsets deterministic in ExoPlayer and Transformer.
- */
-private fun createSilentAudioWav(directory: File, durationMs: Long): File {
-    require(durationMs > 0L) { "Silence duration must be positive" }
-    val sampleRate = 8_000
-    val channels = 1
-    val bitsPerSample = 16
-    val dataBytes = (durationMs.toDouble() * sampleRate * channels * bitsPerSample / 8.0 / 1_000.0)
-        .toLong()
-        .coerceAtLeast(2L)
-    require(dataBytes <= Int.MAX_VALUE.toLong() - 36L) { "Audio gap is too long for a WAV silence source" }
-    if (!directory.exists() && !directory.mkdirs()) error("Could not create the audio cache directory")
-    val file = File(directory, "vyrocut-silence-${dataBytes}.wav")
-    if (file.isFile && file.length() == dataBytes + 44L) return file
 
-    RandomAccessFile(file, "rw").use { output ->
-        output.setLength(dataBytes + 44L)
-        fun writeAscii(value: String) = output.write(value.toByteArray(Charsets.US_ASCII))
-        fun writeShortLe(value: Int) {
-            output.write(value and 0xff)
-            output.write((value shr 8) and 0xff)
-        }
-        fun writeIntLe(value: Int) {
-            output.write(value and 0xff)
-            output.write((value shr 8) and 0xff)
-            output.write((value shr 16) and 0xff)
-            output.write((value shr 24) and 0xff)
-        }
-        writeAscii("RIFF")
-        writeIntLe((dataBytes + 36L).toInt())
-        writeAscii("WAVE")
-        writeAscii("fmt ")
-        writeIntLe(16)
-        writeShortLe(1)
-        writeShortLe(channels)
-        writeIntLe(sampleRate)
-        writeIntLe(sampleRate * channels * bitsPerSample / 8)
-        writeShortLe(channels * bitsPerSample / 8)
-        writeShortLe(bitsPerSample)
-        writeAscii("data")
-        writeIntLe(dataBytes.toInt())
-        output.seek(44L)
-        val silence = ByteArray(64 * 1024)
-        var remaining = dataBytes
-        while (remaining > 0L) {
-            val count = minOf(remaining, silence.size.toLong()).toInt()
-            output.write(silence, 0, count)
-            remaining -= count.toLong()
-        }
-    }
-    return file
-}
 
 private fun formatTime(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0L) / 1000L
