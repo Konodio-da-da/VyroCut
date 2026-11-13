@@ -58,6 +58,17 @@ internal data class DecodedAudioCoverage(
     val totalGapUs: Long = 0L,
 )
 
+/** Returns the actual PCM sample width, or null for an unsupported decoder format. */
+internal fun pcmBytesPerSampleForEncoding(pcmEncoding: Int): Int? =
+    when (pcmEncoding) {
+        android.media.AudioFormat.ENCODING_PCM_8BIT -> 1
+        android.media.AudioFormat.ENCODING_PCM_16BIT -> 2
+        android.media.AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
+        android.media.AudioFormat.ENCODING_PCM_32BIT,
+        android.media.AudioFormat.ENCODING_PCM_FLOAT -> 4
+        else -> null
+    }
+
 internal data class ExportCanvasVisualClip(
     val durationMs: Long,
     val sourceWidthPx: Int,
@@ -327,13 +338,8 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
                         } else {
                             android.media.AudioFormat.ENCODING_PCM_16BIT
                         }
-                        val bytesPerSample = when (pcmEncoding) {
-                            android.media.AudioFormat.ENCODING_PCM_8BIT -> 1
-                            android.media.AudioFormat.ENCODING_PCM_24BIT_PACKED -> 3
-                            android.media.AudioFormat.ENCODING_PCM_FLOAT,
-                            android.media.AudioFormat.ENCODING_PCM_32BIT -> 4
-                            else -> 2
-                        }
+                        val bytesPerSample = pcmBytesPerSampleForEncoding(pcmEncoding)
+                            ?: error("The exported MP4 decoder returned an unsupported PCM encoding: $pcmEncoding")
                         check(sampleRate > 0 && channelCount > 0) {
                             "The exported MP4 decoder returned an invalid PCM format"
                         }

@@ -6,6 +6,22 @@ import org.junit.Test
 
 class ExportDecodeValidationTest {
     @Test
+    fun mapsSupportedPcmEncodingsToTheirActualSampleWidths() {
+        assertEquals(1, pcmBytesPerSampleForEncoding(android.media.AudioFormat.ENCODING_PCM_8BIT))
+        assertEquals(2, pcmBytesPerSampleForEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT))
+        assertEquals(3, pcmBytesPerSampleForEncoding(android.media.AudioFormat.ENCODING_PCM_24BIT_PACKED))
+        assertEquals(4, pcmBytesPerSampleForEncoding(android.media.AudioFormat.ENCODING_PCM_32BIT))
+        assertEquals(4, pcmBytesPerSampleForEncoding(android.media.AudioFormat.ENCODING_PCM_FLOAT))
+    }
+
+    @Test
+    fun rejectsUnknownPcmEncodingsInsteadOfAssumingSixteenBit() {
+        assertNull(pcmBytesPerSampleForEncoding(-1))
+        assertNull(pcmBytesPerSampleForEncoding(0))
+        assertNull(pcmBytesPerSampleForEncoding(Int.MAX_VALUE))
+    }
+
+    @Test
     fun probesBeginningMiddleAndEndOfEveryClip() {
         assertEquals(
             listOf(0L, 2L, 3L, 4L, 6L, 8L, 9L, 11L, 12L),
