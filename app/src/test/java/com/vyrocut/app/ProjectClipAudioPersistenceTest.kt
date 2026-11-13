@@ -67,7 +67,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionNineBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
+    fun versionTenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -87,7 +87,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(9, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
@@ -102,7 +102,7 @@ class ProjectClipAudioPersistenceTest {
 
 
     @Test
-    fun multipleTextLayersSurviveProjectSerializationAndVersionNineBackup() {
+    fun multipleTextLayersSurviveProjectSerializationAndVersionTenBackup() {
         val original = EditClip(
             id = "layered",
             uri = "content://media/layered",
@@ -121,7 +121,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(original.allTextOverlays, restoredProject!!.single().allTextOverlays)
 
         val backup = encodeProjectBackup("Layered project", listOf(original), ProjectCanvasSettings())
-        assertEquals(9, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
         val restoredBackup = decodeProjectBackup(backup)
         assertEquals(original.allTextOverlays, restoredBackup.clips.single().allTextOverlays)
     }
@@ -258,4 +258,78 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(ClipVisualAdjustments(), restored.clips.single().visualAdjustments)
         assertEquals(ProjectCanvasSettings("9:16", "BLACK"), restored.canvasSettings)
     }
+
+    @Test
+    fun versionTenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
+        val video = EditClip(
+            id = "video",
+            uri = "content://media/video",
+            name = "Video",
+            sourceStartMs = 0L,
+            sourceEndMs = 12_000L,
+        )
+        val tracks = listOf(
+            AudioTrackClip(
+                id = "music",
+                type = AudioTrackType.MUSIC,
+                uri = "content://media/music",
+                name = "Music bed",
+                startMs = 0L,
+                sourceStartMs = 1_000L,
+                sourceEndMs = 9_000L,
+                volume = 0.65f,
+                fadeInMs = 800L,
+                fadeOutMs = 1_200L,
+            ),
+            AudioTrackClip(
+                id = "sfx",
+                type = AudioTrackType.SFX,
+                uri = "content://media/sfx",
+                name = "Impact",
+                startMs = 4_000L,
+                sourceStartMs = 0L,
+                sourceEndMs = 1_500L,
+                volume = 0.9f,
+            ),
+            AudioTrackClip(
+                id = "voice",
+                type = AudioTrackType.VOICEOVER,
+                uri = "content://media/voice",
+                name = "Narration",
+                startMs = 2_000L,
+                sourceStartMs = 500L,
+                sourceEndMs = 6_500L,
+                volume = 0.8f,
+                fadeInMs = 250L,
+            ),
+        )
+        val backup = encodeProjectBackup(
+            "Audio mix",
+            listOf(video),
+            ProjectCanvasSettings("9:16", "BLACK"),
+            tracks,
+        )
+        val restored = decodeProjectBackup(backup)
+
+        assertEquals(10, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(tracks, restored.audioTracks)
+        assertTrue(validateAudioTrackClips(restored.audioTracks, 12_000L))
+    }
+
+    @Test
+    fun versionNineBackupWithoutSeparateAudioTracksRemainsCompatible() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":9,
+            "projectName":"Version nine backup",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Old clip","start":0,"end":1000}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK"
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals("Version nine backup", restored.name)
+        assertEquals(emptyList<AudioTrackClip>(), restored.audioTracks)
+    }
+
 }
