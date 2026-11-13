@@ -120,14 +120,20 @@ internal fun resolveAudioTrackInsertionSlot(
         if (existing.startMs > candidate) {
             val gapMs = existing.startMs - candidate
             val fitMs = minOf(sourceDurationMs, gapMs)
-            if (fitMs > 0L) return AudioTrackInsertionSlot(candidate, fitMs)
+            if (fitMs >= MIN_AUDIO_TRACK_CLIP_DURATION_MS) {
+                return AudioTrackInsertionSlot(candidate, fitMs)
+            }
         }
         candidate = maxOf(candidate, existing.endMs)
         if (candidate >= projectDurationMs) return null
     }
     val remainingMs = projectDurationMs - candidate
     val fitMs = minOf(sourceDurationMs, remainingMs)
-    return if (fitMs > 0L) AudioTrackInsertionSlot(candidate, fitMs) else null
+    return if (fitMs >= MIN_AUDIO_TRACK_CLIP_DURATION_MS) {
+        AudioTrackInsertionSlot(candidate, fitMs)
+    } else {
+        null
+    }
 }
 
 internal fun resolveAudioTrackInsertionStartMs(
