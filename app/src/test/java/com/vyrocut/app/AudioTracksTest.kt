@@ -169,6 +169,57 @@ class AudioTracksTest {
     }
 
     @Test
+    fun sourceDurationSurvivesTrackSerializationAndAllowsLaterExpansion() {
+        val original = clip(
+            "music",
+            sourceStartMs = 1_000L,
+            sourceEndMs = 3_000L,
+            sourceDurationMs = 8_000L,
+        )
+        val restored = decodeAudioTrackClips(encodeAudioTrackClips(listOf(original)), 10_000L)
+
+        assertEquals(original, restored?.single())
+        assertEquals(8_000L, restored?.single()?.sourceDurationMs)
+    }
+
+    @Test
+    fun legacyTrackWithoutSourceDurationUsesItsSavedOutPoint() {
+        val legacy = """[{"id":"legacy","type":"MUSIC","uri":"content://media/legacy","name":"Legacy","startMs":0,"sourceStartMs":500,"sourceEndMs":2500,"volume":1.0}]"""
+        val restored = decodeAudioTrackClips(legacy, 5_000L)
+
+        assertEquals(2_500L, restored?.single()?.sourceDurationMs)
+        assertEquals(500L, restored?.single()?.sourceStartMs)
+    }
+
+    @Test
+    fun insertionRejectsAudioSourcesShorterThanTheMinimumSegment() {
+        assertNull(
+            resolveAudioTrackInsertionSlot(
+                emptyList(),
+                AudioTrackType.MUSIC,
+                0L,
+                MIN_AUDIO_TRACK_CLIP_DURATION_MS - 1L,
+                1_000L,
+            ),
+        )
+        assertNull(
+            resolveAudioTrackInsertionStartMs(
+                emptyList(),
+                AudioTrackType.MUSIC,
+                0L,
+                MIN_AUDIO_TRACK_CLIP_DURATION_MS - 1L,
+                1_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun projectTrimDropsAudioRemaindersShorterThanTheMinimumSegment() {
+        val original = clip("shortened", startMs = 900L, sourceEndMs = 500L)
+        assertTrue(trimAudioTrackClipsToProjectDuration(listOf(original), 999L).isEmpty())
+    }
+
+    @Test
     fun timelineEndUsesSaturatingAddition() {
         assertEquals(Long.MAX_VALUE, addAudioTimelineTime(Long.MAX_VALUE - 5L, 10L))
     }
