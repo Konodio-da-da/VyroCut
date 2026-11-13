@@ -88,6 +88,43 @@ internal fun validateAudioTrackClips(
  * Finds the first free interval at or after the requested playhead on one lane.
  * Returns null when the source cannot fit without overlapping an existing item.
  */
+
+internal data class AudioTrackInsertionSlot(
+    val startMs: Long,
+    val durationMs: Long,
+)
+
+/**
+ * Chooses the first free interval at or after the playhead and trims the source
+ * to that interval when necessary. This lets a long imported file fit the
+ * remaining project time without overlapping another clip on the same lane.
+ */
+internal fun resolveAudioTrackInsertionSlot(
+    clips: List<AudioTrackClip>,
+    type: AudioTrackType,
+    requestedStartMs: Long,
+    sourceDurationMs: Long,
+    projectDurationMs: Long,
+): AudioTrackInsertionSlot? {
+    if (projectDurationMs <= 0L || sourceDurationMs <= 0L) return null
+    var candidate = requestedStartMs.coerceIn(0L, projectDurationMs)
+    val ordered = clips.filter { it.type == type }.sortedBy { it.startMs }
+
+    for (existing in ordered) {
+        if (existing.endMs <= candidate) continue
+        if (existing.startMs > candidate) {
+            val gapMs = existing.startMs - candidate
+            val fitMs = minOf(sourceDurationMs, gapMs)
+            if (fitMs > 0L) return AudioTrackInsertionSlot(candidate, fitMs)
+        }
+        candidate = maxOf(candidate, existing.endMs)
+        if (candidate >= projectDurationMs) return null
+    }
+    val remainingMs = projectDurationMs - candidate
+    val fitMs = minOf(sourceDurationMs, remainingMs)
+    return if (fitMs > 0L) AudioTrackInsertionSlot(candidate, fitMs) else null
+}
+
 internal fun resolveAudioTrackInsertionStartMs(
     clips: List<AudioTrackClip>,
     type: AudioTrackType,
