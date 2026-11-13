@@ -21,14 +21,105 @@ internal const val MAX_CLIP_TEXT_OVERLAY_LENGTH = 120
 internal const val MAX_CLIP_TEXT_OVERLAY_BITMAP_DIMENSION_PX = 1_920
 internal const val MIN_CLIP_TEXT_OVERLAY_FONT_SCALE = 0.75f
 internal const val MAX_CLIP_TEXT_OVERLAY_FONT_SCALE = 1.5f
+internal const val MIN_CLIP_TEXT_OVERLAY_DURATION_MS = 100L
 
 internal enum class ClipTextPosition { TOP, CENTER, BOTTOM }
+
+internal data class ClipTextOverlayTimelineBounds(
+    val startOffsetPx: Float,
+    val widthPx: Float,
+)
+
+internal fun isValidClipTextOverlayTiming(startMs: Long, endMs: Long?): Boolean =
+    startMs >= 0L && (endMs == null || endMs > startMs)
+
+internal fun isClipTextOverlayVisibleAtMs(overlay: ClipTextOverlay, positionMs: Long): Boolean =
+    positionMs >= overlay.startMs && (overlay.endMs == null || positionMs < overlay.endMs)
+
+internal fun isClipTextOverlayVisibleAtUs(overlay: ClipTextOverlay, presentationTimeUs: Long): Boolean =
+    presentationTimeUs >= 0L && isClipTextOverlayVisibleAtMs(overlay, presentationTimeUs / 1_000L)
+
+/** Maps a clip-local caption interval onto the width of its text-lane segment. */
+internal fun calculateClipTextOverlayTimelineBounds(
+    trackWidthPx: Float,
+    clipDurationMs: Long,
+    overlay: ClipTextOverlay,
+): ClipTextOverlayTimelineBounds? {
+    if (!trackWidthPx.isFinite() || trackWidthPx <= 0f || clipDurationMs <= 0L) return null
+    val startMs = overlay.startMs.coerceIn(0L, clipDurationMs)
+    val endMs = (overlay.endMs ?: clipDurationMs).coerceIn(0L, clipDurationMs)
+    if (endMs <= startMs) return null
+    val start = trackWidthPx * (startMs.toDouble() / clipDurationMs.toDouble()).toFloat()
+    val end = trackWidthPx * (endMs.toDouble() / clipDurationMs.toDouble()).toFloat()
+    return ClipTextOverlayTimelineBounds(
+        startOffsetPx = start.coerceIn(0f, trackWidthPx),
+        widthPx = (end - start).coerceIn(0f, trackWidthPx - start).coerceAtLeast(1f),
+    )
+}
+
+/** Splits a caption interval at the same clip-local playhead used to split its video. */
+internal fun splitClipTextOverlayAt(
+    overlay: ClipTextOverlay?,
+    splitPositionMs: Long,
+    clipDurationMs: Long,
+): Pair<ClipTextOverlay?, ClipTextOverlay?> {
+    if (overlay == null || clipDurationMs <= 0L) return null to null
+    val split = splitPositionMs.coerceIn(0L, clipDurationMs)
+    val start = overlay.startMs
+    val end = (overlay.endMs ?: clipDurationMs).coerceAtMost(clipDurationMs)
+    if (end <= start) return null to null
+
+    val leftEnd = minOf(end, split)
+    val left = if (leftEnd > start) overlay.copy(endMs = leftEnd) else null
+
+    val rightStart = maxOf(start, split)
+    val right = if (end > rightStart) {
+        overlay.copy(startMs = rightStart - split, endMs = end - split)
+    } else {
+        null
+    }
+    return left to right
+}
+
+/** Keeps caption timing anchored to source time when a clip's in/out points change. */
+internal fun rebaseClipTextOverlayForTrim(
+    overlay: ClipTextOverlay?,
+    oldSourceStartMs: Long,
+    oldSourceEndMs: Long,
+    newSourceStartMs: Long,
+    newSourceEndMs: Long,
+): ClipTextOverlay? {
+    if (overlay == null || oldSourceStartMs < 0L || newSourceStartMs < 0L ||
+        oldSourceEndMs <= oldSourceStartMs || newSourceEndMs <= newSourceStartMs
+    ) return null
+    val oldDurationMs = oldSourceEndMs - oldSourceStartMs
+    val overlayEndRelativeMs = (overlay.endMs ?: oldDurationMs).coerceAtMost(oldDurationMs)
+    if (overlay.startMs >= overlayEndRelativeMs ||
+        overlay.startMs > Long.MAX_VALUE - oldSourceStartMs ||
+        overlayEndRelativeMs > Long.MAX_VALUE - oldSourceStartMs
+    ) return null
+
+    val absoluteStartMs = oldSourceStartMs + overlay.startMs
+    val absoluteEndMs = oldSourceStartMs + overlayEndRelativeMs
+    val intersectionStartMs = maxOf(absoluteStartMs, newSourceStartMs)
+    val intersectionEndMs = minOf(absoluteEndMs, newSourceEndMs)
+    if (intersectionEndMs <= intersectionStartMs) return null
+
+    return overlay.copy(
+        startMs = intersectionStartMs - newSourceStartMs,
+        endMs = intersectionEndMs - newSourceStartMs,
+    )
+}
 
 /** A simple non-destructive text layer attached to one video clip. */
 internal data class ClipTextOverlay(
     val text: String,
     val fontScale: Float = 1f,
     val position: ClipTextPosition = ClipTextPosition.BOTTOM,
+    /** Clip-local start time in milliseconds, inclusive. */
+    val startMs: Long = 0L,
+    /** Clip-local end time in milliseconds, exclusive; null means clip end. */
+    val endMs: Long? = null,
 ) {
     init {
         require(isValidClipTextOverlayText(text)) {
@@ -36,6 +127,9 @@ internal data class ClipTextOverlay(
         }
         require(isValidClipTextOverlayFontScale(fontScale)) {
             "Clip text font scale must be between 0.75 and 1.5"
+        }
+        require(isValidClipTextOverlayTiming(startMs, endMs)) {
+            "Clip text overlay timing is invalid"
         }
     }
 }
@@ -57,6 +151,8 @@ internal fun decodeClipTextOverlay(
     raw: String?,
     fontScale: Float = 1f,
     position: String? = null,
+    startMs: Long = 0L,
+    endMs: Long? = null,
 ): ClipTextOverlay? {
     val normalized = raw?.replace("\r\n", "\n")?.trim() ?: return null
     if (!isValidClipTextOverlayText(normalized) || !isValidClipTextOverlayFontScale(fontScale)) return null
@@ -65,7 +161,8 @@ internal fun decodeClipTextOverlay(
     } else {
         runCatching { ClipTextPosition.valueOf(position) }.getOrNull() ?: return null
     }
-    return ClipTextOverlay(normalized, fontScale, decodedPosition)
+    if (!isValidClipTextOverlayTiming(startMs, endMs)) return null
+    return ClipTextOverlay(normalized, fontScale, decodedPosition, startMs, endMs)
 }
 
 internal data class ClipTextOverlayBitmapSize(val widthPx: Int, val heightPx: Int)
@@ -149,6 +246,7 @@ private class ClipTextBitmapOverlay(
     private val overlay: ClipTextOverlay,
 ) : BitmapOverlay() {
     private var bitmap: Bitmap? = null
+    private var transparentBitmap: Bitmap? = null
 
     override fun configure(videoSize: Size) {
         val bitmapSize = checkNotNull(
@@ -204,17 +302,27 @@ private class ClipTextBitmapOverlay(
         layout.draw(canvas)
         canvas.restore()
 
+        val nextTransparentBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
         bitmap?.takeIf { !it.isRecycled }?.recycle()
+        transparentBitmap?.takeIf { !it.isRecycled }?.recycle()
         bitmap = nextBitmap
+        transparentBitmap = nextTransparentBitmap
     }
 
-    override fun getBitmap(presentationTimeUs: Long): Bitmap =
-        checkNotNull(bitmap) { "Text overlay must be configured with a video frame size before rendering" }
+    override fun getBitmap(presentationTimeUs: Long): Bitmap {
+        return if (isClipTextOverlayVisibleAtUs(overlay, presentationTimeUs)) {
+            checkNotNull(bitmap) { "Text overlay must be configured with a video frame size before rendering" }
+        } else {
+            checkNotNull(transparentBitmap) { "Text overlay must be configured with a video frame size before rendering" }
+        }
+    }
 
     override fun release() {
         super.release()
         bitmap?.takeIf { !it.isRecycled }?.recycle()
+        transparentBitmap?.takeIf { !it.isRecycled }?.recycle()
         bitmap = null
+        transparentBitmap = null
     }
 }
 
