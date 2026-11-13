@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.media.MediaMetadataRetriever
 import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
