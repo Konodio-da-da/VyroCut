@@ -293,4 +293,16 @@ class AudioTracksTest {
         )
     }
 
+    @Test
+    fun audioLaneResyncUsesToleranceAndCooldownToAvoidSeekThrashing() {
+        assertFalse(shouldResyncAudioTrack(1_000L, 820L, 0, 1, null, 0L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 821L, 0, 1, null, 0L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 819L, 0, 1, null, 0L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 700L, 0, 1, 1_000L, 1_249L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 700L, 0, 1, 1_000L, 1_250L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 1_000L, -1, 1, 1_000L, 1_249L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 1_000L, -1, 1, 1_000L, 1_250L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 0L, -1, 0, null, 0L))
+    }
+
 }

@@ -259,6 +259,35 @@ internal fun audioTrackGainAtTimelinePosition(
 }
 
 
+internal const val AUDIO_TRACK_SYNC_TOLERANCE_MS = 180L
+internal const val AUDIO_TRACK_RESYNC_COOLDOWN_MS = 250L
+
+/** Avoids repeatedly seeking an audio decoder while it is still catching up. */
+internal fun shouldResyncAudioTrack(
+    projectPositionMs: Long,
+    trackPositionMs: Long,
+    currentSegmentIndex: Int,
+    segmentCount: Int,
+    lastResyncAtMs: Long?,
+    nowMs: Long,
+): Boolean {
+    if (segmentCount <= 0) return false
+    val hasValidSegment = currentSegmentIndex in 0 until segmentCount
+    if (hasValidSegment) {
+        val projectPosition = projectPositionMs.coerceAtLeast(0L)
+        val trackPosition = trackPositionMs.coerceAtLeast(0L)
+        val driftMs = if (projectPosition >= trackPosition) {
+            projectPosition - trackPosition
+        } else {
+            trackPosition - projectPosition
+        }
+        if (driftMs <= AUDIO_TRACK_SYNC_TOLERANCE_MS) return false
+    }
+    val lastResync = lastResyncAtMs ?: return true
+    val elapsedSinceResync = (nowMs - lastResync).coerceAtLeast(0L)
+    return elapsedSinceResync >= AUDIO_TRACK_RESYNC_COOLDOWN_MS
+}
+
 internal data class AudioTrackSeekTarget(
     val segmentIndex: Int,
     val positionMs: Long,

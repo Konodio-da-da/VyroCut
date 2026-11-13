@@ -10,6 +10,7 @@ import android.media.MediaFormat
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
+import android.os.SystemClock
 import java.io.File
 import java.io.RandomAccessFile
 import java.security.MessageDigest
@@ -564,6 +565,7 @@ private fun VyroCutApp() {
     }
 
     LaunchedEffect(audioTrackSegments, clips, player) {
+        val lastAudioResyncAtMs = mutableMapOf<AudioTrackType, Long>()
         while (true) {
             val currentIndex = player.currentMediaItemIndex
             val projectPositionMs = if (currentIndex in clips.indices) {
@@ -586,11 +588,19 @@ private fun VyroCutApp() {
                         audioPlayer.currentMediaItemIndex,
                         audioPlayer.currentPosition,
                     )
-                    if (kotlin.math.abs(currentTrackPosition - projectPositionMs) > 180L ||
-                        audioPlayer.currentMediaItemIndex !in segments.indices
+                    val nowMs = SystemClock.elapsedRealtime()
+                    if (shouldResyncAudioTrack(
+                            projectPositionMs = projectPositionMs,
+                            trackPositionMs = currentTrackPosition,
+                            currentSegmentIndex = audioPlayer.currentMediaItemIndex,
+                            segmentCount = segments.size,
+                            lastResyncAtMs = lastAudioResyncAtMs[type],
+                            nowMs = nowMs,
+                        )
                     ) {
                         resolveAudioTrackSeekTarget(segments, projectPositionMs)?.let { target ->
                             audioPlayer.seekTo(target.segmentIndex, target.positionMs)
+                            lastAudioResyncAtMs[type] = nowMs
                         }
                     }
                     val activeSegment = segments.firstOrNull {
