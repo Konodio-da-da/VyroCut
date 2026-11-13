@@ -3274,6 +3274,7 @@ private fun TimelineEditorStrip(
     val clipWidthsPx = with(density) { clipWidths.map { it.dp.toPx() } }
     val gapPx = with(density) { gap.dp.toPx() }
     val totalDuration = calculateTimelineDurationMs(timelineClipDurationsMs).coerceAtLeast(1L)
+    val timelineRulerTicks = calculateTimelineRulerTicks(timelineClipDurationsMs, clipWidths, gap)
     val markerX = calculateTimelinePlayheadOffsetPx(
         clipDurationsMs = timelineClipDurationsMs,
         clipWidthsPx = clipWidths,
@@ -3320,26 +3321,22 @@ private fun TimelineEditorStrip(
             Text("Tap to seek • hold to scrub", color = StudioMuted, fontSize = 9.sp)
         }
 
-        // Ruler, video and audio are children of the same scrolling viewport.
+        // Ruler ticks share the playhead's absolute project-time mapping, so
+        // fractional clip lengths do not reset or drift the time labels.
         Box(Modifier.width(totalWidth).height(22.dp)) {
-            Row(Modifier.fillMaxSize()) {
-                var elapsed = 0L
-                clips.forEachIndexed { index, clip ->
-                    val seconds = (clip.durationMs / 1000L).toInt().coerceAtLeast(1)
-                    Box(Modifier.width(clipWidths[index].dp).fillMaxHeight()) {
-                        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            for (tick in 0..seconds) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Box(Modifier.width(1.dp).height(if ((elapsed / 1000L + tick) % 5L == 0L) 9.dp else 5.dp).background(StudioMuted.copy(alpha = 0.65f)))
-                                    if ((elapsed / 1000L + tick) % 5L == 0L) {
-                                        Text(formatTime((elapsed / 1000L + tick) * 1000L), color = StudioMuted, fontSize = 7.sp)
-                                    }
-                                }
-                            }
-                        }
+            timelineRulerTicks.forEach { tick ->
+                Column(
+                    Modifier.offset(x = tick.offsetPx.dp).fillMaxHeight(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier.width(1.dp)
+                            .height(if (tick.isMajor) 9.dp else 5.dp)
+                            .background(StudioMuted.copy(alpha = 0.65f)),
+                    )
+                    if (tick.isMajor) {
+                        Text(formatTime(tick.timeMs), color = StudioMuted, fontSize = 7.sp)
                     }
-                    if (index != clips.lastIndex) Spacer(Modifier.width(gap.dp))
-                    elapsed += clip.durationMs
                 }
             }
         }

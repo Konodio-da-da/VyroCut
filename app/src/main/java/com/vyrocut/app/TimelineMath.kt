@@ -226,6 +226,63 @@ internal fun calculateTimelinePlayheadOffsetPx(
     return offsetPx
 }
 
+internal data class TimelineRulerTick(
+    val timeMs: Long,
+    val offsetPx: Float,
+    val isMajor: Boolean,
+)
+
+/**
+ * Builds ruler ticks from absolute project time rather than restarting a local
+ * second counter for each clip. Fractional clip durations therefore keep ruler
+ * labels aligned with the same time-to-pixel mapping used by the playhead.
+ *
+ * Very long projects increase the tick interval so the ruler never creates an
+ * unbounded number of Compose children.
+ */
+internal fun calculateTimelineRulerTicks(
+    clipDurationsMs: List<Long>,
+    clipWidthsPx: List<Float>,
+    gapPx: Float,
+    tickIntervalMs: Long = 1_000L,
+    majorIntervalMs: Long = 5_000L,
+): List<TimelineRulerTick> {
+    if (tickIntervalMs <= 0L || majorIntervalMs <= 0L) return emptyList()
+    val totalDurationMs = calculateTimelineDurationMs(clipDurationsMs)
+    if (totalDurationMs <= 0L) return emptyList()
+
+    val requestedTickCount = totalDurationMs / tickIntervalMs
+    val intervalMultiplier = if (requestedTickCount <= MAX_TIMELINE_RULER_TICKS) {
+        1L
+    } else {
+        requestedTickCount / MAX_TIMELINE_RULER_TICKS +
+            if (requestedTickCount % MAX_TIMELINE_RULER_TICKS == 0L) 0L else 1L
+    }
+    // When the multiplier is greater than one, requestedTickCount is also
+    // greater than the cap, so this product cannot exceed totalDurationMs.
+    val effectiveIntervalMs = tickIntervalMs * intervalMultiplier
+
+    val ticks = mutableListOf<TimelineRulerTick>()
+    var timeMs = 0L
+    while (timeMs <= totalDurationMs && ticks.size <= MAX_TIMELINE_RULER_TICKS) {
+        ticks += TimelineRulerTick(
+            timeMs = timeMs,
+            offsetPx = calculateTimelinePlayheadOffsetPx(
+                clipDurationsMs = clipDurationsMs,
+                clipWidthsPx = clipWidthsPx,
+                playheadPositionMs = timeMs,
+                gapPx = gapPx,
+            ),
+            isMajor = timeMs % majorIntervalMs == 0L,
+        )
+        if (totalDurationMs - timeMs < effectiveIntervalMs) break
+        timeMs += effectiveIntervalMs
+    }
+    return ticks
+}
+
+private const val MAX_TIMELINE_RULER_TICKS = 2_000
+
 internal fun <T> moveTimelineItem(items: List<T>, fromIndex: Int, toIndex: Int): List<T> {
     if (fromIndex !in items.indices || toIndex !in items.indices || fromIndex == toIndex) return items
     return items.toMutableList().apply {

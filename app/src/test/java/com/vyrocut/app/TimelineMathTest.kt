@@ -654,4 +654,45 @@ class TimelineMathTest {
         )
     }
 
+
+    @Test
+    fun rulerTicksUseAbsoluteProjectTimeAcrossFractionalClipBoundaries() {
+        val ticks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(1_500L, 2_500L),
+            clipWidthsPx = listOf(150f, 250f),
+            gapPx = 10f,
+            majorIntervalMs = 2_000L,
+        )
+
+        assertEquals(listOf(0L, 1_000L, 2_000L, 3_000L, 4_000L), ticks.map { it.timeMs })
+        assertEquals(listOf(0f, 100f, 210f, 310f, 410f), ticks.map { it.offsetPx })
+        assertEquals(listOf(true, false, true, false, true), ticks.map { it.isMajor })
+    }
+
+    @Test
+    fun rulerTicksKeepZeroDurationVisualSlotsWithoutAdvancingProjectTime() {
+        val ticks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(0L, 1_000L),
+            clipWidthsPx = listOf(40f, 100f),
+            gapPx = 10f,
+        )
+
+        assertEquals(listOf(0L, 1_000L), ticks.map { it.timeMs })
+        assertEquals(listOf(50f, 150f), ticks.map { it.offsetPx })
+    }
+
+    @Test
+    fun rulerTicksRejectInvalidIntervalsAndBoundVeryLongProjects() {
+        assertTrue(calculateTimelineRulerTicks(listOf(1_000L), listOf(100f), 6f, 0L).isEmpty())
+        assertTrue(calculateTimelineRulerTicks(listOf(1_000L), listOf(100f), 6f, majorIntervalMs = 0L).isEmpty())
+
+        val ticks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(Long.MAX_VALUE),
+            clipWidthsPx = listOf(320f),
+            gapPx = 6f,
+        )
+        assertTrue(ticks.size <= 2_001)
+        assertEquals(0L, ticks.first().timeMs)
+    }
+
 }
