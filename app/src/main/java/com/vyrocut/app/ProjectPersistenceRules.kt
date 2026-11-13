@@ -53,6 +53,7 @@ internal fun audioTracksForHistorySnapshot(
     } else {
         trimAudioTrackClipsToProjectDuration(currentAudioTracks, projectDurationMs)
     }
+}
 
 /**
  * Wraps the independently recoverable audio-lane payload in the same versioned,
@@ -82,6 +83,4 @@ internal fun decodeAudioTrackRecoveryJournal(
 
     val snapshot = ProjectRecoveryJournal.decode(raw, projectId) ?: return null
     return decodeAudioTrackClips(snapshot.projectJson, projectDurationMs)
-}
-
 }
