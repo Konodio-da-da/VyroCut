@@ -108,6 +108,7 @@ class AudioTracksTest {
         val decoded = decodeAudioTrackClips(encodeAudioTrackClips(expected), 10_000L)
         assertEquals(expected, decoded)
         assertNull(decodeAudioTrackClips("[{\"id\":\"broken\"}]", 10_000L))
+        assertNull(decodeAudioTrackClips("", 10_000L))
         assertNull(decodeAudioTrackClips(encodeAudioTrackClips(expected), 2_000L))
         assertEquals(emptyList<AudioTrackClip>(), decodeAudioTrackClips(null, 10_000L))
     }
