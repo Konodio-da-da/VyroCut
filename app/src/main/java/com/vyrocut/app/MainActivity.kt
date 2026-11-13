@@ -669,13 +669,7 @@ private fun VyroCutApp() {
 
     fun saveProject(items: List<EditClip>) {
         val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "Untitled project"
-        persistProjectWithRecovery(preferences, activeProjectId, projectName, items)
-        persistProjectAudioTracks(
-            preferences,
-            activeProjectId,
-            audioTrackClips,
-            calculateTimelineDurationMs(items.map { it.durationMs }),
-        )
+        persistProjectState(preferences, activeProjectId, projectName, items, audioTrackClips)
         preferences.edit().putString("active_project_id", activeProjectId).apply()
     }
     fun persistCanvasSettings(aspectRatio: Float, background: Color) {
@@ -715,8 +709,7 @@ private fun VyroCutApp() {
         val project = ProjectInfo(java.util.UUID.randomUUID().toString(), name)
         projects.add(project)
         saveProjectIndex(preferences, projects)
-        persistProjectWithRecovery(preferences, project.id, project.name, emptyList())
-        persistProjectAudioTracks(preferences, project.id, emptyList(), 0L)
+        persistProjectState(preferences, project.id, project.name, emptyList(), emptyList())
         newProjectName = ""
         showProjects = false
         switchProject(project)
@@ -995,12 +988,12 @@ private fun VyroCutApp() {
                 val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.name)
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
-                persistProjectWithRecovery(preferences, imported.id, imported.name, backup.clips)
-                persistProjectAudioTracks(
+                persistProjectState(
                     preferences,
                     imported.id,
+                    imported.name,
+                    backup.clips,
                     backup.audioTracks,
-                    calculateTimelineDurationMs(backup.clips.map { it.durationMs }),
                 )
                 preferences.edit()
                     .putString(
@@ -2595,22 +2588,29 @@ private fun VyroCutApp() {
                                     if (restored != null) {
                                         val name = projects.firstOrNull { it.id == snapshot.projectId }?.name
                                             ?: snapshot.projectName
-                                        persistProjectWithRecovery(preferences, snapshot.projectId, name, restored)
+                                        val restoredDurationMs =
+                                            calculateTimelineDurationMs(restored.map { it.durationMs })
+                                        val restoredAudioTracks = if (snapshot.projectId == activeProjectId) {
+                                            trimAudioTrackClipsToProjectDuration(audioTrackClips, restoredDurationMs)
+                                        } else {
+                                            trimAudioTrackClipsToProjectDuration(
+                                                loadProjectAudioTracks(preferences, snapshot.projectId, Long.MAX_VALUE),
+                                                restoredDurationMs,
+                                            )
+                                        }
+                                        persistProjectState(
+                                            preferences,
+                                            snapshot.projectId,
+                                            name,
+                                            restored,
+                                            restoredAudioTracks,
+                                        )
                                         if (snapshot.projectId == activeProjectId) {
                                             clips = restored
-                                            audioTrackClips = trimAudioTrackClipsToProjectDuration(
-                                                audioTrackClips,
-                                                calculateTimelineDurationMs(restored.map { it.durationMs }),
-                                            )
+                                            audioTrackClips = restoredAudioTracks
                                             selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
                                             selectedIndex = 0
                                             timelinePositionMs = 0f
-                                            persistProjectAudioTracks(
-                                                preferences,
-                                                snapshot.projectId,
-                                                audioTrackClips,
-                                                calculateTimelineDurationMs(restored.map { it.durationMs }),
-                                            )
                                         }
                                         recoveryCandidate = null
                                         exportMessage = "Recovered ${restored.size} clips from the local checkpoint"
@@ -3177,24 +3177,33 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
     }
 }.getOrNull()
 
-private fun persistProjectWithRecovery(
+private fun persistProjectState(
     preferences: android.content.SharedPreferences,
     projectId: String,
     projectName: String,
     clips: List<EditClip>,
+    audioTracks: List<AudioTrackClip>,
 ) {
+    val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+    require(validateAudioTrackClips(audioTracks, projectDurationMs)) {
+        "Audio tracks must fit inside the saved video project"
+    }
     val projectJson = encodeProject(clips)
-    val recoveryJson = ProjectRecoveryJournal.encode(
+    val audioTracksJson = encodeAudioTrackClips(audioTracks)
+    val recoveryJournals = createProjectRecoveryJournalBundle(
         projectId = projectId,
         projectName = projectName,
-        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
         projectJson = projectJson,
+        audioTracksJson = audioTracksJson,
+        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
     )
-    // Both values are committed in one SharedPreferences edit. The independent
-    // recovery key can still rescue the project if its primary value is damaged.
+    // Video edits, audio lanes, and both recovery journals share one
+    // preference transaction instead of four separately scheduled writes.
     preferences.edit()
         .putString("project_$projectId", projectJson)
-        .putString("project_${projectId}_recovery", recoveryJson)
+        .putString("project_${projectId}_recovery", recoveryJournals.projectJournal)
+        .putString("project_${projectId}_audio_tracks", audioTracksJson)
+        .putString("project_${projectId}_audio_tracks_recovery", recoveryJournals.audioTracksJournal)
         .remove("project_${projectId}_recovery_dismissed")
         .apply()
 }

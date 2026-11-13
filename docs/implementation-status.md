@@ -2,7 +2,7 @@
 
 ## Last verified build
 - The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
-- Feature branch `fix/capcut-workflow-ui` commit `ea9d1ed02b372832adfadfb2d7e3b9263af46fda` passed `gradle assembleDebug testDebugUnitTest` in [Android build run #275](https://github.com/Konodio-da-da/VyroCut/actions/runs/43424885660). The debug APK artifact was uploaded.
+- Feature branch `fix/capcut-workflow-ui` commit `49247210af4e20a209c545ba9abde4a7395bb29d` passed `assembleDebug` and `testDebugUnitTest` in [Android build run #287](https://github.com/Konodio-da-da/VyroCut/actions/runs/43452725537). The debug APK artifact was uploaded.
 - The preceding documentation-only commit `bdde11e267c91d6dae713ee12900cd32f15f1dfd` passed in [run #273](https://github.com/Konodio-da-da/VyroCut/actions/runs/43418323093); the atomic-cache-write and cache-serialization commits passed in [runs #269](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417200959) and #271 (see the corresponding branch run).
 - The app remains `minSdk = 29` and offline-first. GitHub Actions supplies JDK 17 and the Android SDK; the ProductOS sandbox has no Java, Android SDK, Gradle installation/wrapper launcher, or adb.
 - CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
@@ -55,10 +55,11 @@
 
 ## Local project recovery milestone (implemented; Android build and unit-test workflow passed)
 - Every project save writes the primary edit list and a separate versioned recovery journal in the same SharedPreferences edit.
+- Video edit decisions, audio-lane data, and both recovery journals are now written together in one SharedPreferences editor transaction for normal saves, new projects, backup imports, and checkpoint recovery. Both journals share the same checkpoint timestamp, preventing video/audio recovery copies from representing different save moments. Audio-only edits continue to update their primary and recovery values together.
 - The journal stores the last persisted clip list, project identity/name, timestamp, and SHA-256 integrity checksum; UTF-8 fields are URL-safe Base64 encoded.
 - At startup, a valid journal is offered only when the primary project value is missing or differs. The user can recover the saved clip list or dismiss that exact checkpoint; a later save clears the dismissal.
 - Recovery validates every clip entry strictly before replacing project data, preserving the current project if the checkpoint is malformed.
-- Five pure Kotlin tests cover Unicode round-tripping, truncation/tampering, project isolation, mismatch detection, and identical-checkpoint suppression.
+- Five pure Kotlin tests cover Unicode round-tripping, truncation/tampering, project isolation, mismatch detection, and identical-checkpoint suppression. Additional tests verify that video and audio recovery journals share one checkpoint timestamp and reject invalid checkpoint identity/timestamps.
 - This protects the last persisted edit list if the primary project preference value is damaged or lost. The journal is stored as a separate key in the same SharedPreferences file, so it does not survive loss of the entire preference file. It does not recover edits that had not yet been saved, source media bytes, or interrupted Transformer exports.
 - Physical-device validation of continuous multi-clip playback, source relinking, and actual MP4 decoding/audio continuity.
 - Recovery of unpersisted in-memory edits and interrupted Transformer exports; the current journal protects the last persisted project edit list only.

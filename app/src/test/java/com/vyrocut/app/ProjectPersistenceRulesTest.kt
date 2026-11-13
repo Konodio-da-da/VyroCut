@@ -129,4 +129,43 @@ class ProjectPersistenceRulesTest {
         assertEquals(tracks, decodeAudioTrackRecoveryJournal(legacyJson, "project-1", 2_000L))
     }
 
+    @Test
+    fun projectAndAudioRecoveryJournalsShareOneCheckpointTimestamp() {
+        val projectJson = """[{"id":"clip-1","start":0,"end":1200}]"""
+        val audioJson = "[]"
+        val savedAtMs = 1_800_000_000_000L
+        val bundle = createProjectRecoveryJournalBundle(
+            projectId = "project-1",
+            projectName = "Shared checkpoint",
+            projectJson = projectJson,
+            audioTracksJson = audioJson,
+            savedAtMs = savedAtMs,
+        )
+
+        val projectSnapshot = ProjectRecoveryJournal.decode(bundle.projectJournal, "project-1")
+        val audioSnapshot = ProjectRecoveryJournal.decode(bundle.audioTracksJournal, "project-1")
+
+        assertEquals(savedAtMs, projectSnapshot?.savedAtMs)
+        assertEquals(savedAtMs, audioSnapshot?.savedAtMs)
+        assertEquals(projectJson, projectSnapshot?.projectJson)
+        assertEquals("Shared checkpoint", projectSnapshot?.projectName)
+        assertEquals(audioJson, audioSnapshot?.projectJson)
+    }
+
+    @Test
+    fun projectRecoveryJournalBundleRejectsBlankProjectIdsAndInvalidTimestamps() {
+        assertEquals(
+            null,
+            runCatching {
+                createProjectRecoveryJournalBundle(" ", "Project", "[]", "[]", 1L)
+            }.getOrNull(),
+        )
+        assertEquals(
+            null,
+            runCatching {
+                createProjectRecoveryJournalBundle("project-1", "Project", "[]", "[]", 0L)
+            }.getOrNull(),
+        )
+    }
+
 }

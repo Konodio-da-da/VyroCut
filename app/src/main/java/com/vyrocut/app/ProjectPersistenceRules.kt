@@ -84,3 +84,37 @@ internal fun decodeAudioTrackRecoveryJournal(
     val snapshot = ProjectRecoveryJournal.decode(raw, projectId) ?: return null
     return decodeAudioTrackClips(snapshot.projectJson, projectDurationMs)
 }
+
+/**
+ * Recovery checkpoints for the video edit list and its independent audio lanes.
+ * Both journals share one timestamp so callers can persist the complete project
+ * state in a single SharedPreferences editor transaction.
+ */
+internal data class ProjectRecoveryJournalBundle(
+    val projectJournal: String,
+    val audioTracksJournal: String,
+)
+
+internal fun createProjectRecoveryJournalBundle(
+    projectId: String,
+    projectName: String,
+    projectJson: String,
+    audioTracksJson: String,
+    savedAtMs: Long,
+): ProjectRecoveryJournalBundle {
+    require(projectId.isNotBlank())
+    require(savedAtMs > 0L)
+    return ProjectRecoveryJournalBundle(
+        projectJournal = ProjectRecoveryJournal.encode(
+            projectId = projectId,
+            projectName = projectName,
+            savedAtMs = savedAtMs,
+            projectJson = projectJson,
+        ),
+        audioTracksJournal = encodeAudioTrackRecoveryJournal(
+            projectId = projectId,
+            audioTracksJson = audioTracksJson,
+            savedAtMs = savedAtMs,
+        ),
+    )
+}
