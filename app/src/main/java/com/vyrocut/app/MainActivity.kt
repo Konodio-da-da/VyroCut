@@ -1882,7 +1882,8 @@ private fun VyroCutApp() {
                                 onValueChangeFinished = {
                                     trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
                                 },
-                                valueRange = 0f..(sourceDurationMs - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(0L).toFloat(),
+                                valueRange = 0f..(sourceDurationMs - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(1L).toFloat(),
+                                enabled = sourceDurationMs > MIN_AUDIO_TRACK_CLIP_DURATION_MS,
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1898,7 +1899,8 @@ private fun VyroCutApp() {
                                 onValueChangeFinished = {
                                     trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
                                 },
-                                valueRange = minimumSourceEndMs.toFloat()..sourceDurationMs.toFloat(),
+                                valueRange = minimumSourceEndMs.toFloat()..sourceDurationMs.toFloat().coerceAtLeast(minimumSourceEndMs.toFloat() + 1f),
+                                enabled = sourceDurationMs > MIN_AUDIO_TRACK_CLIP_DURATION_MS,
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1911,6 +1913,7 @@ private fun VyroCutApp() {
                                 onValueChange = { audioTrackStartDraft = it },
                                 onValueChangeFinished = { moveSelectedAudioTrack(audioTrackStartDraft.toLong()) },
                                 valueRange = 0f..maximumTimelineStartMs.toFloat().coerceAtLeast(1f),
+                                enabled = maximumTimelineStartMs > 0L,
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
