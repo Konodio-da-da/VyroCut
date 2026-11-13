@@ -1,11 +1,11 @@
 # Implementation status
 
 ## Last verified build
-- The workflow runs `assembleDebug` and `testDebugUnitTest`, then uploads the debug APK artifact.
-- Branch head `175888447af2db0a9f884884ceaeb6a3e85cafe2` passed both tasks in [run 43156283559](https://github.com/Konodio-da-da/VyroCut/actions/runs/43156283559); the debug APK artifact was uploaded.
-- All 51 tests passed on that revision (35 timeline-domain tests, 7 export-validation rule tests, 4 media-relinking tests, and 5 recovery-journal tests).
-- CI confirms Android compilation and unit tests; it does not replace physical-device playback or a full exported-file decode/playback test.
-- The next revision adds playhead-based splitting and stricter project-history decoding; its CI result is pending.
+- The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
+- Feature branch `fix/capcut-workflow-ui` commit `ffe251036240734c67088fd1b0dd82976f7348c6` passed `gradle assembleDebug testDebugUnitTest` in [Android build run #271](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417782036). The debug APK artifact was uploaded.
+- The preceding atomic-cache-write commit `5617373c3da8348e9778973ce3f2b020399cb10c` also passed in [run #269](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417200959) and uploaded its debug APK.
+- The app remains `minSdk = 29` and offline-first. GitHub Actions supplies JDK 17 and the Android SDK; the ProductOS sandbox has no Java, Android SDK, Gradle installation/wrapper launcher, or adb.
+- CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
 
 ## Editing workspace milestone (in progress)
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
