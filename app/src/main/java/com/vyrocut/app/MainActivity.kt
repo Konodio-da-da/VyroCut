@@ -171,8 +171,8 @@ private fun VyroCutApp() {
     var projectToRename by remember { mutableStateOf<ProjectInfo?>(null) }
     var renameProjectName by remember { mutableStateOf("") }
     var projectToDelete by remember { mutableStateOf<ProjectInfo?>(null) }
-    val undoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
-    val redoStack = remember(activeProjectId) { mutableStateListOf<List<EditClip>>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
+    val undoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
+    val redoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
     var recoveryCandidate by remember(activeProjectId) {
         mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId))
     }
@@ -713,7 +713,7 @@ private fun VyroCutApp() {
     }
     fun changed(items: List<EditClip>) {
         if (items == clips) return
-        undoStack.add(clips.toList())
+        undoStack.add(ProjectEditSnapshot(clips.toList(), audioTrackClips.toList()))
         if (undoStack.size > 50) undoStack.removeAt(0)
         redoStack.clear()
         clips = items.toList()
@@ -736,9 +736,13 @@ private fun VyroCutApp() {
             return
         }
         if (items == audioTrackClips) return
+        undoStack.add(ProjectEditSnapshot(clips.toList(), audioTrackClips.toList()))
+        if (undoStack.size > 50) undoStack.removeAt(0)
+        redoStack.clear()
         audioTrackClips = items.toList()
         selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> items.any { it.id == id } }
             ?: items.lastOrNull()?.id
+        saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         persistProjectAudioTracks(preferences, activeProjectId, items, projectDurationMs)
     }
     fun moveSelectedAudioTrack(requestedStartMs: Long) {
@@ -897,31 +901,29 @@ private fun VyroCutApp() {
     }
     fun undoEdit() {
         if (undoStack.isEmpty()) return
-        redoStack.add(clips.toList())
+        redoStack.add(ProjectEditSnapshot(clips.toList(), audioTrackClips.toList()))
+        if (redoStack.size > 50) redoStack.removeAt(0)
         val previous = undoStack.removeAt(undoStack.lastIndex)
-        clips = previous
-        audioTrackClips = trimAudioTrackClipsToProjectDuration(
-            audioTrackClips,
-            calculateTimelineDurationMs(previous.map { it.durationMs }),
-        )
+        clips = previous.clips
+        audioTrackClips = audioTracksForHistorySnapshot(previous, audioTrackClips)
         selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
-        selectedIndex = selectedIndex.coerceIn(0, (previous.size - 1).coerceAtLeast(0))
-        saveProject(previous)
+            ?: audioTrackClips.lastOrNull()?.id
+        selectedIndex = selectedIndex.coerceIn(0, (previous.clips.size - 1).coerceAtLeast(0))
+        saveProject(previous.clips)
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         exportMessage = "Undo completed"
     }
     fun redoEdit() {
         if (redoStack.isEmpty()) return
-        undoStack.add(clips.toList())
+        undoStack.add(ProjectEditSnapshot(clips.toList(), audioTrackClips.toList()))
+        if (undoStack.size > 50) undoStack.removeAt(0)
         val next = redoStack.removeAt(redoStack.lastIndex)
-        clips = next
-        audioTrackClips = trimAudioTrackClipsToProjectDuration(
-            audioTrackClips,
-            calculateTimelineDurationMs(next.map { it.durationMs }),
-        )
+        clips = next.clips
+        audioTrackClips = audioTracksForHistorySnapshot(next, audioTrackClips)
         selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
-        selectedIndex = selectedIndex.coerceIn(0, (next.size - 1).coerceAtLeast(0))
-        saveProject(next)
+            ?: audioTrackClips.lastOrNull()?.id
+        selectedIndex = selectedIndex.coerceIn(0, (next.clips.size - 1).coerceAtLeast(0))
+        saveProject(next.clips)
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         exportMessage = "Redo completed"
     }
@@ -2961,15 +2963,47 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     return ProjectBackup(name, clips, canvasSettings, audioTracks)
 }
 
+internal fun encodeProjectEditSnapshot(snapshot: ProjectEditSnapshot): String =
+    JSONObject().apply {
+        put("format", "vyrocut-edit-history")
+        put("version", 1)
+        put("clips", JSONArray(encodeProject(snapshot.clips)))
+        snapshot.audioTracks?.let { put("audioTracks", JSONArray(encodeAudioTrackClips(it))) }
+    }.toString()
+
+internal fun decodeProjectEditSnapshot(raw: String): ProjectEditSnapshot? = runCatching {
+    val trimmed = raw.trim()
+    if (trimmed.startsWith("[")) {
+        val clips = decodeProjectStrict(trimmed) ?: error("Invalid legacy clip history")
+        ProjectEditSnapshot(clips, null)
+    } else {
+        val root = JSONObject(trimmed)
+        require(root.getString("format") == "vyrocut-edit-history")
+        require(root.getInt("version") == 1)
+        val clipsJson = root.getJSONArray("clips")
+        val clips = decodeProjectStrict(clipsJson.toString()) ?: error("Invalid clip history")
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val audioTracks = if (root.has("audioTracks")) {
+            val audioJson = root.optJSONArray("audioTracks")
+                ?: error("Invalid audio history list")
+            decodeAudioTrackClips(audioJson.toString(), projectDurationMs)
+                ?: error("Invalid audio history entries")
+        } else {
+            null
+        }
+        ProjectEditSnapshot(clips, audioTracks)
+    }
+}.getOrNull()
+
 private fun saveProjectHistory(
     preferences: android.content.SharedPreferences,
     projectId: String,
-    undo: List<List<EditClip>>,
-    redo: List<List<EditClip>>
+    undo: List<ProjectEditSnapshot>,
+    redo: List<ProjectEditSnapshot>
 ) {
-    fun encodeHistory(history: List<List<EditClip>>): String {
+    fun encodeHistory(history: List<ProjectEditSnapshot>): String {
         val array = JSONArray()
-        history.takeLast(50).forEach { snapshot -> array.put(encodeProject(snapshot)) }
+        history.takeLast(50).forEach { snapshot -> array.put(encodeProjectEditSnapshot(snapshot)) }
         return array.toString()
     }
     preferences.edit()
@@ -2982,11 +3016,11 @@ private fun loadProjectHistory(
     preferences: android.content.SharedPreferences,
     projectId: String,
     kind: String
-): List<List<EditClip>> = runCatching {
+): List<ProjectEditSnapshot> = runCatching {
     val raw = preferences.getString("project_${projectId}_${kind}", null) ?: return emptyList()
     val array = JSONArray(raw)
     val snapshots = (0 until array.length()).map { index -> array.getString(index) }
-    decodeValidHistorySnapshots(snapshots, ::decodeProjectStrict)
+    decodeValidHistorySnapshots(snapshots, ::decodeProjectEditSnapshot)
 }.getOrDefault(emptyList())
 
 private fun decodeProject(raw: String): List<EditClip> =

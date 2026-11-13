@@ -33,3 +33,24 @@ internal fun decodeProjectCanvasSettings(raw: String?): ProjectCanvasSettings? {
     if (fields[2] !in PROJECT_CANVAS_BACKGROUND_PRESETS) return null
     return ProjectCanvasSettings(fields[1], fields[2])
 }
+
+
+/** A complete editor history entry. Null audioTracks identifies pre-v12 clip-only snapshots. */
+internal data class ProjectEditSnapshot(
+    val clips: List<EditClip>,
+    val audioTracks: List<AudioTrackClip>?,
+)
+
+/** Restores audio from a complete snapshot, or safely preserves legacy audio within the restored project length. */
+internal fun audioTracksForHistorySnapshot(
+    snapshot: ProjectEditSnapshot,
+    currentAudioTracks: List<AudioTrackClip>,
+): List<AudioTrackClip> {
+    val projectDurationMs = calculateTimelineDurationMs(snapshot.clips.map { it.durationMs })
+    val savedAudioTracks = snapshot.audioTracks
+    return if (savedAudioTracks != null && validateAudioTrackClips(savedAudioTracks, projectDurationMs)) {
+        savedAudioTracks
+    } else {
+        trimAudioTrackClipsToProjectDuration(currentAudioTracks, projectDurationMs)
+    }
+}
