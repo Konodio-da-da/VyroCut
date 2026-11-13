@@ -144,4 +144,25 @@ class AudioTracksTest {
         assertEquals(0, trimAudioTrackClipsToProjectDuration(original, 1_000L).size)
     }
 
+
+    @Test
+    fun insertionSlotTrimsLongSourceToTheFirstAvailableLaneGap() {
+        val existing = listOf(
+            clip("first", startMs = 0L, sourceEndMs = 2_000L),
+            clip("second", startMs = 5_000L, sourceEndMs = 2_000L),
+        )
+        assertEquals(
+            AudioTrackInsertionSlot(2_000L, 3_000L),
+            resolveAudioTrackInsertionSlot(existing, AudioTrackType.MUSIC, 1_000L, 4_000L, 10_000L),
+        )
+        assertEquals(
+            AudioTrackInsertionSlot(7_000L, 2_000L),
+            resolveAudioTrackInsertionSlot(existing, AudioTrackType.MUSIC, 6_000L, 2_000L, 10_000L),
+        )
+        assertEquals(
+            AudioTrackInsertionSlot(9_000L, 1_000L),
+            resolveAudioTrackInsertionSlot(existing, AudioTrackType.MUSIC, 9_000L, 2_000L, 10_000L),
+        )
+    }
+
 }
