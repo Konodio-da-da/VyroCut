@@ -192,6 +192,27 @@ class AudioTracksTest {
     }
 
     @Test
+    fun insertionSkipsGapsShorterThanTheMinimumAudioSegment() {
+        val existing = listOf(
+            clip("first", startMs = 0L, sourceEndMs = 1_000L),
+            clip("second", startMs = 1_050L, sourceEndMs = 1_000L),
+        )
+        assertEquals(
+            AudioTrackInsertionSlot(2_050L, 500L),
+            resolveAudioTrackInsertionSlot(existing, AudioTrackType.MUSIC, 1_000L, 500L, 5_000L),
+        )
+        assertNull(
+            resolveAudioTrackInsertionSlot(
+                emptyList(),
+                AudioTrackType.MUSIC,
+                950L,
+                500L,
+                1_049L,
+            ),
+        )
+    }
+
+    @Test
     fun insertionRejectsAudioSourcesShorterThanTheMinimumSegment() {
         assertNull(
             resolveAudioTrackInsertionSlot(
