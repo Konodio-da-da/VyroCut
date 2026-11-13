@@ -61,7 +61,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionSixBackupPreservesClipAudioVisualAdjustmentsAndTextOverlay() {
+    fun versionSevenBackupPreservesClipAudioVisualAdjustmentsAndStyledTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -72,7 +72,7 @@ class ProjectClipAudioPersistenceTest {
             fadeInMs = 1_000L,
             fadeOutMs = 2_000L,
             visualAdjustments = ClipVisualAdjustments(brightness = -45, contrast = 25, saturation = 70),
-            textOverlay = ClipTextOverlay("Launch day"),
+            textOverlay = ClipTextOverlay("Launch day", 1.25f, ClipTextPosition.TOP),
         )
         val backup = encodeProjectBackup(
             "Volume project",
@@ -81,16 +81,35 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(6, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(7, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
         assertEquals(2_000L, restored.clips.single().fadeOutMs)
         assertEquals(ClipVisualAdjustments(-45, 25, 70), restored.clips.single().visualAdjustments)
-        assertEquals(ClipTextOverlay("Launch day"), restored.clips.single().textOverlay)
+        assertEquals(
+            ClipTextOverlay("Launch day", 1.25f, ClipTextPosition.TOP),
+            restored.clips.single().textOverlay,
+        )
         assertEquals(ProjectCanvasSettings("16:9", "DARK"), restored.canvasSettings)
     }
 
+
+    @Test
+    fun versionSixBackupWithoutTextStyleDefaultsToMediumBottomText() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":6,
+            "projectName":"Version six backup",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Old clip","start":0,"end":1000,"textOverlay":{"text":"Legacy title"}}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK"
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals("Version six backup", restored.name)
+        assertEquals(ClipTextOverlay("Legacy title"), restored.clips.single().textOverlay)
+    }
 
     @Test
     fun versionFiveBackupWithoutTextOverlayRemainsCompatible() {
