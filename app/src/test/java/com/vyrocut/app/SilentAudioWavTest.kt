@@ -2,6 +2,8 @@ package com.vyrocut.app
 
 import java.io.File
 import java.io.RandomAccessFile
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -65,6 +67,26 @@ class SilentAudioWavTest {
         assertFalse(temporaryFile.exists())
         assertEquals(16_044L, file.length())
         assertTrue(isValidSilentAudioWavHeader(header, 16_000L))
+    }
+
+    @Test
+    fun concurrentPreviewAndExportRequestsShareOneCompleteCache() {
+        val directory = temporaryFolder.newFolder("concurrent")
+        val executor = Executors.newFixedThreadPool(2)
+        try {
+            val requests = (0 until 2).map {
+                executor.submit<File> { createSilentAudioWav(directory, 750L) }
+            }
+            val files = requests.map { it.get(5, TimeUnit.SECONDS) }
+            val header = RandomAccessFile(files.first(), "r").use { input ->
+                ByteArray(44).also { input.readFully(it) }
+            }
+
+            assertEquals(files.first().absolutePath, files.last().absolutePath)
+            assertTrue(isValidSilentAudioWavHeader(header, 12_000L))
+        } finally {
+            executor.shutdownNow()
+        }
     }
 
     @Test

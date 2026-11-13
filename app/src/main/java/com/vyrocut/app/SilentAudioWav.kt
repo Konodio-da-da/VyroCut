@@ -61,6 +61,7 @@ internal fun isValidSilentAudioWavHeader(header: ByteArray, expectedDataBytes: L
  * file, but it can never leave a correctly-sized, half-written target that the
  * next editor session mistakes for a valid WAV.
  */
+@Synchronized
 internal fun createSilentAudioWav(directory: File, durationMs: Long): File {
     require(durationMs > 0L) { "Silence duration must be positive" }
     val dataBytes = (
