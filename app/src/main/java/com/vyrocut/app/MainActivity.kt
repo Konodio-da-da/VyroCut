@@ -587,17 +587,19 @@ private fun VyroCutApp() {
                         audioPlayer.currentMediaItemIndex,
                         audioPlayer.currentPosition,
                     )
+                    val expectedTrackTarget = resolveAudioTrackSeekTarget(segments, projectPositionMs)
                     val nowMs = SystemClock.elapsedRealtime()
                     if (shouldResyncAudioTrack(
                             projectPositionMs = projectPositionMs,
                             trackPositionMs = currentTrackPosition,
                             currentSegmentIndex = audioPlayer.currentMediaItemIndex,
+                            expectedSegmentIndex = expectedTrackTarget?.segmentIndex,
                             segmentCount = segments.size,
                             lastResyncAtMs = lastAudioResyncAtMs[type],
                             nowMs = nowMs,
                         )
                     ) {
-                        resolveAudioTrackSeekTarget(segments, projectPositionMs)?.let { target ->
+                        expectedTrackTarget?.let { target ->
                             audioPlayer.seekTo(target.segmentIndex, target.positionMs)
                             lastAudioResyncAtMs[type] = nowMs
                         }

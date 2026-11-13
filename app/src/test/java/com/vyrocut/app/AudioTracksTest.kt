@@ -295,14 +295,58 @@ class AudioTracksTest {
 
     @Test
     fun audioLaneResyncUsesToleranceAndCooldownToAvoidSeekThrashing() {
-        assertFalse(shouldResyncAudioTrack(1_000L, 820L, 0, 1, null, 0L))
-        assertFalse(shouldResyncAudioTrack(1_000L, 821L, 0, 1, null, 0L))
-        assertTrue(shouldResyncAudioTrack(1_000L, 819L, 0, 1, null, 0L))
-        assertFalse(shouldResyncAudioTrack(1_000L, 700L, 0, 1, 1_000L, 1_249L))
-        assertTrue(shouldResyncAudioTrack(1_000L, 700L, 0, 1, 1_000L, 1_250L))
-        assertFalse(shouldResyncAudioTrack(1_000L, 1_000L, -1, 1, 1_000L, 1_249L))
-        assertTrue(shouldResyncAudioTrack(1_000L, 1_000L, -1, 1, 1_000L, 1_250L))
-        assertFalse(shouldResyncAudioTrack(1_000L, 0L, -1, 0, null, 0L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 820L, 0, 0, 1, null, 0L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 821L, 0, 0, 1, null, 0L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 819L, 0, 0, 1, null, 0L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 700L, 0, 0, 1, 1_000L, 1_249L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 700L, 0, 0, 1, 1_000L, 1_250L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 1_000L, -1, 0, 1, 1_000L, 1_249L))
+        assertTrue(shouldResyncAudioTrack(1_000L, 1_000L, -1, 0, 1, 1_000L, 1_250L))
+        assertFalse(shouldResyncAudioTrack(1_000L, 0L, -1, 0, 0, null, 0L))
+    }
+
+    @Test
+    fun audioLaneResyncDetectsWrongPlaylistItemAtAnExactSegmentBoundary() {
+        val segments = listOf(
+            AudioTrackTimelineSegment(0L, 1_000L, null),
+            AudioTrackTimelineSegment(1_000L, 2_000L, null),
+        )
+        val expectedTarget = resolveAudioTrackSeekTarget(segments, 1_000L)
+
+        assertEquals(AudioTrackSeekTarget(1, 0L), expectedTarget)
+        assertTrue(
+            shouldResyncAudioTrack(
+                projectPositionMs = 1_000L,
+                trackPositionMs = 1_000L,
+                currentSegmentIndex = 0,
+                expectedSegmentIndex = expectedTarget?.segmentIndex,
+                segmentCount = segments.size,
+                lastResyncAtMs = null,
+                nowMs = 2_000L,
+            ),
+        )
+        assertFalse(
+            shouldResyncAudioTrack(
+                projectPositionMs = 1_000L,
+                trackPositionMs = 1_000L,
+                currentSegmentIndex = 0,
+                expectedSegmentIndex = expectedTarget?.segmentIndex,
+                segmentCount = segments.size,
+                lastResyncAtMs = 2_000L,
+                nowMs = 2_249L,
+            ),
+        )
+        assertTrue(
+            shouldResyncAudioTrack(
+                projectPositionMs = 1_000L,
+                trackPositionMs = 1_000L,
+                currentSegmentIndex = 0,
+                expectedSegmentIndex = expectedTarget?.segmentIndex,
+                segmentCount = segments.size,
+                lastResyncAtMs = 2_000L,
+                nowMs = 2_250L,
+            ),
+        )
     }
 
 }

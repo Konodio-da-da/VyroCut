@@ -267,13 +267,15 @@ internal fun shouldResyncAudioTrack(
     projectPositionMs: Long,
     trackPositionMs: Long,
     currentSegmentIndex: Int,
+    expectedSegmentIndex: Int?,
     segmentCount: Int,
     lastResyncAtMs: Long?,
     nowMs: Long,
 ): Boolean {
     if (segmentCount <= 0) return false
-    val hasValidSegment = currentSegmentIndex in 0 until segmentCount
-    if (hasValidSegment) {
+    val expectedSegment = expectedSegmentIndex?.takeIf { it in 0 until segmentCount } ?: return false
+    val isOnExpectedSegment = currentSegmentIndex == expectedSegment
+    if (isOnExpectedSegment) {
         val projectPosition = projectPositionMs.coerceAtLeast(0L)
         val trackPosition = trackPositionMs.coerceAtLeast(0L)
         val driftMs = if (projectPosition >= trackPosition) {
@@ -283,6 +285,8 @@ internal fun shouldResyncAudioTrack(
         }
         if (driftMs <= AUDIO_TRACK_SYNC_TOLERANCE_MS) return false
     }
+    // A wrong playlist item is a sync error even when its local clock happens
+    // to equal project time (for example, the previous item at an exact boundary).
     val lastResync = lastResyncAtMs ?: return true
     val elapsedSinceResync = (nowMs - lastResync).coerceAtLeast(0L)
     return elapsedSinceResync >= AUDIO_TRACK_RESYNC_COOLDOWN_MS
