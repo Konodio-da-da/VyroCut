@@ -70,6 +70,17 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun cacheFileNameSeparatesRequestedWaveformResolutions() {
+        val uri = "content://media/track"
+        val compact = audioWaveformCacheFileName(uri, 0L, 5_000L, bucketCount = 48)
+        val detailed = audioWaveformCacheFileName(uri, 0L, 5_000L, bucketCount = 96)
+
+        assertNotEquals(compact, detailed)
+        assertEquals(true, compact.endsWith(".bin"))
+        assertEquals(true, detailed.endsWith(".bin"))
+    }
+
+    @Test
     fun cacheKeyRejectsUnsupportedBucketResolution() {
         assertEquals(
             false,

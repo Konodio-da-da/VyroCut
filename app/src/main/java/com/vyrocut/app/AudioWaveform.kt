@@ -88,6 +88,13 @@ internal fun audioWaveformCacheKey(
         .joinToString("") { byte -> "%02x".format(byte) }
 }
 
+internal fun audioWaveformCacheFileName(
+    uri: String,
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    bucketCount: Int,
+): String = "${audioWaveformCacheKey(uri, sourceStartMs, sourceEndMs, bucketCount)}.bin"
+
 /**
  * Decodes only the selected source range with the platform audio decoder.
  * The cache is disposable app-local data; projects and original media are untouched.
@@ -109,9 +116,11 @@ internal fun decodeAudioWaveform(
         bucketCount !in 1..512
     ) return null
 
-    val cacheKey = audioWaveformCacheKey(uriString, sourceStartMs, sourceEndMs)
     val cacheDirectory = File(context.cacheDir, "audio-waveforms")
-    val cacheFile = File(cacheDirectory, "$cacheKey.bin")
+    val cacheFile = File(
+        cacheDirectory,
+        audioWaveformCacheFileName(uriString, sourceStartMs, sourceEndMs, bucketCount),
+    )
     readWaveformCache(cacheFile, bucketCount)?.let { return it }
 
     val extractor = MediaExtractor()
