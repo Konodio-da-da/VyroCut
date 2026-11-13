@@ -116,4 +116,32 @@ class AudioTracksTest {
     fun timelineEndUsesSaturatingAddition() {
         assertEquals(Long.MAX_VALUE, addAudioTimelineTime(Long.MAX_VALUE - 5L, 10L))
     }
+
+    @Test
+    fun audioLaneSeekAndPositionStayOnProjectClockAcrossGaps() {
+        val clips = listOf(
+            clip("one", startMs = 2_000L, sourceEndMs = 1_000L),
+            clip("two", startMs = 5_000L, sourceEndMs = 1_000L),
+        )
+        val segments = buildAudioTrackTimelineSegments(clips, AudioTrackType.MUSIC, 8_000L)
+        assertEquals(AudioTrackSeekTarget(0, 1_500L), resolveAudioTrackSeekTarget(segments, 1_500L))
+        assertEquals(AudioTrackSeekTarget(2, 500L), resolveAudioTrackSeekTarget(segments, 3_500L))
+        assertEquals(3_500L, calculateAudioTrackTimelinePositionMs(segments, 2, 500L))
+        assertEquals(AudioTrackSeekTarget(4, 1_999L), resolveAudioTrackSeekTarget(segments, 99_000L))
+    }
+
+    @Test
+    fun videoDurationReductionShortensOrRemovesOverlayAudioNonDestructively() {
+        val original = listOf(
+            clip("kept", startMs = 2_000L, sourceEndMs = 4_000L, fadeOutMs = 1_500L),
+            clip("removed", startMs = 8_000L, sourceEndMs = 1_000L),
+        )
+        val trimmed = trimAudioTrackClipsToProjectDuration(original, 5_000L)
+        assertEquals(1, trimmed.size)
+        assertEquals(3_000L, trimmed.single().durationMs)
+        assertEquals(3_000L, trimmed.single().sourceEndMs)
+        assertEquals(1_500L, trimmed.single().fadeOutMs)
+        assertEquals(0, trimAudioTrackClipsToProjectDuration(original, 1_000L).size)
+    }
+
 }
