@@ -2213,10 +2213,14 @@ private fun VyroCutApp() {
                                                         )
                                                     } ?: emptyList()
                                                     EditedMediaItem.Builder(audioSource)
+                                                        .setRemoveVideo(true)
                                                         .setEffects(Effects(processors, emptyList()))
                                                         .build()
                                                 }
-                                                EditedMediaItemSequence.withAudioFrom(audioItems)
+                                                // Media3 1.5.1 has no withAudioFrom factory. The
+                                                // source is audio-only and video is explicitly removed.
+                                                @Suppress("DEPRECATION")
+                                                EditedMediaItemSequence.Builder(audioItems).build()
                                             }
                                         }
                                         Composition.Builder(sequence, *audioSequences.toTypedArray()).build()
