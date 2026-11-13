@@ -53,4 +53,35 @@ internal fun audioTracksForHistorySnapshot(
     } else {
         trimAudioTrackClipsToProjectDuration(currentAudioTracks, projectDurationMs)
     }
+
+/**
+ * Wraps the independently recoverable audio-lane payload in the same versioned,
+ * checksummed journal used for project clips. Older releases stored raw JSON in
+ * the recovery key, so the decoder below deliberately keeps that format readable.
+ */
+internal fun encodeAudioTrackRecoveryJournal(
+    projectId: String,
+    audioTracksJson: String,
+    savedAtMs: Long,
+): String = ProjectRecoveryJournal.encode(
+    projectId = projectId,
+    projectName = "Audio tracks",
+    savedAtMs = savedAtMs,
+    projectJson = audioTracksJson,
+)
+
+internal fun decodeAudioTrackRecoveryJournal(
+    raw: String?,
+    projectId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (raw.isNullOrBlank()) return null
+
+    // Backward compatibility: earlier versions stored plain audio-track JSON.
+    decodeAudioTrackClips(raw, projectDurationMs)?.let { return it }
+
+    val snapshot = ProjectRecoveryJournal.decode(raw, projectId) ?: return null
+    return decodeAudioTrackClips(snapshot.projectJson, projectDurationMs)
+}
+
 }
