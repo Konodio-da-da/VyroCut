@@ -302,7 +302,7 @@ internal fun trimAudioTrackClipsToProjectDuration(
     return clips.mapNotNull { clip ->
         if (clip.startMs >= projectDurationMs) return@mapNotNull null
         val availableMs = projectDurationMs - clip.startMs
-        if (availableMs <= 0L) return@mapNotNull null
+        if (availableMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS) return@mapNotNull null
         if (clip.durationMs <= availableMs) {
             clip
         } else {
