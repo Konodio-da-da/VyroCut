@@ -111,7 +111,7 @@ internal fun resolveAudioTrackInsertionSlot(
     sourceDurationMs: Long,
     projectDurationMs: Long,
 ): AudioTrackInsertionSlot? {
-    if (projectDurationMs <= 0L || sourceDurationMs <= 0L) return null
+    if (projectDurationMs <= 0L || sourceDurationMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS) return null
     var candidate = requestedStartMs.coerceIn(0L, projectDurationMs)
     val ordered = clips.filter { it.type == type }.sortedBy { it.startMs }
 
@@ -137,7 +137,10 @@ internal fun resolveAudioTrackInsertionStartMs(
     clipDurationMs: Long,
     projectDurationMs: Long,
 ): Long? {
-    if (projectDurationMs <= 0L || clipDurationMs <= 0L || clipDurationMs > projectDurationMs) return null
+    if (projectDurationMs <= 0L ||
+        clipDurationMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
+        clipDurationMs > projectDurationMs
+    ) return null
     var candidate = requestedStartMs.coerceIn(0L, projectDurationMs)
     val ordered = clips.filter { it.type == type }.sortedBy { it.startMs }
 
