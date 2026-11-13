@@ -152,6 +152,73 @@ internal fun audioTrackGainAtTimelinePosition(
     )
 }
 
+
+internal data class AudioTrackSeekTarget(
+    val segmentIndex: Int,
+    val positionMs: Long,
+)
+
+/** Maps project time to the lane playlist, whose silence items preserve global timing. */
+internal fun resolveAudioTrackSeekTarget(
+    segments: List<AudioTrackTimelineSegment>,
+    projectPositionMs: Long,
+): AudioTrackSeekTarget? {
+    if (segments.isEmpty()) return null
+    val totalDurationMs = segments.fold(0L) { total, segment ->
+        addAudioTimelineTime(total, segment.durationMs)
+    }
+    val target = projectPositionMs.coerceIn(0L, (totalDurationMs - 1L).coerceAtLeast(0L))
+    var elapsedMs = 0L
+    segments.forEachIndexed { index, segment ->
+        if (target < addAudioTimelineTime(elapsedMs, segment.durationMs)) {
+            return AudioTrackSeekTarget(index, (target - elapsedMs).coerceAtLeast(0L))
+        }
+        elapsedMs = addAudioTimelineTime(elapsedMs, segment.durationMs)
+    }
+    val last = segments.lastIndex
+    return AudioTrackSeekTarget(last, (segments[last].durationMs - 1L).coerceAtLeast(0L))
+}
+
+/** Reconstructs project time from the active lane playlist item and its local position. */
+internal fun calculateAudioTrackTimelinePositionMs(
+    segments: List<AudioTrackTimelineSegment>,
+    segmentIndex: Int,
+    segmentPositionMs: Long,
+): Long {
+    if (segmentIndex !in segments.indices) return 0L
+    var elapsedMs = 0L
+    for (index in 0 until segmentIndex) {
+        elapsedMs = addAudioTimelineTime(elapsedMs, segments[index].durationMs)
+    }
+    return addAudioTimelineTime(
+        elapsedMs,
+        segmentPositionMs.coerceIn(0L, segments[segmentIndex].durationMs),
+    )
+}
+
+/** Shortens or removes overlay audio that no longer fits after a video edit. */
+internal fun trimAudioTrackClipsToProjectDuration(
+    clips: List<AudioTrackClip>,
+    projectDurationMs: Long,
+): List<AudioTrackClip> {
+    if (projectDurationMs <= 0L) return emptyList()
+    return clips.mapNotNull { clip ->
+        if (clip.startMs >= projectDurationMs) return@mapNotNull null
+        val availableMs = projectDurationMs - clip.startMs
+        if (availableMs <= 0L) return@mapNotNull null
+        if (clip.durationMs <= availableMs) {
+            clip
+        } else {
+            val nextSourceEnd = addAudioTimelineTime(clip.sourceStartMs, availableMs)
+            clip.copy(
+                sourceEndMs = nextSourceEnd,
+                fadeInMs = clip.fadeInMs.coerceAtMost(availableMs),
+                fadeOutMs = clip.fadeOutMs.coerceAtMost(availableMs),
+            )
+        }
+    }
+}
+
 internal fun encodeAudioTrackClips(clips: List<AudioTrackClip>): String {
     val array = JSONArray()
     clips.forEach { clip ->
