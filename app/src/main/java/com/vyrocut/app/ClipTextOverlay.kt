@@ -19,12 +19,23 @@ import kotlin.math.roundToInt
 
 internal const val MAX_CLIP_TEXT_OVERLAY_LENGTH = 120
 internal const val MAX_CLIP_TEXT_OVERLAY_BITMAP_DIMENSION_PX = 1_920
+internal const val MIN_CLIP_TEXT_OVERLAY_FONT_SCALE = 0.75f
+internal const val MAX_CLIP_TEXT_OVERLAY_FONT_SCALE = 1.5f
+
+internal enum class ClipTextPosition { TOP, CENTER, BOTTOM }
 
 /** A simple non-destructive text layer attached to one video clip. */
-internal data class ClipTextOverlay(val text: String) {
+internal data class ClipTextOverlay(
+    val text: String,
+    val fontScale: Float = 1f,
+    val position: ClipTextPosition = ClipTextPosition.BOTTOM,
+) {
     init {
         require(isValidClipTextOverlayText(text)) {
             "Clip text overlay must contain 1–120 printable characters"
+        }
+        require(isValidClipTextOverlayFontScale(fontScale)) {
+            "Clip text font scale must be between 0.75 and 1.5"
         }
     }
 }
@@ -38,10 +49,23 @@ internal fun isValidClipTextOverlayText(text: String): Boolean {
         }
 }
 
-internal fun decodeClipTextOverlay(raw: String?): ClipTextOverlay? {
+internal fun isValidClipTextOverlayFontScale(fontScale: Float): Boolean =
+    fontScale.isFinite() &&
+        fontScale in MIN_CLIP_TEXT_OVERLAY_FONT_SCALE..MAX_CLIP_TEXT_OVERLAY_FONT_SCALE
+
+internal fun decodeClipTextOverlay(
+    raw: String?,
+    fontScale: Float = 1f,
+    position: String? = null,
+): ClipTextOverlay? {
     val normalized = raw?.replace("\r\n", "\n")?.trim() ?: return null
-    if (!isValidClipTextOverlayText(normalized)) return null
-    return ClipTextOverlay(normalized)
+    if (!isValidClipTextOverlayText(normalized) || !isValidClipTextOverlayFontScale(fontScale)) return null
+    val decodedPosition = if (position == null) {
+        ClipTextPosition.BOTTOM
+    } else {
+        runCatching { ClipTextPosition.valueOf(position) }.getOrNull() ?: return null
+    }
+    return ClipTextOverlay(normalized, fontScale, decodedPosition)
 }
 
 internal data class ClipTextOverlayBitmapSize(val widthPx: Int, val heightPx: Int)
@@ -79,8 +103,11 @@ internal fun calculateClipTextOverlayLayout(
     frameWidthPx: Int,
     frameHeightPx: Int,
     textHeightPx: Int,
+    position: ClipTextPosition = ClipTextPosition.BOTTOM,
+    fontScale: Float = 1f,
 ): ClipTextOverlayLayout? {
     if (frameWidthPx <= 0 || frameHeightPx <= 0 || textHeightPx <= 0) return null
+    if (!isValidClipTextOverlayFontScale(fontScale)) return null
 
     val maxTextWidthPx = (frameWidthPx * 0.86f).toInt().coerceAtLeast(1)
     val horizontalPaddingPx = min(
@@ -93,11 +120,16 @@ internal fun calculateClipTextOverlayLayout(
     val leftPx = (frameWidthPx - boxWidthPx) / 2f
     val minTopPx = verticalPaddingPx
     val maxTopPx = max(minTopPx, frameHeightPx - boxHeightPx - verticalPaddingPx)
-    val topPx = (frameHeightPx * 0.82f - boxHeightPx).coerceIn(minTopPx, maxTopPx)
+    val requestedTopPx = when (position) {
+        ClipTextPosition.TOP -> frameHeightPx * 0.12f
+        ClipTextPosition.CENTER -> (frameHeightPx - boxHeightPx) / 2f
+        ClipTextPosition.BOTTOM -> frameHeightPx * 0.82f - boxHeightPx
+    }
+    val topPx = requestedTopPx.coerceIn(minTopPx, maxTopPx)
 
     return ClipTextOverlayLayout(
         maxTextWidthPx = maxTextWidthPx,
-        textSizePx = (frameHeightPx * 0.052f).coerceIn(18f, 96f),
+        textSizePx = (frameHeightPx * 0.052f * fontScale).coerceIn(18f, 96f),
         horizontalPaddingPx = horizontalPaddingPx,
         verticalPaddingPx = verticalPaddingPx,
         leftPx = leftPx,
@@ -130,7 +162,7 @@ private class ClipTextBitmapOverlay(
             color = android.graphics.Color.WHITE
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setShadowLayer(2f, 0f, 2f, 0x99000000.toInt())
-            textSize = (height * 0.052f).coerceIn(18f, 96f)
+            textSize = (height * 0.052f * overlay.fontScale).coerceIn(18f, 96f)
         }
         val maxTextWidth = (width * 0.86f).toInt().coerceAtLeast(1)
         val layout = StaticLayout.Builder
@@ -139,7 +171,15 @@ private class ClipTextBitmapOverlay(
             .setIncludePad(false)
             .setMaxLines(3)
             .build()
-        val geometry = checkNotNull(calculateClipTextOverlayLayout(width, height, layout.height))
+        val geometry = checkNotNull(
+            calculateClipTextOverlayLayout(
+                frameWidthPx = width,
+                frameHeightPx = height,
+                textHeightPx = layout.height,
+                position = overlay.position,
+                fontScale = overlay.fontScale,
+            ),
+        )
 
         val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = 0xB8000000.toInt()
