@@ -127,7 +127,7 @@ internal fun decodeAudioWaveform(
         decoder.start()
         decoderStarted = true
 
-        var outputFormat = inputFormat
+        var outputFormat: MediaFormat = inputFormat
         var inputFinished = false
         var outputFinished = false
         var idlePolls = 0
