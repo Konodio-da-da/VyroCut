@@ -2836,8 +2836,14 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     require(clips.size == clipsJson.length()) { "The backup contains invalid clip entries" }
     val canvasSettings = decodeProjectCanvasSettings(root.optString("canvasSettings", ""))
         ?: ProjectCanvasSettings()
+    val audioTracksRaw = if (root.has("audioTracks")) {
+        root.optJSONArray("audioTracks")?.toString()
+            ?: error("The backup contains an invalid audio track list")
+    } else {
+        null
+    }
     val audioTracks = decodeAudioTrackClips(
-        root.optJSONArray("audioTracks")?.toString(),
+        audioTracksRaw,
         calculateTimelineDurationMs(clips.map { it.durationMs }),
     ) ?: error("The backup contains invalid audio track clips")
     return ProjectBackup(name, clips, canvasSettings, audioTracks)
