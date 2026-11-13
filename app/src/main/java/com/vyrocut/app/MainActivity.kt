@@ -863,6 +863,11 @@ private fun VyroCutApp() {
         redoStack.add(clips.toList())
         val previous = undoStack.removeAt(undoStack.lastIndex)
         clips = previous
+        audioTrackClips = trimAudioTrackClipsToProjectDuration(
+            audioTrackClips,
+            calculateTimelineDurationMs(previous.map { it.durationMs }),
+        )
+        selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
         selectedIndex = selectedIndex.coerceIn(0, (previous.size - 1).coerceAtLeast(0))
         saveProject(previous)
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
@@ -873,6 +878,11 @@ private fun VyroCutApp() {
         undoStack.add(clips.toList())
         val next = redoStack.removeAt(redoStack.lastIndex)
         clips = next
+        audioTrackClips = trimAudioTrackClipsToProjectDuration(
+            audioTrackClips,
+            calculateTimelineDurationMs(next.map { it.durationMs }),
+        )
+        selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
         selectedIndex = selectedIndex.coerceIn(0, (next.size - 1).coerceAtLeast(0))
         saveProject(next)
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
@@ -2429,8 +2439,19 @@ private fun VyroCutApp() {
                                         persistProjectWithRecovery(preferences, snapshot.projectId, name, restored)
                                         if (snapshot.projectId == activeProjectId) {
                                             clips = restored
+                                            audioTrackClips = trimAudioTrackClipsToProjectDuration(
+                                                audioTrackClips,
+                                                calculateTimelineDurationMs(restored.map { it.durationMs }),
+                                            )
+                                            selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
                                             selectedIndex = 0
                                             timelinePositionMs = 0f
+                                            persistProjectAudioTracks(
+                                                preferences,
+                                                snapshot.projectId,
+                                                audioTrackClips,
+                                                calculateTimelineDurationMs(restored.map { it.durationMs }),
+                                            )
                                         }
                                         recoveryCandidate = null
                                         exportMessage = "Recovered ${restored.size} clips from the local checkpoint"
