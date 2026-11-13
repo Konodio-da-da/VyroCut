@@ -198,6 +198,15 @@ private fun VyroCutApp() {
     var audioTrackFadeOutDraft by remember(selectedAudioTrackId, selectedAudioTrack?.fadeOutMs) {
         mutableFloatStateOf(selectedAudioTrack?.fadeOutMs?.toFloat() ?: 0f)
     }
+    var audioTrackStartDraft by remember(selectedAudioTrackId, selectedAudioTrack?.startMs) {
+        mutableFloatStateOf(selectedAudioTrack?.startMs?.toFloat() ?: 0f)
+    }
+    var audioTrackSourceStartDraft by remember(selectedAudioTrackId, selectedAudioTrack?.sourceStartMs) {
+        mutableFloatStateOf(selectedAudioTrack?.sourceStartMs?.toFloat() ?: 0f)
+    }
+    var audioTrackSourceEndDraft by remember(selectedAudioTrackId, selectedAudioTrack?.sourceEndMs) {
+        mutableFloatStateOf(selectedAudioTrack?.sourceEndMs?.toFloat() ?: 0f)
+    }
     var selectedTextLayerIndex by remember { mutableIntStateOf(0) }
     val selectedTextOverlay = selectedClip?.allTextOverlays?.getOrNull(selectedTextLayerIndex)
     LaunchedEffect(selectedClip?.id, selectedClip?.allTextOverlays?.size) {
@@ -732,6 +741,34 @@ private fun VyroCutApp() {
             ?: items.lastOrNull()?.id
         persistProjectAudioTracks(preferences, activeProjectId, items, projectDurationMs)
     }
+    fun moveSelectedAudioTrack(requestedStartMs: Long) {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val updated = moveAudioTrackClip(audioTrackClips, selected.id, requestedStartMs, projectDurationMs)
+        if (updated == null) {
+            exportMessage = "No free space remains on this audio lane at or after that position."
+        } else {
+            changedAudioTracks(updated)
+            exportMessage = "Moved " + selected.name + " without changing its source audio."
+        }
+    }
+    fun trimSelectedAudioTrack(sourceStartMs: Long, sourceEndMs: Long) {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val updated = trimAudioTrackClip(
+            audioTrackClips,
+            selected.id,
+            sourceStartMs,
+            sourceEndMs,
+            projectDurationMs,
+        )
+        if (updated == null) {
+            exportMessage = "That trim is too short, exceeds the source, or overlaps another item on this lane."
+        } else {
+            changedAudioTracks(updated)
+            exportMessage = "Updated " + selected.name + " source range. Original audio remains unchanged."
+        }
+    }
     fun commitSelectedClipAudioVolume(volume: Float) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (!isValidClipAudioVolume(volume) || clip.audioVolume == volume) return
@@ -1093,6 +1130,7 @@ private fun VyroCutApp() {
                                 startMs = insertionSlot.startMs,
                                 sourceStartMs = 0L,
                                 sourceEndMs = insertionSlot.durationMs,
+                                sourceDurationMs = sourceDurationMs,
                             )
                             changedAudioTracks(audioTrackClips + inserted)
                             selectedAudioTrackType = selectedType
@@ -1823,7 +1861,69 @@ private fun VyroCutApp() {
                                 valueRange = 0f..selectedAudioTrack.durationMs.toFloat().coerceAtLeast(1f),
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
-                            Text("Independent lanes mix during preview and MP4 export • no source audio is modified", color = StudioMuted, fontSize = 9.sp)
+                            val sourceDurationMs = selectedAudioTrack.sourceDurationMs
+                            val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+                            val maximumTimelineStartMs = (projectDurationMs - selectedAudioTrack.durationMs).coerceAtLeast(0L)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("SOURCE IN", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text(formatTime(audioTrackSourceStartDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                            }
+                            Slider(
+                                value = audioTrackSourceStartDraft.coerceIn(
+                                    0f,
+                                    (audioTrackSourceEndDraft - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(0f),
+                                ),
+                                onValueChange = {
+                                    audioTrackSourceStartDraft = it.coerceAtMost(
+                                        (audioTrackSourceEndDraft - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(0f),
+                                    )
+                                },
+                                onValueChangeFinished = {
+                                    trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
+                                },
+                                valueRange = 0f..(sourceDurationMs - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(0L).toFloat(),
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("SOURCE OUT", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text(formatTime(audioTrackSourceEndDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                            }
+                            val minimumSourceEndMs = (audioTrackSourceStartDraft.toLong() + MIN_AUDIO_TRACK_CLIP_DURATION_MS)
+                                .coerceAtMost(sourceDurationMs)
+                            Slider(
+                                value = audioTrackSourceEndDraft.coerceIn(minimumSourceEndMs.toFloat(), sourceDurationMs.toFloat()),
+                                onValueChange = { audioTrackSourceEndDraft = it.coerceAtLeast(minimumSourceEndMs.toFloat()) },
+                                onValueChangeFinished = {
+                                    trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
+                                },
+                                valueRange = minimumSourceEndMs.toFloat()..sourceDurationMs.toFloat(),
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("TIMELINE START", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text(formatTime(audioTrackStartDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                            }
+                            Slider(
+                                value = audioTrackStartDraft.coerceIn(0f, maximumTimelineStartMs.toFloat()),
+                                onValueChange = { audioTrackStartDraft = it },
+                                onValueChangeFinished = { moveSelectedAudioTrack(audioTrackStartDraft.toLong()) },
+                                valueRange = 0f..maximumTimelineStartMs.toFloat().coerceAtLeast(1f),
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = { moveSelectedAudioTrack(timelinePositionMs.toLong()) },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                ) { Text("Move to playhead", fontSize = 10.sp) }
+                                TextButton(
+                                    onClick = { trimSelectedAudioTrack(0L, sourceDurationMs) },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                ) { Text("Restore full source", fontSize = 10.sp) }
+                            }
+                            Text("Non-destructive source trims and lane moves • independent lanes mix in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                         }
                     }
                 }
@@ -2821,7 +2921,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 10)
+        put("version", 11)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -2833,7 +2933,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..10) { "Unsupported backup version" }
+    require(version in 1..11) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
