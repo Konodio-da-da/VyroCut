@@ -2,6 +2,8 @@ package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AudioWaveformTest {
@@ -98,5 +100,44 @@ class AudioWaveformTest {
 
         assertEquals(first, repeated)
         assertNotEquals(first, trimmed)
+    }
+
+    @Test
+    fun cachePayloadRoundTripsNormalizedPeaks() {
+        val expected = listOf(0f, 0.125f, 0.5f, 1f)
+        val encoded = encodeAudioWaveformCache(expected)
+
+        assertEquals(16 + expected.size * 4, encoded.size)
+        assertEquals(expected, decodeAudioWaveformCache(encoded, expected.size))
+    }
+
+    @Test
+    fun cachePayloadRejectsTruncationTrailingBytesAndWrongResolution() {
+        val encoded = encodeAudioWaveformCache(listOf(0.25f, 0.75f))
+
+        assertNull(decodeAudioWaveformCache(encoded.copyOf(encoded.size - 1), 2))
+        assertNull(decodeAudioWaveformCache(encoded + byteArrayOf(0), 2))
+        assertNull(decodeAudioWaveformCache(encoded, 1))
+
+        val wrongMagic = encoded.copyOf().apply { this[0] = (this[0].toInt() xor 1).toByte() }
+        assertNull(decodeAudioWaveformCache(wrongMagic, 2))
+
+        val wrongVersion = encoded.copyOf().apply { this[7] = (this[7].toInt() xor 1).toByte() }
+        assertNull(decodeAudioWaveformCache(wrongVersion, 2))
+    }
+
+    @Test
+    fun cachePayloadChecksumRejectsCorruptionEvenWhenPeakRemainsInRange() {
+        val encoded = encodeAudioWaveformCache(listOf(0.25f, 0.75f))
+        encoded[16] = (encoded[16].toInt() xor 1).toByte()
+
+        assertNull(decodeAudioWaveformCache(encoded, 2))
+    }
+
+    @Test
+    fun cacheEncoderRejectsEmptyNonFiniteAndOutOfRangePeaks() {
+        assertTrue(runCatching { encodeAudioWaveformCache(emptyList()) }.isFailure)
+        assertTrue(runCatching { encodeAudioWaveformCache(listOf(Float.NaN)) }.isFailure)
+        assertTrue(runCatching { encodeAudioWaveformCache(listOf(1.1f)) }.isFailure)
     }
 }

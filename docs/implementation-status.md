@@ -19,6 +19,7 @@
 - Undo/redo supports up to 50 timeline edit states per project and persists its history across app restarts.
 - Timeline audio waveforms are decoded from each clip's source audio on a background dispatcher, bucketed into 48 peak-amplitude samples, and aligned to the clip's trimmed source range.
 - Waveform cache filenames include the requested bucket count, so compact and detailed resolutions for the same source range cannot overwrite or invalidate each other's cache entries.
+- Waveform cache payloads are versioned and CRC32-checked; each decoder writes through a unique same-directory temporary file and prefers atomic replacement, preventing concurrent requests from clobbering one shared temporary path.
 - Video import through Android's Storage Access Framework with persisted read permission.
 - Persisted source URIs are checked when a project opens; unavailable or too-short sources are flagged in the selected-clip header.
 - A missing clip can be relinked to another video through the document picker. The replacement must cover the existing source in/out range, and relinking preserves the clip ID and trim points so undo/redo and preview restoration remain coherent.

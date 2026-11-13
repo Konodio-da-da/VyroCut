@@ -15,23 +15,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
-import java.io.DataInputStream
-import java.io.DataOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import kotlin.math.abs
 
 internal const val AUDIO_WAVEFORM_BUCKET_COUNT = 96
 internal const val MAX_AUDIO_WAVEFORM_RANGE_MS = 15L * 60L * 1_000L
 
-private const val AUDIO_WAVEFORM_CACHE_MAGIC = 0x56594357
-private const val AUDIO_WAVEFORM_CACHE_VERSION = 1
 private const val MAX_AUDIO_WAVEFORM_CACHE_FILES = 64
 
 /** Fixed-size peak accumulator. It never retains decoded PCM samples. */
@@ -43,7 +38,7 @@ internal class AudioWaveformAccumulator(
     private val peaks: FloatArray
 
     init {
-        require(bucketCount in 1..512)
+        require(bucketCount in 1..MAX_AUDIO_WAVEFORM_BUCKETS)
         require(startTimeUs >= 0L && endTimeUs > startTimeUs)
         peaks = FloatArray(bucketCount)
     }
@@ -81,7 +76,7 @@ internal fun audioWaveformCacheKey(
     sourceEndMs: Long,
     bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
 ): String {
-    require(bucketCount in 1..512)
+    require(bucketCount in 1..MAX_AUDIO_WAVEFORM_BUCKETS)
     val input = "waveform-v2|$uri|$sourceStartMs|$sourceEndMs|$bucketCount"
     return MessageDigest.getInstance("SHA-256")
         .digest(input.toByteArray(Charsets.UTF_8))
@@ -311,32 +306,39 @@ private fun readPcmSample(buffer: ByteBuffer, encoding: Int): Float? = when (enc
     else -> null
 }
 
-private fun readWaveformCache(file: File, bucketCount: Int): List<Float>? = runCatching {
-    if (!file.isFile || file.length() != 12L + bucketCount * 4L) return null
-    DataInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
-        require(input.readInt() == AUDIO_WAVEFORM_CACHE_MAGIC)
-        require(input.readInt() == AUDIO_WAVEFORM_CACHE_VERSION)
-        require(input.readInt() == bucketCount)
-        val values = List(bucketCount) {
-            input.readFloat().also { value -> require(value.isFinite() && value in 0f..1f) }
-        }
-        require(input.read() == -1)
-        values
-    }
-}.getOrNull()
+private fun readWaveformCache(file: File, bucketCount: Int): List<Float>? {
+    if (!file.isFile || file.length() != 16L + bucketCount * 4L) return null
+    val encoded = runCatching { file.readBytes() }.getOrNull() ?: return null
+    return decodeAudioWaveformCache(encoded, bucketCount)
+}
 
 private fun writeWaveformCache(directory: File, destination: File, values: List<Float>) {
+    val encoded = runCatching { encodeAudioWaveformCache(values) }.getOrNull() ?: return
     runCatching {
-        if (!directory.exists()) directory.mkdirs()
-        val temporary = File(directory, destination.name + ".tmp")
-        DataOutputStream(BufferedOutputStream(FileOutputStream(temporary))).use { output ->
-            output.writeInt(AUDIO_WAVEFORM_CACHE_MAGIC)
-            output.writeInt(AUDIO_WAVEFORM_CACHE_VERSION)
-            output.writeInt(values.size)
-            values.forEach(output::writeFloat)
-        }
-        if (!temporary.renameTo(destination)) {
-            temporary.copyTo(destination, overwrite = true)
+        if (!directory.exists() && !directory.mkdirs()) return@runCatching
+        // Each decoder owns a distinct temporary file. A fixed ".tmp" name let
+        // concurrent requests for the same source overwrite one another.
+        val temporary = File.createTempFile("waveform-", ".tmp", directory)
+        try {
+            FileOutputStream(temporary).use { output ->
+                output.write(encoded)
+                output.fd.sync()
+            }
+            try {
+                Files.move(
+                    temporary.toPath(),
+                    destination.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } catch (_: Exception) {
+                // Cache data is disposable. Keep a safe fallback for file systems
+                // that do not support atomic replacement.
+                if (!temporary.renameTo(destination)) {
+                    temporary.copyTo(destination, overwrite = true)
+                }
+            }
+        } finally {
             temporary.delete()
         }
         directory.listFiles()
