@@ -15,8 +15,10 @@ import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 internal const val MAX_CLIP_TEXT_OVERLAY_LENGTH = 120
+internal const val MAX_CLIP_TEXT_OVERLAY_BITMAP_DIMENSION_PX = 1_920
 
 /** A simple non-destructive text layer attached to one video clip. */
 internal data class ClipTextOverlay(val text: String) {
@@ -40,6 +42,25 @@ internal fun decodeClipTextOverlay(raw: String?): ClipTextOverlay? {
     val normalized = raw?.replace("\r\n", "\n")?.trim() ?: return null
     if (!isValidClipTextOverlayText(normalized)) return null
     return ClipTextOverlay(normalized)
+}
+
+internal data class ClipTextOverlayBitmapSize(val widthPx: Int, val heightPx: Int)
+
+/** Preserves the frame aspect ratio while bounding overlay bitmap memory use. */
+internal fun calculateClipTextOverlayBitmapSize(
+    frameWidthPx: Int,
+    frameHeightPx: Int,
+    maxDimensionPx: Int = MAX_CLIP_TEXT_OVERLAY_BITMAP_DIMENSION_PX,
+): ClipTextOverlayBitmapSize? {
+    if (frameWidthPx <= 0 || frameHeightPx <= 0 || maxDimensionPx <= 0) return null
+    val scale = min(
+        1.0,
+        maxDimensionPx.toDouble() / max(frameWidthPx, frameHeightPx).toDouble(),
+    )
+    return ClipTextOverlayBitmapSize(
+        widthPx = (frameWidthPx * scale).roundToInt().coerceAtLeast(1),
+        heightPx = (frameHeightPx * scale).roundToInt().coerceAtLeast(1),
+    )
 }
 
 /** Frame-relative geometry shared by preview and export overlay rendering. */
@@ -87,9 +108,9 @@ internal fun calculateClipTextOverlayLayout(
 }
 
 /**
- * Media3 1.5.1 does not contain CanvasOverlay. This BitmapOverlay renders into
- * the actual input-frame dimensions supplied by Media3, so the same relative
- * layout works for portrait, landscape and square clips in preview and export.
+ * Media3 1.5.1 does not include CanvasOverlay. This BitmapOverlay renders at
+ * the actual input-frame aspect ratio supplied by Media3, with its bitmap
+ * capped at 1920px on the longest edge to avoid allocating a full 4K/8K frame.
  */
 @OptIn(UnstableApi::class)
 private class ClipTextBitmapOverlay(
@@ -98,19 +119,20 @@ private class ClipTextBitmapOverlay(
     private var bitmap: Bitmap? = null
 
     override fun configure(videoSize: Size) {
-        val width = videoSize.width
-        val height = videoSize.height
-        require(width > 0 && height > 0) { "Video frame dimensions must be positive" }
-
+        val bitmapSize = checkNotNull(
+            calculateClipTextOverlayBitmapSize(videoSize.width, videoSize.height),
+        )
+        val width = bitmapSize.widthPx
+        val height = bitmapSize.heightPx
         val nextBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(nextBitmap)
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setShadowLayer(2f, 0f, 2f, 0x99000000.toInt())
+            textSize = (height * 0.052f).coerceIn(18f, 96f)
         }
         val maxTextWidth = (width * 0.86f).toInt().coerceAtLeast(1)
-        textPaint.textSize = (height * 0.052f).coerceIn(18f, 96f)
         val layout = StaticLayout.Builder
             .obtain(overlay.text, 0, overlay.text.length, textPaint, maxTextWidth)
             .setAlignment(Layout.Alignment.ALIGN_CENTER)
@@ -156,10 +178,7 @@ private class ClipTextBitmapOverlay(
     }
 }
 
-/**
- * Creates a frame-sized overlay so the same relative placement works for
- * portrait, landscape and square sources. The overlay is static for the full clip.
- */
+/** Applies a static text layer to the entire duration of its owning clip. */
 @OptIn(UnstableApi::class)
 internal fun createClipTextOverlayEffects(overlay: ClipTextOverlay?): List<Effect> {
     if (overlay == null) return emptyList()
