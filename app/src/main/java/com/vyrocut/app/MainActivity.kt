@@ -145,6 +145,7 @@ private fun VyroCutApp() {
     }
     var selectedAudioTrackType by remember { mutableStateOf(AudioTrackType.MUSIC) }
     var selectedAudioTrackId by remember { mutableStateOf<String?>(null) }
+    var audioWaveforms by remember(activeProjectId) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedEffect by remember { mutableStateOf("Edge Glow") }
@@ -466,6 +467,35 @@ private fun VyroCutApp() {
 
     // Each audio lane is an audio-only playlist. Silent WAV segments preserve
     // project-time offsets and gaps, so every lane shares the video project's clock.
+    // Decode waveform peaks on-device only while the Audio tool is open.
+    // The disposable cache is keyed by source URI and source trim range.
+    LaunchedEffect(
+        activeProjectId,
+        activeTool,
+        selectedAudioTrackType,
+        audioTrackClips.map(::audioWaveformCacheKey),
+    ) {
+        if (activeTool != "Audio") return@LaunchedEffect
+        var loadedWaveforms = audioWaveforms
+        for (trackClip in audioTrackClips.filter { it.type == selectedAudioTrackType }) {
+            val key = audioWaveformCacheKey(trackClip)
+            if (key !in loadedWaveforms) {
+                val waveform = withContext(Dispatchers.IO) {
+                    decodeAudioWaveform(
+                        context,
+                        trackClip.uri,
+                        trackClip.sourceStartMs,
+                        trackClip.sourceEndMs,
+                    )
+                }
+                if (waveform != null) {
+                    loadedWaveforms = loadedWaveforms + (key to waveform)
+                    audioWaveforms = loadedWaveforms
+                }
+            }
+        }
+    }
+
     LaunchedEffect(audioTrackClips, timelineDurationMs, activeProjectId) {
         val projectDurationMs = calculateTimelineDurationMs(clipDurationsMs)
         val segmentsByType = AudioTrackType.values().associateWith { type ->
@@ -1793,6 +1823,10 @@ private fun VyroCutApp() {
                                 ) {
                                     Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 6.dp)) {
                                         Text(trackClip.name, color = StudioText, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        AudioWaveformStrip(
+                                            amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
+                                            color = if (trackClip.id == selectedAudioTrackId) StudioAccent else Color(0xFF71827B),
+                                        )
                                         Text(
                                             "${formatTime(trackClip.startMs)} – ${formatTime(trackClip.endMs)} • ${(trackClip.volume * 100f).toInt()}%",
                                             color = StudioMuted,
