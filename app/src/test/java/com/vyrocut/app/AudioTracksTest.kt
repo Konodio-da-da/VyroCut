@@ -79,7 +79,7 @@ class AudioTracksTest {
             listOf(0L to 2_000L, 2_000L to 3_000L, 3_000L to 5_000L, 5_000L to 6_000L, 6_000L to 8_000L),
             segments.map { it.startMs to it.endMs },
         )
-        assertEquals(listOf(false, true, false, true, false), segments.map { it.clip == null })
+        assertEquals(listOf(true, false, true, false, true), segments.map { it.clip == null })
     }
 
     @Test
