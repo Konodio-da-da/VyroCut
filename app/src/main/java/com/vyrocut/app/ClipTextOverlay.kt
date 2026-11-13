@@ -326,7 +326,7 @@ private class ClipTextBitmapOverlay(
     }
 }
 
-/** Applies a static text layer to the entire duration of its owning clip. */
+/** Applies a timed text layer; presentation timestamps are clip-local after Media3 clipping. */
 @OptIn(UnstableApi::class)
 internal fun createClipTextOverlayEffects(overlay: ClipTextOverlay?): List<Effect> {
     if (overlay == null) return emptyList()
