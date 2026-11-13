@@ -2,8 +2,8 @@
 
 ## Last verified build
 - The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
-- Feature branch `fix/capcut-workflow-ui` commit `ffe251036240734c67088fd1b0dd82976f7348c6` passed `gradle assembleDebug testDebugUnitTest` in [Android build run #271](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417782036). The debug APK artifact was uploaded.
-- The preceding atomic-cache-write commit `5617373c3da8348e9778973ce3f2b020399cb10c` also passed in [run #269](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417200959) and uploaded its debug APK.
+- Feature branch `fix/capcut-workflow-ui` commit `ea9d1ed02b372832adfadfb2d7e3b9263af46fda` passed `gradle assembleDebug testDebugUnitTest` in [Android build run #275](https://github.com/Konodio-da-da/VyroCut/actions/runs/43424885660). The debug APK artifact was uploaded.
+- The preceding documentation-only commit `bdde11e267c91d6dae713ee12900cd32f15f1dfd` passed in [run #273](https://github.com/Konodio-da-da/VyroCut/actions/runs/43418323093); the atomic-cache-write and cache-serialization commits passed in [runs #269](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417200959) and #271 (see the corresponding branch run).
 - The app remains `minSdk = 29` and offline-first. GitHub Actions supplies JDK 17 and the Android SDK; the ProductOS sandbox has no Java, Android SDK, Gradle installation/wrapper launcher, or adb.
 - CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
 
@@ -46,6 +46,7 @@
 - Export validation and MediaStore copying run on an IO dispatcher rather than the Compose UI thread. A per-export session token invalidates late completion callbacks after cancellation, preventing a cancelled render from being published.
 - Seven pure Kotlin tests cover missing video/audio samples, duration mismatch, video-only sources, and frame-boundary tolerance.
 - These checks validate container demuxing and track/sample presence; they do not prove every frame/audio packet decodes cleanly or that the exported file plays correctly on a physical device.
+- Export audio verification maps supported 8-bit, 16-bit, packed 24-bit, 32-bit and floating-point PCM formats to their actual sample widths; unknown decoder encodings now fail closed instead of being silently treated as 16-bit. Two JVM tests cover the supported widths and unsupported values.
 - The preview configures Android audio focus, responds to noisy-audio-route changes, and pauses when the app leaves the foreground.
 - Before Transformer starts, export preflight re-opens each distinct source on an IO dispatcher, checks duration and a readable video track, and rejects duplicate clip IDs, blank source references, invalid trims, unavailable media, trims beyond the current source duration, and timeline-duration overflow. A failed preflight stops before rendering; the export action is disabled while import metadata is being read.
 - Media3 preview errors are surfaced in the editor status line instead of failing silently.
