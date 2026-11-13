@@ -11,6 +11,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
 import java.io.File
+import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.ByteOrder
 import androidx.activity.ComponentActivity
@@ -133,6 +134,17 @@ private fun VyroCutApp() {
         mutableStateOf(preferences.getString("active_project_id", projects.first().id) ?: projects.first().id)
     }
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
+    var audioTrackClips by remember(activeProjectId) {
+        mutableStateOf(
+            loadProjectAudioTracks(
+                preferences,
+                activeProjectId,
+                calculateTimelineDurationMs(clips.map { it.durationMs }),
+            ),
+        )
+    }
+    var selectedAudioTrackType by remember { mutableStateOf(AudioTrackType.MUSIC) }
+    var selectedAudioTrackId by remember { mutableStateOf<String?>(null) }
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedEffect by remember { mutableStateOf("Edge Glow") }
@@ -176,6 +188,16 @@ private fun VyroCutApp() {
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
+    val selectedAudioTrack = audioTrackClips.firstOrNull { it.id == selectedAudioTrackId }
+    var audioTrackVolumeDraft by remember(selectedAudioTrackId, selectedAudioTrack?.volume) {
+        mutableFloatStateOf(selectedAudioTrack?.volume ?: 1f)
+    }
+    var audioTrackFadeInDraft by remember(selectedAudioTrackId, selectedAudioTrack?.fadeInMs) {
+        mutableFloatStateOf(selectedAudioTrack?.fadeInMs?.toFloat() ?: 0f)
+    }
+    var audioTrackFadeOutDraft by remember(selectedAudioTrackId, selectedAudioTrack?.fadeOutMs) {
+        mutableFloatStateOf(selectedAudioTrack?.fadeOutMs?.toFloat() ?: 0f)
+    }
     var selectedTextLayerIndex by remember { mutableIntStateOf(0) }
     val selectedTextOverlay = selectedClip?.allTextOverlays?.getOrNull(selectedTextLayerIndex)
     LaunchedEffect(selectedClip?.id, selectedClip?.allTextOverlays?.size) {
@@ -265,6 +287,32 @@ private fun VyroCutApp() {
         }
     }
     DisposableEffect(player) { onDispose { player.release() } }
+    val audioPlayers = remember {
+        AudioTrackType.values().associateWith { _ ->
+            ExoPlayer.Builder(context).build().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    false,
+                )
+                playWhenReady = false
+                volume = 0f
+            }
+        }
+    }
+    DisposableEffect(audioPlayers) {
+        onDispose {
+            audioPlayers.values.forEach { audioPlayer ->
+                audioPlayer.playWhenReady = false
+                audioPlayer.release()
+            }
+        }
+    }
+    var audioTrackSegments by remember {
+        mutableStateOf<Map<AudioTrackType, List<AudioTrackTimelineSegment>>>(emptyMap())
+    }
     DisposableEffect(player, lifecycleOwner, clips, activeProjectId) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
@@ -407,6 +455,118 @@ private fun VyroCutApp() {
         }
     }
 
+    // Each audio lane is an audio-only playlist. Silent WAV segments preserve
+    // project-time offsets and gaps, so every lane shares the video project's clock.
+    LaunchedEffect(audioTrackClips, timelineDurationMs, activeProjectId) {
+        val projectDurationMs = calculateTimelineDurationMs(clipDurationsMs)
+        val segmentsByType = AudioTrackType.values().associateWith { type ->
+            buildAudioTrackTimelineSegments(audioTrackClips, type, projectDurationMs)
+        }
+        val maximumGapMs = segmentsByType.values.flatten()
+            .filter { it.clip == null }
+            .maxOfOrNull { it.durationMs } ?: 0L
+        val silenceFile = if (maximumGapMs > 0L) {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    createSilentAudioWav(context.cacheDir, maximumGapMs)
+                }
+            }.getOrNull()
+        } else {
+            null
+        }
+
+        if (maximumGapMs > 0L && silenceFile == null) {
+            audioTrackSegments = emptyMap()
+            audioPlayers.values.forEach { audioPlayer ->
+                audioPlayer.clearMediaItems()
+                audioPlayer.pause()
+            }
+            exportMessage = "Could not prepare silent gaps for audio-track preview."
+            return@LaunchedEffect
+        }
+
+        segmentsByType.forEach { (type, segments) ->
+            val audioPlayer = audioPlayers.getValue(type)
+            audioPlayer.playWhenReady = false
+            audioPlayer.volume = 0f
+            if (segments.isEmpty()) {
+                audioPlayer.clearMediaItems()
+            } else {
+                val mediaItems = segments.map { segment ->
+                    val clip = segment.clip
+                    if (clip != null) {
+                        MediaItem.Builder()
+                            .setMediaId(clip.id)
+                            .setUri(Uri.parse(clip.uri))
+                            .setClippingConfiguration(
+                                MediaItem.ClippingConfiguration.Builder()
+                                    .setStartPositionMs(clip.sourceStartMs)
+                                    .setEndPositionMs(clip.sourceEndMs)
+                                    .build(),
+                            )
+                            .build()
+                    } else {
+                        MediaItem.Builder()
+                            .setUri(Uri.fromFile(silenceFile ?: error("Missing silence source")))
+                            .setClippingConfiguration(
+                                MediaItem.ClippingConfiguration.Builder()
+                                    .setStartPositionMs(0L)
+                                    .setEndPositionMs(segment.durationMs)
+                                    .build(),
+                            )
+                            .build()
+                    }
+                }
+                audioPlayer.setMediaItems(mediaItems)
+                audioPlayer.prepare()
+            }
+        }
+        audioTrackSegments = segmentsByType
+    }
+
+    LaunchedEffect(audioTrackSegments, clips, player) {
+        while (true) {
+            val currentIndex = player.currentMediaItemIndex
+            val projectPositionMs = if (currentIndex in clips.indices) {
+                calculateTimelinePositionMs(clipDurationsMs, currentIndex, player.currentPosition)
+                    .coerceIn(0L, timelineDurationMs)
+            } else {
+                timelinePositionMs.toLong().coerceIn(0L, timelineDurationMs)
+            }
+            val mainIsPlaying = player.isPlaying
+
+            AudioTrackType.values().forEach { type ->
+                val audioPlayer = audioPlayers.getValue(type)
+                val segments = audioTrackSegments[type].orEmpty()
+                if (segments.isEmpty() || audioPlayer.mediaItemCount == 0) {
+                    audioPlayer.playWhenReady = false
+                    audioPlayer.volume = 0f
+                } else {
+                    val currentTrackPosition = calculateAudioTrackTimelinePositionMs(
+                        segments,
+                        audioPlayer.currentMediaItemIndex,
+                        audioPlayer.currentPosition,
+                    )
+                    if (kotlin.math.abs(currentTrackPosition - projectPositionMs) > 180L ||
+                        audioPlayer.currentMediaItemIndex !in segments.indices
+                    ) {
+                        resolveAudioTrackSeekTarget(segments, projectPositionMs)?.let { target ->
+                            audioPlayer.seekTo(target.segmentIndex, target.positionMs)
+                        }
+                    }
+                    val activeSegment = segments.firstOrNull {
+                        projectPositionMs >= it.startMs && projectPositionMs < it.endMs
+                    }
+                    audioPlayer.volume = activeSegment?.clip?.let {
+                        audioTrackGainAtTimelinePosition(it, projectPositionMs)
+                    } ?: 0f
+                    audioPlayer.playWhenReady = mainIsPlaying
+                }
+            }
+            delay(if (mainIsPlaying) 50L else 140L)
+        }
+    }
+
     fun syncPlayerPosition(clipIndex: Int, clipPositionMs: Long) {
         val position = resolvePlayerTimelinePosition(clipDurationsMs, clipIndex, clipPositionMs) ?: return
         selectedIndex = position.clipIndex
@@ -460,6 +620,12 @@ private fun VyroCutApp() {
     fun saveProject(items: List<EditClip>) {
         val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "Untitled project"
         persistProjectWithRecovery(preferences, activeProjectId, projectName, items)
+        persistProjectAudioTracks(
+            preferences,
+            activeProjectId,
+            audioTrackClips,
+            calculateTimelineDurationMs(items.map { it.durationMs }),
+        )
         preferences.edit().putString("active_project_id", activeProjectId).apply()
     }
     fun persistCanvasSettings(aspectRatio: Float, background: Color) {
@@ -482,6 +648,12 @@ private fun VyroCutApp() {
         canvasAspectRatio = canvasAspectRatioForPreset(canvasSettings.aspectRatioPreset)
         canvasBackground = canvasBackgroundForPreset(canvasSettings.backgroundPreset)
         clips = loadProject(preferences, project.id)
+        audioTrackClips = loadProjectAudioTracks(
+            preferences,
+            project.id,
+            calculateTimelineDurationMs(clips.map { it.durationMs }),
+        )
+        selectedAudioTrackId = null
         selectedIndex = 0
         // History state is keyed by activeProjectId and reloads from that
         // project's persisted snapshots after this state change recomposes.
@@ -494,6 +666,7 @@ private fun VyroCutApp() {
         projects.add(project)
         saveProjectIndex(preferences, projects)
         persistProjectWithRecovery(preferences, project.id, project.name, emptyList())
+        persistProjectAudioTracks(preferences, project.id, emptyList(), 0L)
         newProjectName = ""
         showProjects = false
         switchProject(project)
@@ -521,6 +694,8 @@ private fun VyroCutApp() {
             .remove("project_${project.id}_redo")
             .remove("project_${project.id}_recovery")
             .remove("project_${project.id}_recovery_dismissed")
+            .remove("project_${project.id}_audio_tracks")
+            .remove("project_${project.id}_audio_tracks_recovery")
             .remove("project_" + project.id + "_canvas_settings")
             .apply()
         saveProjectIndex(preferences, projects)
@@ -533,9 +708,29 @@ private fun VyroCutApp() {
         if (undoStack.size > 50) undoStack.removeAt(0)
         redoStack.clear()
         clips = items.toList()
+        val nextProjectDurationMs = calculateTimelineDurationMs(items.map { it.durationMs })
+        val retainedAudioTracks = trimAudioTrackClipsToProjectDuration(audioTrackClips, nextProjectDurationMs)
+        if (retainedAudioTracks != audioTrackClips) {
+            audioTrackClips = retainedAudioTracks
+            selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> retainedAudioTracks.any { it.id == id } }
+                ?: retainedAudioTracks.lastOrNull()?.id
+        }
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
         selectedIndex = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
         saveProject(items)
+    }
+
+    fun changedAudioTracks(items: List<AudioTrackClip>) {
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        if (!validateAudioTrackClips(items, projectDurationMs)) {
+            exportMessage = "Audio clips must fit inside the project and cannot overlap on the same lane."
+            return
+        }
+        if (items == audioTrackClips) return
+        audioTrackClips = items.toList()
+        selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> items.any { it.id == id } }
+            ?: items.lastOrNull()?.id
+        persistProjectAudioTracks(preferences, activeProjectId, items, projectDurationMs)
     }
     fun commitSelectedClipAudioVolume(volume: Float) {
         val clip = clips.getOrNull(selectedIndex) ?: return
@@ -691,6 +886,7 @@ private fun VyroCutApp() {
                 projectName,
                 clips,
                 projectCanvasSettingsFor(canvasAspectRatio, canvasBackground),
+                audioTrackClips,
             )
             val result = runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
@@ -710,6 +906,12 @@ private fun VyroCutApp() {
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
                 persistProjectWithRecovery(preferences, imported.id, imported.name, backup.clips)
+                persistProjectAudioTracks(
+                    preferences,
+                    imported.id,
+                    backup.audioTracks,
+                    calculateTimelineDurationMs(backup.clips.map { it.durationMs }),
+                )
                 preferences.edit()
                     .putString(
                         "project_" + imported.id + "_canvas_settings",
@@ -821,6 +1023,72 @@ private fun VyroCutApp() {
                             changed(appendResult.items)
                             selectedIndex = appendResult.selectedIndex
                             exportMessage = "Imported $name"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            val selectedType = selectedAudioTrackType
+            val projectIdAtPick = activeProjectId
+            val permission = runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+            if (permission.isFailure) {
+                exportMessage = "Could not keep access to this audio file. Choose a provider that supports persistent access."
+            } else {
+                isReadingMedia = true
+                exportMessage = "Reading audio metadata…"
+                exportScope.launch {
+                    val metadata = withContext(Dispatchers.IO) {
+                        readAudioDurationMs(context, uri)?.let { duration ->
+                            duration to runCatching {
+                                MediaMetadataReader.displayName(context.contentResolver, uri)
+                            }.getOrDefault("Imported audio")
+                        }
+                    }
+                    isReadingMedia = false
+                    if (activeProjectId != projectIdAtPick) {
+                        exportMessage = "The active project changed while audio was being read. Choose the source again."
+                    } else if (metadata == null) {
+                        exportMessage = "Could not read this audio file's duration. It was not added."
+                    } else {
+                        val (sourceDurationMs, name) = metadata
+                        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+                        val requestedStartMs = if (
+                            selectedType == AudioTrackType.MUSIC &&
+                            audioTrackClips.none { it.type == selectedType }
+                        ) 0L else timelinePositionMs.toLong().coerceAtLeast(0L)
+                        val desiredDurationMs = minOf(sourceDurationMs, (projectDurationMs - requestedStartMs).coerceAtLeast(0L))
+                        val startMs = resolveAudioTrackInsertionStartMs(
+                            audioTrackClips,
+                            selectedType,
+                            requestedStartMs,
+                            desiredDurationMs,
+                            projectDurationMs,
+                        )
+                        if (startMs == null || desiredDurationMs <= 0L) {
+                            exportMessage = "There is no free space on the ${selectedType.name.lowercase()} lane for this audio file."
+                        } else {
+                            val inserted = AudioTrackClip(
+                                id = java.util.UUID.randomUUID().toString(),
+                                type = selectedType,
+                                uri = uri.toString(),
+                                name = name,
+                                startMs = startMs,
+                                sourceStartMs = 0L,
+                                sourceEndMs = desiredDurationMs,
+                            )
+                            changedAudioTracks(audioTrackClips + inserted)
+                            selectedAudioTrackType = selectedType
+                            selectedAudioTrackId = inserted.id
+                            exportMessage = "Added ${selectedType.name.lowercase()} • $name"
                         }
                     }
                 }
@@ -1082,9 +1350,24 @@ private fun VyroCutApp() {
                 }
                 TimelineEditorStrip(
                     clips = clips,
+                    audioTracks = audioTrackClips,
                     selectedIndex = selectedIndex,
                     playheadPositionMs = timelinePositionMs.toLong(),
                     isPlaying = isPlaying,
+                    onSelectAudioTrack = { trackClip ->
+                        selectedAudioTrackId = trackClip.id
+                        selectedAudioTrackType = trackClip.type
+                        activeTool = "Audio"
+                        resolveTimelineSeekTarget(clipDurationsMs, trackClip.startMs)?.let { target ->
+                            selectedIndex = target.clipIndex
+                            player.seekTo(target.clipIndex, target.positionMs)
+                            timelinePositionMs = calculateTimelinePositionMs(
+                                clipDurationsMs,
+                                target.clipIndex,
+                                target.positionMs,
+                            ).coerceIn(0L, timelineDurationMs).toFloat()
+                        }
+                    },
                     onSeek = { target ->
                         selectedIndex = target.clipIndex
                         player.seekTo(target.clipIndex, target.positionMs)
@@ -1414,36 +1697,141 @@ private fun VyroCutApp() {
                         Text("Non-destructive • Smooth fades apply to preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                     }
                 }
-                if (activeTool == "Audio" || activeTool == "Stickers") {
-                    val options = if (activeTool == "Audio") {
-                        listOf("Music", "SFX", "Voiceover", "Extract")
-                    } else {
-                        listOf("Emoji", "Shapes", "Decorations", "Arrows")
+                if (activeTool == "Audio") {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("AUDIO LANES", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Spacer(Modifier.weight(1f))
+                            Text("${audioTrackClips.size}/${MAX_AUDIO_TRACK_CLIPS} clips", color = StudioMuted, fontSize = 9.sp)
+                        }
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            AudioTrackType.values().forEach { type ->
+                                FilterChip(
+                                    selected = selectedAudioTrackType == type,
+                                    onClick = { selectedAudioTrackType = type },
+                                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 10.sp) },
+                                )
+                            }
+                        }
+                        Button(
+                            onClick = { audioPicker.launch(arrayOf("audio/*")) },
+                            enabled = clips.isNotEmpty() && !isReadingMedia && audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
+                            colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(Icons.Default.Add, null)
+                            Text("Import ${selectedAudioTrackType.name.lowercase()} at playhead")
+                        }
+                        val laneClips = audioTrackClips.filter { it.type == selectedAudioTrackType }.sortedBy { it.startMs }
+                        if (laneClips.isEmpty()) {
+                            Text("No ${selectedAudioTrackType.name.lowercase()} clips yet. Imported audio stays local to this project.", color = StudioMuted, fontSize = 9.sp)
+                        } else {
+                            laneClips.forEach { trackClip ->
+                                Row(
+                                    Modifier.fillMaxWidth()
+                                        .background(
+                                            if (trackClip.id == selectedAudioTrackId) Color(0xFF16483D) else Color(0xFF252A28),
+                                            RoundedCornerShape(6.dp),
+                                        )
+                                        .clickable { selectedAudioTrackId = trackClip.id },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                        Text(trackClip.name, color = StudioText, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(
+                                            "${formatTime(trackClip.startMs)} – ${formatTime(trackClip.endMs)} • ${(trackClip.volume * 100f).toInt()}%",
+                                            color = StudioMuted,
+                                            fontSize = 8.sp,
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { changedAudioTracks(audioTrackClips.filterNot { it.id == trackClip.id }) },
+                                        modifier = Modifier.size(32.dp),
+                                    ) {
+                                        Icon(Icons.Default.Delete, "Remove audio clip", tint = Color(0xFFFF8A80), modifier = Modifier.size(17.dp))
+                                    }
+                                }
+                            }
+                        }
+                        if (selectedAudioTrack != null && selectedAudioTrack.type == selectedAudioTrackType) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("TRACK VOLUME", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text("${(audioTrackVolumeDraft * 100f).toInt()}%", color = StudioAccent, fontSize = 10.sp)
+                            }
+                            Slider(
+                                value = audioTrackVolumeDraft.coerceIn(0f, 1f),
+                                onValueChange = { audioTrackVolumeDraft = it },
+                                onValueChangeFinished = {
+                                    changedAudioTracks(audioTrackClips.map {
+                                        if (it.id == selectedAudioTrack.id) it.copy(volume = audioTrackVolumeDraft) else it
+                                    })
+                                },
+                                valueRange = 0f..1f,
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("FADE IN", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text(String.format("%.1fs", audioTrackFadeInDraft / 1_000f), color = StudioAccent, fontSize = 10.sp)
+                            }
+                            Slider(
+                                value = audioTrackFadeInDraft.coerceIn(0f, selectedAudioTrack.durationMs.toFloat()),
+                                onValueChange = { audioTrackFadeInDraft = it },
+                                onValueChangeFinished = {
+                                    changedAudioTracks(audioTrackClips.map {
+                                        if (it.id == selectedAudioTrack.id) it.copy(
+                                            fadeInMs = audioTrackFadeInDraft.toLong(),
+                                            fadeOutMs = audioTrackFadeOutDraft.toLong(),
+                                        ) else it
+                                    })
+                                },
+                                valueRange = 0f..selectedAudioTrack.durationMs.toFloat().coerceAtLeast(1f),
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("FADE OUT", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                Text(String.format("%.1fs", audioTrackFadeOutDraft / 1_000f), color = StudioAccent, fontSize = 10.sp)
+                            }
+                            Slider(
+                                value = audioTrackFadeOutDraft.coerceIn(0f, selectedAudioTrack.durationMs.toFloat()),
+                                onValueChange = { audioTrackFadeOutDraft = it },
+                                onValueChangeFinished = {
+                                    changedAudioTracks(audioTrackClips.map {
+                                        if (it.id == selectedAudioTrack.id) it.copy(
+                                            fadeInMs = audioTrackFadeInDraft.toLong(),
+                                            fadeOutMs = audioTrackFadeOutDraft.toLong(),
+                                        ) else it
+                                    })
+                                },
+                                valueRange = 0f..selectedAudioTrack.durationMs.toFloat().coerceAtLeast(1f),
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Text("Independent lanes mix during preview and MP4 export • no source audio is modified", color = StudioMuted, fontSize = 9.sp)
+                        }
                     }
+                }
+                if (activeTool == "Stickers") {
                     Column(
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        Text(
-                            if (activeTool == "Audio") "ADD AUDIO" else "ADD STICKER",
-                            color = StudioText,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                        )
+                        Text("ADD STICKER", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            options.forEach { option ->
+                            listOf("Emoji", "Shapes", "Decorations", "Arrows").forEach { option ->
                                 Surface(color = Color(0xFF29312E), shape = RoundedCornerShape(7.dp)) {
                                     Text(option, color = StudioText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
                                 }
                             }
                         }
-                        Text(
-                            if (activeTool == "Audio") "Separate music, SFX and voiceover tracks are not implemented yet."
-                            else "Sticker rendering is not implemented yet.",
-                            color = StudioMuted,
-                            fontSize = 9.sp,
-                        )
+                        Text("Sticker rendering is not implemented yet.", color = StudioMuted, fontSize = 9.sp)
                     }
                 }
                 if (activeTool == "Text") {
@@ -1611,6 +1999,7 @@ private fun VyroCutApp() {
                             if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
                                 val exportSession = java.util.UUID.randomUUID().toString()
                                 val exportClips = clips.toList()
+                                val exportAudioTracks = audioTrackClips.toList()
                                 val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
                                 val exportCanvasSize = exportCanvasSizeForPreset(exportCanvasSettings.aspectRatioPreset)
                                 val exportBackgroundArgb = exportCanvasBackgroundArgbForPreset(
@@ -1649,6 +2038,29 @@ private fun VyroCutApp() {
                                         exportMessage = "Export stopped: $preflightError"
                                         return@exportPreparation
                                     }
+                                    if (!validateAudioTrackClips(exportAudioTracks, calculateTimelineDurationMs(exportClips.map { it.durationMs }))) {
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Export stopped: audio lanes contain an invalid or overlapping segment."
+                                        return@exportPreparation
+                                    }
+                                    val audioSourceDurations = withContext(Dispatchers.IO) {
+                                        exportAudioTracks.associate { clip ->
+                                            clip.uri to readAudioDurationMs(context, Uri.parse(clip.uri))
+                                        }
+                                    }
+                                    val invalidAudioSource = exportAudioTracks.firstOrNull { clip ->
+                                        val sourceDuration = audioSourceDurations[clip.uri]
+                                        sourceDuration == null || clip.sourceStartMs < 0L ||
+                                            clip.sourceEndMs <= clip.sourceStartMs ||
+                                            clip.sourceEndMs > sourceDuration
+                                    }
+                                    if (invalidAudioSource != null) {
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Export stopped: audio source could not be verified for ${invalidAudioSource.name}. Relink it before exporting."
+                                        return@exportPreparation
+                                    }
 
                                     val canvasVisualClips = exportRequirements.mapNotNull { requirement ->
                                         val metadata = sourceMetadata[requirement.uri]
@@ -1682,8 +2094,28 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
                                     val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
-                                    val sourceUris = exportClips.map { it.uri }
+                                    val sourceUris = exportClips.map { it.uri } + exportAudioTracks.map { it.uri }
                                     val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
+                                    val exportAudioSegments = AudioTrackType.values().associateWith { type ->
+                                        buildAudioTrackTimelineSegments(exportAudioTracks, type, expectedDurationMs)
+                                    }
+                                    val maximumExportSilenceMs = exportAudioSegments.values.flatten()
+                                        .filter { it.clip == null }
+                                        .maxOfOrNull { it.durationMs } ?: 0L
+                                    val exportSilenceFile = if (maximumExportSilenceMs > 0L) {
+                                        runCatching {
+                                            withContext(Dispatchers.IO) {
+                                                createSilentAudioWav(context.cacheDir, maximumExportSilenceMs)
+                                            }
+                                        }.getOrElse { error ->
+                                            isExporting = false
+                                            exportSessionId = null
+                                            exportMessage = "Could not prepare audio-track gaps: ${error.message}"
+                                            return@exportPreparation
+                                        }
+                                    } else {
+                                        null
+                                    }
                                     val composition = try {
                                         val editedItems = exportClips.map { clip ->
                                             val source = MediaItem.Builder()
@@ -1730,10 +2162,55 @@ private fun VyroCutApp() {
                                                 )
                                                 .build()
                                         }
-                                        // Media3 1.5.1 exposes the list-based sequence builder.
+                                        // Media3 Composition mixes concurrent sequences. The main
+                                        // sequence carries video plus source audio; each independent
+                                        // lane contributes an audio-only, gap-filled sequence.
                                         @Suppress("DEPRECATION")
                                         val sequence = EditedMediaItemSequence.Builder(editedItems).build()
-                                        Composition.Builder(sequence).build()
+                                        val audioSequences = AudioTrackType.values().mapNotNull { type ->
+                                            val segments = exportAudioSegments[type].orEmpty()
+                                            if (segments.none { it.clip != null }) {
+                                                null
+                                            } else {
+                                                val audioItems = segments.map { segment ->
+                                                    val trackClip = segment.clip
+                                                    val audioSource = if (trackClip != null) {
+                                                        MediaItem.Builder()
+                                                            .setUri(Uri.parse(trackClip.uri))
+                                                            .setClippingConfiguration(
+                                                                MediaItem.ClippingConfiguration.Builder()
+                                                                    .setStartPositionMs(trackClip.sourceStartMs)
+                                                                    .setEndPositionMs(trackClip.sourceEndMs)
+                                                                    .build(),
+                                                            )
+                                                            .build()
+                                                    } else {
+                                                        MediaItem.Builder()
+                                                            .setUri(Uri.fromFile(exportSilenceFile ?: error("Missing audio silence file")))
+                                                            .setClippingConfiguration(
+                                                                MediaItem.ClippingConfiguration.Builder()
+                                                                    .setStartPositionMs(0L)
+                                                                    .setEndPositionMs(segment.durationMs)
+                                                                    .build(),
+                                                            )
+                                                            .build()
+                                                    }
+                                                    val processors = trackClip?.let {
+                                                        createClipAudioProcessors(
+                                                            volume = it.volume,
+                                                            clipDurationMs = it.durationMs,
+                                                            fadeInMs = it.fadeInMs,
+                                                            fadeOutMs = it.fadeOutMs,
+                                                        )
+                                                    } ?: emptyList()
+                                                    EditedMediaItem.Builder(audioSource)
+                                                        .setEffects(Effects(processors, emptyList()))
+                                                        .build()
+                                                }
+                                                EditedMediaItemSequence.withAudioFrom(audioItems)
+                                            }
+                                        }
+                                        Composition.Builder(listOf(sequence) + audioSequences).build()
                                     } catch (error: Exception) {
                                         isExporting = false
                                         exportSessionId = null
@@ -2309,34 +2786,41 @@ internal data class ProjectBackup(
     val name: String,
     val clips: List<EditClip>,
     val canvasSettings: ProjectCanvasSettings,
+    val audioTracks: List<AudioTrackClip> = emptyList(),
 )
 
 internal fun encodeProjectBackup(
     name: String,
     clips: List<EditClip>,
     canvasSettings: ProjectCanvasSettings,
+    audioTracks: List<AudioTrackClip> = emptyList(),
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 9)
+        put("version", 10)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
         put("canvasSettings", encodeProjectCanvasSettings(canvasSettings))
+        put("audioTracks", JSONArray(encodeAudioTrackClips(audioTracks)))
     }.toString(2)
 
 internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..9) { "Unsupported backup version" }
+    require(version in 1..10) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
     require(clips.size == clipsJson.length()) { "The backup contains invalid clip entries" }
     val canvasSettings = decodeProjectCanvasSettings(root.optString("canvasSettings", ""))
         ?: ProjectCanvasSettings()
-    return ProjectBackup(name, clips, canvasSettings)
+    val audioTracks = decodeAudioTrackClips(
+        root.optJSONArray("audioTracks")?.toString(),
+        calculateTimelineDurationMs(clips.map { it.durationMs }),
+    ) ?: error("The backup contains invalid audio track clips")
+    return ProjectBackup(name, clips, canvasSettings, audioTracks)
 }
 
 private fun saveProjectHistory(
@@ -2497,6 +2981,38 @@ private fun persistProjectWithRecovery(
         .apply()
 }
 
+private fun persistProjectAudioTracks(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    clips: List<AudioTrackClip>,
+    projectDurationMs: Long,
+) {
+    require(validateAudioTrackClips(clips, projectDurationMs)) {
+        "Audio track clips must fit inside the project and cannot overlap on one lane"
+    }
+    val encoded = encodeAudioTrackClips(clips)
+    preferences.edit()
+        .putString("project_${projectId}_audio_tracks", encoded)
+        .putString("project_${projectId}_audio_tracks_recovery", encoded)
+        .apply()
+}
+
+private fun loadProjectAudioTracks(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip> {
+    val primary = decodeAudioTrackClips(
+        preferences.getString("project_${projectId}_audio_tracks", null),
+        projectDurationMs,
+    )
+    if (primary != null) return primary
+    return decodeAudioTrackClips(
+        preferences.getString("project_${projectId}_audio_tracks_recovery", null),
+        projectDurationMs,
+    ) ?: emptyList()
+}
+
 private fun findProjectRecoveryCandidate(
     preferences: android.content.SharedPreferences,
     projectId: String,
@@ -2555,6 +3071,76 @@ private fun loadSavedPlaybackPosition(
     )
 }
 
+private fun readAudioDurationMs(context: android.content.Context, uri: Uri): Long? {
+    val retriever = MediaMetadataRetriever()
+    return try {
+        retriever.setDataSource(context, uri)
+        retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+            ?.toLongOrNull()
+            ?.takeIf { it > 0L }
+    } catch (_: Exception) {
+        null
+    } finally {
+        runCatching { retriever.release() }
+    }
+}
+
+/**
+ * Writes a small 8 kHz, mono, 16-bit PCM WAV silence source. It is shared by
+ * every lane and clipped to individual gaps, avoiding network assets and
+ * keeping project-time offsets deterministic in ExoPlayer and Transformer.
+ */
+private fun createSilentAudioWav(directory: File, durationMs: Long): File {
+    require(durationMs > 0L) { "Silence duration must be positive" }
+    val sampleRate = 8_000
+    val channels = 1
+    val bitsPerSample = 16
+    val dataBytes = (durationMs.toDouble() * sampleRate * channels * bitsPerSample / 8.0 / 1_000.0)
+        .toLong()
+        .coerceAtLeast(2L)
+    require(dataBytes <= Int.MAX_VALUE.toLong() - 36L) { "Audio gap is too long for a WAV silence source" }
+    if (!directory.exists() && !directory.mkdirs()) error("Could not create the audio cache directory")
+    val file = File(directory, "vyrocut-silence-${dataBytes}.wav")
+    if (file.isFile && file.length() == dataBytes + 44L) return file
+
+    RandomAccessFile(file, "rw").use { output ->
+        output.setLength(dataBytes + 44L)
+        fun writeAscii(value: String) = output.write(value.toByteArray(Charsets.US_ASCII))
+        fun writeShortLe(value: Int) {
+            output.write(value and 0xff)
+            output.write((value shr 8) and 0xff)
+        }
+        fun writeIntLe(value: Int) {
+            output.write(value and 0xff)
+            output.write((value shr 8) and 0xff)
+            output.write((value shr 16) and 0xff)
+            output.write((value shr 24) and 0xff)
+        }
+        writeAscii("RIFF")
+        writeIntLe((dataBytes + 36L).toInt())
+        writeAscii("WAVE")
+        writeAscii("fmt ")
+        writeIntLe(16)
+        writeShortLe(1)
+        writeShortLe(channels)
+        writeIntLe(sampleRate)
+        writeIntLe(sampleRate * channels * bitsPerSample / 8)
+        writeShortLe(channels * bitsPerSample / 8)
+        writeShortLe(bitsPerSample)
+        writeAscii("data")
+        writeIntLe(dataBytes.toInt())
+        output.seek(44L)
+        val silence = ByteArray(64 * 1024)
+        var remaining = dataBytes
+        while (remaining > 0L) {
+            val count = minOf(remaining, silence.size.toLong()).toInt()
+            output.write(silence, 0, count)
+            remaining -= count.toLong()
+        }
+    }
+    return file
+}
+
 private fun formatTime(milliseconds: Long): String {
     val seconds = milliseconds.coerceAtLeast(0L) / 1000L
     return "%02d:%02d".format(seconds / 60L, seconds % 60L)
@@ -2590,9 +3176,11 @@ private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): Pro
 @Composable
 private fun TimelineEditorStrip(
     clips: List<EditClip>,
+    audioTracks: List<AudioTrackClip>,
     selectedIndex: Int,
     playheadPositionMs: Long,
     isPlaying: Boolean,
+    onSelectAudioTrack: (AudioTrackClip) -> Unit,
     onSeek: (TimelineSeekTarget) -> Unit,
     onSelectText: (Int, Int) -> Unit,
 ) {
@@ -2820,9 +3408,9 @@ private fun TimelineEditorStrip(
         }
 
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
-            Text("AUDIO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Text("SOURCE", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Source waveform", color = StudioMuted, fontSize = 9.sp)
+            Text("Original clip audio", color = StudioMuted, fontSize = 9.sp)
         }
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
             clips.forEachIndexed { index, clip ->
@@ -2834,6 +3422,61 @@ private fun TimelineEditorStrip(
                 ) {
                     AudioWaveform(clip, Modifier.fillMaxWidth().height(20.dp))
                 }
+            }
+        }
+        AudioTrackType.values().forEach { type ->
+            val laneClips = audioTracks.filter { it.type == type }
+            Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
+                Text(type.name, color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    when (type) {
+                        AudioTrackType.MUSIC -> "Music"
+                        AudioTrackType.SFX -> "Sound effects"
+                        AudioTrackType.VOICEOVER -> "Voiceover"
+                    },
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                )
+            }
+            Box(Modifier.width(totalWidth).height(25.dp)) {
+                laneClips.forEach { trackClip ->
+                    val startPx = calculateTimelinePlayheadOffsetPx(
+                        timelineClipDurationsMs,
+                        clipWidths,
+                        trackClip.startMs,
+                        gap,
+                    )
+                    val endPx = calculateTimelinePlayheadOffsetPx(
+                        timelineClipDurationsMs,
+                        clipWidths,
+                        trackClip.endMs,
+                        gap,
+                    )
+                    val laneColor = when (type) {
+                        AudioTrackType.MUSIC -> Color(0xFF185C48)
+                        AudioTrackType.SFX -> Color(0xFF57452A)
+                        AudioTrackType.VOICEOVER -> Color(0xFF344A67)
+                    }
+                    Box(
+                        Modifier.offset(x = startPx.dp)
+                            .width((endPx - startPx).coerceAtLeast(6f).dp)
+                            .fillMaxHeight()
+                            .background(laneColor, RoundedCornerShape(4.dp))
+                            .clickable { onSelectAudioTrack(trackClip) }
+                            .padding(horizontal = 5.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            trackClip.name,
+                            color = Color.White,
+                            fontSize = 8.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                Box(Modifier.offset(x = markerX.dp).width(2.dp).fillMaxHeight().background(StudioAccent))
             }
         }
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.SpaceBetween) {
