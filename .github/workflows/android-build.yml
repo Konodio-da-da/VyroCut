@@ -3,6 +3,7 @@ name: Android build
 on:
   pull_request:
     branches: [main, feat/android-foundation]
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main, fix/capcut-workflow-ui]
   workflow_dispatch:
