@@ -3,6 +3,7 @@
 ## Last verified build
 - The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
 - Feature branch `fix/capcut-workflow-ui` commit `b9b7bb4113b8ef27af74f2c762de7e1295752e82` passed `assembleDebug` and `testDebugUnitTest` in [Android build run #295](https://github.com/Konodio-da-da/VyroCut/actions/runs/43490355930). This fixed the missing `MediaFormat` import exposed by the earlier failed [run #293](https://github.com/Konodio-da-da/VyroCut/actions/runs/43482479845). The debug APK artifact was uploaded.
+- Current feature head `857be483f6cc447a19bb805876280c1322b331d4` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #300](https://github.com/Konodio-da-da/VyroCut/actions/runs/43500397549). The latest change adds age-based cleanup for abandoned waveform-cache temporary files; it does not affect source media or project data.
 - The preceding documentation-only commit `bdde11e267c91d6dae713ee12900cd32f15f1dfd` passed in [run #273](https://github.com/Konodio-da-da/VyroCut/actions/runs/43418323093); the atomic-cache-write and cache-serialization commits passed in [runs #269](https://github.com/Konodio-da-da/VyroCut/actions/runs/43417200959) and #271 (see the corresponding branch run).
 - The app remains `minSdk = 29` and offline-first. GitHub Actions supplies JDK 17 and the Android SDK; the ProductOS sandbox has no Java, Android SDK, Gradle installation/wrapper launcher, or adb.
 - CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
@@ -20,6 +21,7 @@
 - Timeline audio waveforms are decoded from each clip's source audio on a background dispatcher, bucketed into 48 peak-amplitude samples, and aligned to the clip's trimmed source range.
 - Waveform cache filenames include the requested bucket count, so compact and detailed resolutions for the same source range cannot overwrite or invalidate each other's cache entries.
 - Waveform cache payloads are versioned and CRC32-checked; each decoder writes through a unique same-directory temporary file and prefers atomic replacement, preventing concurrent requests from clobbering one shared temporary path.
+- Waveform cache startup removes only app-owned temporary write files older than 24 hours; recent in-flight writes and completed cache entries are retained. The age/name predicate is covered by JVM unit tests.
 - Video import through Android's Storage Access Framework with persisted read permission.
 - Persisted source URIs are checked when a project opens; unavailable or too-short sources are flagged in the selected-clip header.
 - A missing clip can be relinked to another video through the document picker. The replacement must cover the existing source in/out range, and relinking preserves the clip ID and trim points so undo/redo and preview restoration remain coherent.

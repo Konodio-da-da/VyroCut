@@ -1,6 +1,7 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -140,4 +141,59 @@ class AudioWaveformTest {
         assertTrue(runCatching { encodeAudioWaveformCache(listOf(Float.NaN)) }.isFailure)
         assertTrue(runCatching { encodeAudioWaveformCache(listOf(1.1f)) }.isFailure)
     }
+    @Test
+    fun staleWaveformTempCleanupUsesAgeAndOnlyMatchesOwnedTempFiles() {
+        val nowMs = 100_000L
+        val maxAgeMs = 60_000L
+
+        assertTrue(
+            isStaleAudioWaveformTempFile(
+                fileName = "waveform-ab12.tmp",
+                lastModifiedMs = 40_000L,
+                nowMs = nowMs,
+                maxAgeMs = maxAgeMs,
+            ),
+        )
+        assertFalse(
+            isStaleAudioWaveformTempFile(
+                fileName = "waveform-active.tmp",
+                lastModifiedMs = 40_001L,
+                nowMs = nowMs,
+                maxAgeMs = maxAgeMs,
+            ),
+        )
+        assertFalse(
+            isStaleAudioWaveformTempFile(
+                fileName = "waveform-cache.bin",
+                lastModifiedMs = 1L,
+                nowMs = nowMs,
+                maxAgeMs = maxAgeMs,
+            ),
+        )
+        assertFalse(
+            isStaleAudioWaveformTempFile(
+                fileName = "other-process.tmp",
+                lastModifiedMs = 1L,
+                nowMs = nowMs,
+                maxAgeMs = maxAgeMs,
+            ),
+        )
+        assertFalse(
+            isStaleAudioWaveformTempFile(
+                fileName = "waveform-future.tmp",
+                lastModifiedMs = nowMs + 1L,
+                nowMs = nowMs,
+                maxAgeMs = maxAgeMs,
+            ),
+        )
+        assertFalse(
+            isStaleAudioWaveformTempFile(
+                fileName = "waveform-invalid-age.tmp",
+                lastModifiedMs = 1L,
+                nowMs = nowMs,
+                maxAgeMs = 0L,
+            ),
+        )
+    }
+
 }

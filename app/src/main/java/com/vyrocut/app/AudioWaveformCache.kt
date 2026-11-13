@@ -8,6 +8,31 @@ import java.util.zip.CRC32
 
 internal const val MAX_AUDIO_WAVEFORM_BUCKETS = 512
 
+internal const val AUDIO_WAVEFORM_TEMP_FILE_PREFIX = "waveform-"
+internal const val AUDIO_WAVEFORM_TEMP_FILE_SUFFIX = ".tmp"
+internal const val AUDIO_WAVEFORM_TEMP_FILE_MAX_AGE_MS = 24L * 60L * 60L * 1_000L
+
+/**
+ * Identifies abandoned cache-write temp files without touching active writers,
+ * recent files, completed cache entries, or files with future timestamps.
+ */
+internal fun isStaleAudioWaveformTempFile(
+    fileName: String,
+    lastModifiedMs: Long,
+    nowMs: Long,
+    maxAgeMs: Long = AUDIO_WAVEFORM_TEMP_FILE_MAX_AGE_MS,
+): Boolean {
+    if (!fileName.startsWith(AUDIO_WAVEFORM_TEMP_FILE_PREFIX) ||
+        !fileName.endsWith(AUDIO_WAVEFORM_TEMP_FILE_SUFFIX) ||
+        lastModifiedMs < 0L ||
+        nowMs < 0L ||
+        nowMs < lastModifiedMs ||
+        maxAgeMs <= 0L
+    ) return false
+
+    return nowMs - lastModifiedMs >= maxAgeMs
+}
+
 private const val AUDIO_WAVEFORM_CACHE_MAGIC = 0x56594357
 private const val AUDIO_WAVEFORM_CACHE_VERSION = 2
 private const val AUDIO_WAVEFORM_CACHE_HEADER_BYTES = 16

@@ -112,6 +112,7 @@ internal fun decodeAudioWaveform(
     ) return null
 
     val cacheDirectory = File(context.cacheDir, "audio-waveforms")
+    cleanupStaleWaveformTemporaryFiles(cacheDirectory)
     val cacheFile = File(
         cacheDirectory,
         audioWaveformCacheFileName(uriString, sourceStartMs, sourceEndMs, bucketCount),
@@ -306,6 +307,20 @@ private fun readPcmSample(buffer: ByteBuffer, encoding: Int): Float? = when (enc
     else -> null
 }
 
+private fun cleanupStaleWaveformTemporaryFiles(directory: File) {
+    val nowMs = System.currentTimeMillis()
+    directory.listFiles()?.forEach { candidate ->
+        if (candidate.isFile && isStaleAudioWaveformTempFile(
+                fileName = candidate.name,
+                lastModifiedMs = candidate.lastModified(),
+                nowMs = nowMs,
+            )
+        ) {
+            candidate.delete()
+        }
+    }
+}
+
 private fun readWaveformCache(file: File, bucketCount: Int): List<Float>? {
     if (!file.isFile || file.length() != 16L + bucketCount * 4L) return null
     val encoded = runCatching { file.readBytes() }.getOrNull() ?: return null
@@ -318,7 +333,11 @@ private fun writeWaveformCache(directory: File, destination: File, values: List<
         if (!directory.exists() && !directory.mkdirs()) return@runCatching
         // Each decoder owns a distinct temporary file. A fixed ".tmp" name let
         // concurrent requests for the same source overwrite one another.
-        val temporary = File.createTempFile("waveform-", ".tmp", directory)
+        val temporary = File.createTempFile(
+            AUDIO_WAVEFORM_TEMP_FILE_PREFIX,
+            AUDIO_WAVEFORM_TEMP_FILE_SUFFIX,
+            directory,
+        )
         try {
             FileOutputStream(temporary).use { output ->
                 output.write(encoded)
