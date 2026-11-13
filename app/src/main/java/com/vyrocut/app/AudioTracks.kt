@@ -10,6 +10,7 @@ internal enum class AudioTrackType {
 }
 
 internal const val MAX_AUDIO_TRACK_CLIPS = 24
+internal const val MIN_AUDIO_TRACK_CLIP_DURATION_MS = 100L
 
 /**
  * A non-destructive audio segment positioned on the project timeline.
@@ -24,6 +25,8 @@ internal data class AudioTrackClip(
     val startMs: Long,
     val sourceStartMs: Long,
     val sourceEndMs: Long,
+    /** Full readable source duration, retained so trims can be expanded again. */
+    val sourceDurationMs: Long = sourceEndMs,
     val volume: Float = 1f,
     val fadeInMs: Long = 0L,
     val fadeOutMs: Long = 0L,
@@ -58,7 +61,9 @@ internal fun isValidAudioTrackClip(clip: AudioTrackClip, projectDurationMs: Long
         clip.startMs >= 0L &&
         clip.sourceStartMs >= 0L &&
         clip.sourceEndMs > clip.sourceStartMs &&
-        clip.durationMs > 0L &&
+        clip.sourceDurationMs >= clip.sourceEndMs &&
+        clip.sourceDurationMs > 0L &&
+        clip.durationMs >= MIN_AUDIO_TRACK_CLIP_DURATION_MS &&
         clip.endMs > clip.startMs &&
         clip.endMs <= projectDurationMs &&
         clip.volume.isFinite() &&
@@ -150,6 +155,61 @@ internal fun resolveAudioTrackInsertionStartMs(
  * Produces a gap-filled sequence for one lane. Gaps become silent media items
  * in preview/export, so every lane has the same project-wide clock.
  */
+/**
+ * Changes source in/out points without touching the original file. A trim may
+ * expand back to any range inside the source duration captured at import time.
+ * The edit is rejected if it would overlap another clip on the same lane.
+ */
+internal fun trimAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    val selected = clips.firstOrNull { it.id == clipId } ?: return null
+    if (sourceStartMs < 0L ||
+        sourceEndMs > selected.sourceDurationMs ||
+        sourceEndMs - sourceStartMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS
+    ) return null
+
+    val updated = clips.map { clip ->
+        if (clip.id == clipId) clip.copy(
+            sourceStartMs = sourceStartMs,
+            sourceEndMs = sourceEndMs,
+            fadeInMs = clip.fadeInMs.coerceAtMost(sourceEndMs - sourceStartMs),
+            fadeOutMs = clip.fadeOutMs.coerceAtMost(sourceEndMs - sourceStartMs),
+        ) else clip
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
+/**
+ * Moves one lane item to the first non-overlapping slot at or after the requested
+ * project time. Its source trim, volume and fades remain unchanged.
+ */
+internal fun moveAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    requestedStartMs: Long,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (!validateAudioTrackClips(clips, projectDurationMs)) return null
+    val selected = clips.firstOrNull { it.id == clipId } ?: return null
+    val others = clips.filterNot { it.id == clipId }
+    val nextStartMs = resolveAudioTrackInsertionStartMs(
+        clips = others,
+        type = selected.type,
+        requestedStartMs = requestedStartMs,
+        clipDurationMs = selected.durationMs,
+        projectDurationMs = projectDurationMs,
+    ) ?: return null
+    val updated = clips.map { clip ->
+        if (clip.id == clipId) clip.copy(startMs = nextStartMs) else clip
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
 internal fun buildAudioTrackTimelineSegments(
     clips: List<AudioTrackClip>,
     type: AudioTrackType,
@@ -267,6 +327,7 @@ internal fun encodeAudioTrackClips(clips: List<AudioTrackClip>): String {
             put("startMs", clip.startMs)
             put("sourceStartMs", clip.sourceStartMs)
             put("sourceEndMs", clip.sourceEndMs)
+            put("sourceDurationMs", clip.sourceDurationMs)
             put("volume", clip.volume.toDouble())
             put("fadeInMs", clip.fadeInMs)
             put("fadeOutMs", clip.fadeOutMs)
@@ -299,6 +360,7 @@ internal fun decodeAudioTrackClips(
                         startMs = item.getLong("startMs"),
                         sourceStartMs = item.getLong("sourceStartMs"),
                         sourceEndMs = item.getLong("sourceEndMs"),
+                        sourceDurationMs = item.optLong("sourceDurationMs", item.getLong("sourceEndMs")),
                         volume = volume.toFloat(),
                         fadeInMs = item.optLong("fadeInMs", 0L),
                         fadeOutMs = item.optLong("fadeOutMs", 0L),
