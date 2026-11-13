@@ -14,6 +14,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.DataInputStream
@@ -325,8 +326,9 @@ internal fun AudioWaveformStrip(
     amplitudes: List<Float>,
     color: Color,
     modifier: Modifier = Modifier,
+    height: Dp = 24.dp,
 ) {
-    Canvas(modifier.fillMaxWidth().height(24.dp)) {
+    Canvas(modifier.fillMaxWidth().height(height)) {
         if (size.width <= 0f || size.height <= 0f) return@Canvas
         val centerY = size.height / 2f
         drawLine(

@@ -1430,6 +1430,7 @@ private fun VyroCutApp() {
                 TimelineEditorStrip(
                     clips = clips,
                     audioTracks = audioTrackClips,
+                    audioWaveforms = audioWaveforms,
                     selectedIndex = selectedIndex,
                     playheadPositionMs = timelinePositionMs.toLong(),
                     isPlaying = isPlaying,
@@ -3379,6 +3380,7 @@ private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): Pro
 private fun TimelineEditorStrip(
     clips: List<EditClip>,
     audioTracks: List<AudioTrackClip>,
+    audioWaveforms: Map<String, List<Float>>,
     selectedIndex: Int,
     playheadPositionMs: Long,
     isPlaying: Boolean,
@@ -3669,13 +3671,23 @@ private fun TimelineEditorStrip(
                             .padding(horizontal = 5.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text(
-                            trackClip.name,
-                            color = Color.White,
-                            fontSize = 8.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Column(
+                            Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                trackClip.name,
+                                color = Color.White,
+                                fontSize = 8.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            AudioWaveformStrip(
+                                amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
+                                color = Color.White.copy(alpha = 0.9f),
+                                height = 10.dp,
+                            )
+                        }
                     }
                 }
                 Box(Modifier.offset(x = markerX.dp).width(2.dp).fillMaxHeight().background(StudioAccent))
