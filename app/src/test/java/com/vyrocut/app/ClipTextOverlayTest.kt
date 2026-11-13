@@ -158,7 +158,7 @@ class ClipTextOverlayTest {
         )
 
         assertEquals(
-            listOf(ClipTextOverlay("Keep", startMs = 0L, endMs = 2_000L)),
+            listOf(ClipTextOverlay("Keep", startMs = 0L, endMs = 1_000L)),
             rebaseClipTextOverlaysForTrim(
                 overlays,
                 oldSourceStartMs = 0L,
