@@ -333,4 +333,18 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(emptyList<AudioTrackClip>(), restored.audioTracks)
     }
 
+
+    @Test
+    fun versionTenBackupRejectsMalformedAudioTrackListInsteadOfDroppingIt() {
+        val malformed = """{
+            "format":"vyrocut-project",
+            "version":10,
+            "projectName":"Malformed audio backup",
+            "clips":[{"id":"video","uri":"content://media/video","name":"Video","start":0,"end":1000}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK",
+            "audioTracks":{"not":"an array"}
+        }"""
+        assertNull(runCatching { decodeProjectBackup(malformed) }.getOrNull())
+    }
+
 }
