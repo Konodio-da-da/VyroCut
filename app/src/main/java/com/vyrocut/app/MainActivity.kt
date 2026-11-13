@@ -193,6 +193,12 @@ private fun VyroCutApp() {
     var clipTextDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.text) {
         mutableStateOf(selectedClip?.textOverlay?.text ?: "")
     }
+    var clipTextScaleDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.fontScale) {
+        mutableFloatStateOf(selectedClip?.textOverlay?.fontScale ?: 1f)
+    }
+    var clipTextPositionDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.position) {
+        mutableStateOf(selectedClip?.textOverlay?.position ?: ClipTextPosition.BOTTOM)
+    }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
     var isScrubbing by remember { mutableStateOf(false) }
     var previousClipEdits by remember { mutableStateOf(clips.toList()) }
@@ -551,12 +557,20 @@ private fun VyroCutApp() {
         })
         exportMessage = "Clip colour adjustments updated"
     }
-    fun commitSelectedClipTextOverlay(rawText: String) {
+    fun commitSelectedClipTextOverlay(
+        rawText: String,
+        fontScale: Float,
+        position: ClipTextPosition,
+    ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         val normalizedText = rawText.trim()
-        val overlay = if (normalizedText.isBlank()) null else decodeClipTextOverlay(normalizedText)
+        val overlay = if (normalizedText.isBlank()) {
+            null
+        } else {
+            decodeClipTextOverlay(normalizedText, fontScale, position.name)
+        }
         if (normalizedText.isNotBlank() && overlay == null) {
-            exportMessage = "Text must be 1–120 characters and cannot contain control characters"
+            exportMessage = "Text, size or position is invalid. Choose 1–120 printable characters and a supported size."
             return
         }
         if (clip.textOverlay == overlay) return
@@ -1028,6 +1042,24 @@ private fun VyroCutApp() {
                         clips.getOrNull(target.clipIndex)?.let { clip ->
                             savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
                         }
+                    },
+                    onSelectText = { index ->
+                        clips.getOrNull(index)?.let { clip ->
+                            selectedIndex = index
+                            activeTool = "Text"
+                            val positionMs = if (player.currentMediaItemIndex == index) {
+                                player.currentPosition
+                            } else {
+                                0L
+                            }
+                            player.seekTo(index, positionMs)
+                            timelinePositionMs = calculateTimelinePositionMs(
+                                clipDurationsMs,
+                                index,
+                                positionMs,
+                            ).coerceIn(0L, timelineDurationMs).toFloat()
+                            savePreviewPosition(preferences, activeProjectId, clip, positionMs)
+                        }
                     }
                 )
 
@@ -1369,12 +1401,48 @@ private fun VyroCutApp() {
                                 minLines = 2,
                                 maxLines = 3,
                                 supportingText = {
-                                    Text("${clipTextDraft.trim().length}/${MAX_CLIP_TEXT_OVERLAY_LENGTH} characters • Bottom-centred")
+                                    Text(
+                                        "${clipTextDraft.trim().length}/${MAX_CLIP_TEXT_OVERLAY_LENGTH} characters • " +
+                                            "${clipTextScaleDraft.let { (it * 100).toInt() }}% size • " +
+                                            clipTextPositionDraft.name.lowercase(),
+                                    )
                                 },
                             )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("SIZE", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(8.dp))
+                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf("Small" to 0.8f, "Medium" to 1f, "Large" to 1.25f).forEach { (label, scale) ->
+                                        FilterChip(
+                                            selected = clipTextScaleDraft == scale,
+                                            onClick = { clipTextScaleDraft = scale },
+                                            label = { Text(label, fontSize = 10.sp) },
+                                        )
+                                    }
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("POSITION", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(8.dp))
+                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    ClipTextPosition.values().forEach { position ->
+                                        FilterChip(
+                                            selected = clipTextPositionDraft == position,
+                                            onClick = { clipTextPositionDraft = position },
+                                            label = { Text(position.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 10.sp) },
+                                        )
+                                    }
+                                }
+                            }
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Button(
-                                    onClick = { commitSelectedClipTextOverlay(clipTextDraft) },
+                                    onClick = {
+                                        commitSelectedClipTextOverlay(
+                                            clipTextDraft,
+                                            clipTextScaleDraft,
+                                            clipTextPositionDraft,
+                                        )
+                                    },
                                     enabled = clipTextDraft.trim().length <= MAX_CLIP_TEXT_OVERLAY_LENGTH,
                                     colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
                                     modifier = Modifier.weight(1f),
@@ -1382,7 +1450,11 @@ private fun VyroCutApp() {
                                 TextButton(
                                     onClick = {
                                         clipTextDraft = ""
-                                        commitSelectedClipTextOverlay("")
+                                        commitSelectedClipTextOverlay(
+                                            "",
+                                            clipTextScaleDraft,
+                                            clipTextPositionDraft,
+                                        )
                                     },
                                     enabled = selectedClip.textOverlay != null || clipTextDraft.isNotBlank(),
                                 ) { Text("Remove") }
@@ -2072,7 +2144,11 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("saturation", clip.visualAdjustments.saturation)
         })
         clip.textOverlay?.let { overlay ->
-            put("textOverlay", JSONObject().apply { put("text", overlay.text) })
+            put("textOverlay", JSONObject().apply {
+                put("text", overlay.text)
+                put("fontScale", overlay.fontScale.toDouble())
+                put("position", overlay.position.name)
+            })
         }
     }) }
     return array.toString()
@@ -2091,7 +2167,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 6)
+        put("version", 7)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -2102,7 +2178,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..6) { "Unsupported backup version" }
+    require(version in 1..7) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -2201,8 +2277,11 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
             } else {
                 val overlayJson = item.optJSONObject("textOverlay")
                     ?: error("A clip has an invalid text overlay")
-                decodeClipTextOverlay(overlayJson.optString("text"))
-                    ?: error("A clip has an invalid text overlay")
+                decodeClipTextOverlay(
+                    raw = overlayJson.optString("text"),
+                    fontScale = overlayJson.optDouble("fontScale", 1.0).toFloat(),
+                    position = overlayJson.optString("position", "BOTTOM"),
+                ) ?: error("A clip has an invalid text overlay")
             }
             add(
                 EditClip(
@@ -2340,6 +2419,7 @@ private fun TimelineEditorStrip(
     selectedIndex: Int,
     playheadPositionMs: Long,
     onSeek: (TimelineSeekTarget) -> Unit,
+    onSelectText: (Int) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
@@ -2467,6 +2547,44 @@ private fun TimelineEditorStrip(
                             },
                         )
                     }
+            )
+        }
+
+        Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
+            Text("TEXT", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("Overlay lane • tap a clip to edit its text", color = StudioMuted, fontSize = 9.sp)
+        }
+        Box(Modifier.width(totalWidth).height(28.dp)) {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    val overlay = clip.textOverlay
+                    Box(
+                        Modifier.width(clipWidths[index].dp)
+                            .fillMaxHeight()
+                            .background(
+                                if (overlay != null) Color(0xFF16483D) else Color(0xFF202725),
+                                RoundedCornerShape(4.dp),
+                            )
+                            .clickable { onSelectText(index) }
+                            .padding(horizontal = 6.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            overlay?.text?.replace('\n', ' ') ?: "+ Add text",
+                            color = if (overlay != null) StudioAccent else StudioMuted,
+                            fontSize = 9.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            Box(
+                Modifier.offset(x = markerX.dp)
+                    .width(2.dp)
+                    .height(28.dp)
+                    .background(StudioAccent),
             )
         }
 
