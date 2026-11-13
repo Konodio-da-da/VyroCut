@@ -13,6 +13,7 @@ class AudioTracksTest {
         startMs: Long = 0L,
         sourceStartMs: Long = 0L,
         sourceEndMs: Long = 1_000L,
+        sourceDurationMs: Long = sourceEndMs,
         volume: Float = 1f,
         fadeInMs: Long = 0L,
         fadeOutMs: Long = 0L,
@@ -24,6 +25,7 @@ class AudioTracksTest {
         startMs = startMs,
         sourceStartMs = sourceStartMs,
         sourceEndMs = sourceEndMs,
+        sourceDurationMs = sourceDurationMs,
         volume = volume,
         fadeInMs = fadeInMs,
         fadeOutMs = fadeOutMs,
@@ -66,6 +68,59 @@ class AudioTracksTest {
             resolveAudioTrackInsertionStartMs(existing, AudioTrackType.MUSIC, 6_000L, 2_000L, 10_000L),
         )
         assertNull(resolveAudioTrackInsertionStartMs(existing, AudioTrackType.MUSIC, 9_000L, 2_000L, 10_000L))
+    }
+
+    @Test
+    fun trimCanExpandWithinOriginalSourceAndPreservesOtherAudioSettings() {
+        val original = clip(
+            "music",
+            startMs = 1_000L,
+            sourceStartMs = 1_000L,
+            sourceEndMs = 3_000L,
+            sourceDurationMs = 5_000L,
+            volume = 0.6f,
+            fadeInMs = 250L,
+            fadeOutMs = 300L,
+        )
+        val trimmed = trimAudioTrackClip(listOf(original), "music", 0L, 4_000L, 10_000L)
+
+        assertEquals(0L, trimmed?.single()?.sourceStartMs)
+        assertEquals(4_000L, trimmed?.single()?.sourceEndMs)
+        assertEquals(5_000L, trimmed?.single()?.sourceDurationMs)
+        assertEquals(0.6f, trimmed?.single()?.volume ?: 0f, 0.0001f)
+        assertEquals(250L, trimmed?.single()?.fadeInMs)
+        assertEquals(300L, trimmed?.single()?.fadeOutMs)
+        assertEquals(1_000L, original.sourceStartMs)
+        assertEquals(3_000L, original.sourceEndMs)
+    }
+
+    @Test
+    fun trimRejectsTooShortOutOfSourceAndSameLaneOverlap() {
+        val first = clip("first", startMs = 0L, sourceEndMs = 2_000L, sourceDurationMs = 5_000L)
+        val second = clip("second", startMs = 3_000L, sourceEndMs = 1_000L, sourceDurationMs = 1_000L)
+        assertNull(trimAudioTrackClip(listOf(first), "first", 0L, 99L, 10_000L))
+        assertNull(trimAudioTrackClip(listOf(first), "first", 0L, 6_000L, 10_000L))
+        assertNull(trimAudioTrackClip(listOf(first, second), "first", 0L, 4_000L, 10_000L))
+    }
+
+    @Test
+    fun moveFindsNextFreeSlotAndPreservesSourceRange() {
+        val selected = clip("selected", startMs = 0L, sourceEndMs = 2_000L, sourceDurationMs = 8_000L)
+        val blocker = clip("blocker", startMs = 3_000L, sourceEndMs = 2_000L)
+        val moved = moveAudioTrackClip(listOf(selected, blocker), "selected", 2_500L, 10_000L)
+
+        assertEquals(5_000L, moved?.first { it.id == "selected" }?.startMs)
+        assertEquals(selected.sourceStartMs, moved?.first { it.id == "selected" }?.sourceStartMs)
+        assertEquals(selected.sourceEndMs, moved?.first { it.id == "selected" }?.sourceEndMs)
+        assertEquals(0L, selected.startMs)
+    }
+
+    @Test
+    fun moveRejectsUnknownClipAndWhenNoFreeProjectTimeRemains() {
+        val selected = clip("selected", startMs = 0L, sourceEndMs = 2_000L)
+        val blocker = clip("blocker", startMs = 2_000L, sourceEndMs = 3_000L)
+        assertNull(moveAudioTrackClip(listOf(selected, blocker), "missing", 5_000L, 5_000L))
+        assertNull(moveAudioTrackClip(listOf(selected, blocker), "selected", 4_000L, 5_000L))
     }
 
     @Test
