@@ -563,7 +563,7 @@ private fun VyroCutApp() {
                     audioPlayer.playWhenReady = mainIsPlaying
                 }
             }
-            delay(if (mainIsPlaying) 50L else 140L)
+            delay(if (mainIsPlaying) 16L else 100L)
         }
     }
 
@@ -2220,7 +2220,7 @@ private fun VyroCutApp() {
                                                 EditedMediaItemSequence.withAudioFrom(audioItems)
                                             }
                                         }
-                                        Composition.Builder(listOf(sequence) + audioSequences).build()
+                                        Composition.Builder(sequence, *audioSequences.toTypedArray()).build()
                                     } catch (error: Exception) {
                                         isExporting = false
                                         exportSessionId = null
