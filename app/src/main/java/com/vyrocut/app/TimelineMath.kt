@@ -443,3 +443,31 @@ internal fun <T> duplicateTimelineItemAfter(
         selectedIndex = selectedIndex,
     )
 }
+
+
+/**
+ * Keeps a playing playhead inside a safe horizontal viewport band without
+ * taking control away from the user while paused. Returns null when no scroll
+ * is needed. The target is expressed in ScrollState pixels.
+ */
+internal fun calculateTimelineAutoFollowScrollTargetPx(
+    currentScrollPx: Int,
+    markerPositionPx: Float,
+    viewportWidthPx: Int,
+    maxScrollPx: Int,
+    isPlaying: Boolean,
+): Int? {
+    if (!isPlaying || viewportWidthPx <= 0 || maxScrollPx <= 0 || !markerPositionPx.isFinite()) {
+        return null
+    }
+
+    val current = currentScrollPx.coerceIn(0, maxScrollPx)
+    val leftBoundaryPx = current + viewportWidthPx * 0.20f
+    val rightBoundaryPx = current + viewportWidthPx * 0.80f
+    if (markerPositionPx in leftBoundaryPx..rightBoundaryPx) return null
+
+    val target = (markerPositionPx - viewportWidthPx * 0.35f)
+        .toInt()
+        .coerceIn(0, maxScrollPx)
+    return target.takeIf { it != current }
+}

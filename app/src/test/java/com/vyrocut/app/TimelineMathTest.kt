@@ -565,4 +565,77 @@ class TimelineMathTest {
         assertNull(resolveSavedPlaybackTarget(emptyList(), SavedPlaybackPosition("clip", 500L)))
     }
 
+
+    @Test
+    fun timelineAutoFollowDoesNotScrollWhenPausedOrNotScrollable() {
+        assertNull(calculateTimelineAutoFollowScrollTargetPx(0, 900f, 500, 1_000, false))
+        assertNull(calculateTimelineAutoFollowScrollTargetPx(0, 900f, 500, 0, true))
+        assertNull(calculateTimelineAutoFollowScrollTargetPx(0, Float.NaN, 500, 1_000, true))
+    }
+
+    @Test
+    fun timelineAutoFollowLeavesManualScrollAloneWhilePlayheadIsInsideSafeBand() {
+        assertNull(
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 100,
+                markerPositionPx = 350f,
+                viewportWidthPx = 500,
+                maxScrollPx = 1_000,
+                isPlaying = true,
+            ),
+        )
+    }
+
+    @Test
+    fun timelineAutoFollowMovesForwardWhenPlayheadLeavesRightSafeBoundary() {
+        assertEquals(
+            725,
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 100,
+                markerPositionPx = 900f,
+                viewportWidthPx = 500,
+                maxScrollPx = 1_200,
+                isPlaying = true,
+            ),
+        )
+    }
+
+    @Test
+    fun timelineAutoFollowMovesBackWhenPlayheadFallsLeftOfSafeBoundary() {
+        assertEquals(
+            425,
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 700,
+                markerPositionPx = 600f,
+                viewportWidthPx = 500,
+                maxScrollPx = 1_200,
+                isPlaying = true,
+            ),
+        )
+    }
+
+    @Test
+    fun timelineAutoFollowClampsToScrollableContentBounds() {
+        assertEquals(
+            800,
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 0,
+                markerPositionPx = 2_000f,
+                viewportWidthPx = 500,
+                maxScrollPx = 800,
+                isPlaying = true,
+            ),
+        )
+        assertEquals(
+            0,
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 700,
+                markerPositionPx = 0f,
+                viewportWidthPx = 500,
+                maxScrollPx = 800,
+                isPlaying = true,
+            ),
+        )
+    }
+
 }

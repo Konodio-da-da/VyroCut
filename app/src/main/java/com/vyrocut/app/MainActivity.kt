@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -1083,6 +1084,7 @@ private fun VyroCutApp() {
                     clips = clips,
                     selectedIndex = selectedIndex,
                     playheadPositionMs = timelinePositionMs.toLong(),
+                    isPlaying = isPlaying,
                     onSeek = { target ->
                         selectedIndex = target.clipIndex
                         player.seekTo(target.clipIndex, target.positionMs)
@@ -2590,6 +2592,7 @@ private fun TimelineEditorStrip(
     clips: List<EditClip>,
     selectedIndex: Int,
     playheadPositionMs: Long,
+    isPlaying: Boolean,
     onSeek: (TimelineSeekTarget) -> Unit,
     onSelectText: (Int, Int) -> Unit,
 ) {
@@ -2597,6 +2600,7 @@ private fun TimelineEditorStrip(
     // same origin and offset. Multiple scroll containers sharing one state
     // can fight over viewport measurements on smaller devices.
     val timelineScroll = rememberScrollState()
+    var viewportWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val pixelsPerSecond = 24f
     val gap = 6f
@@ -2614,6 +2618,23 @@ private fun TimelineEditorStrip(
         gapPx = gap,
     )
 
+    val markerPositionPx = with(density) { markerX.dp.toPx() }
+    LaunchedEffect(isPlaying, markerPositionPx, viewportWidthPx, timelineScroll.maxValue) {
+        val targetScrollPx = calculateTimelineAutoFollowScrollTargetPx(
+            currentScrollPx = timelineScroll.value,
+            markerPositionPx = markerPositionPx,
+            viewportWidthPx = viewportWidthPx,
+            maxScrollPx = timelineScroll.maxValue,
+            isPlaying = isPlaying,
+        )
+        if (targetScrollPx != null) {
+            // Jump only when the playhead leaves the safe viewport band. This
+            // avoids a continuous scroll animation fighting the 200 ms player
+            // position updates while keeping every timeline track in sync.
+            timelineScroll.scrollTo(targetScrollPx)
+        }
+    }
+
     if (clips.isEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("VIDEO", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
@@ -2623,7 +2644,9 @@ private fun TimelineEditorStrip(
     }
 
     Column(
-        Modifier.fillMaxWidth().horizontalScroll(timelineScroll),
+        Modifier.fillMaxWidth()
+            .onSizeChanged { viewportWidthPx = it.width }
+            .horizontalScroll(timelineScroll),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
