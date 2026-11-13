@@ -18,6 +18,7 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 internal const val MAX_CLIP_TEXT_OVERLAY_LENGTH = 120
+internal const val MAX_CLIP_TEXT_OVERLAYS = 3
 internal const val MAX_CLIP_TEXT_OVERLAY_BITMAP_DIMENSION_PX = 1_920
 internal const val MIN_CLIP_TEXT_OVERLAY_FONT_SCALE = 0.75f
 internal const val MAX_CLIP_TEXT_OVERLAY_FONT_SCALE = 1.5f
@@ -81,6 +82,26 @@ internal fun splitClipTextOverlayAt(
     return left to right
 }
 
+/** Splits every text layer independently while preserving each layer's clip-local timing. */
+internal fun splitClipTextOverlaysAt(
+    overlays: List<ClipTextOverlay>,
+    splitPositionMs: Long,
+    clipDurationMs: Long,
+): Pair<List<ClipTextOverlay>, List<ClipTextOverlay>> {
+    if (overlays.isEmpty() || clipDurationMs <= 0L) {
+        return emptyList<ClipTextOverlay>() to emptyList<ClipTextOverlay>()
+    }
+    require(overlays.size <= MAX_CLIP_TEXT_OVERLAYS)
+    val left = mutableListOf<ClipTextOverlay>()
+    val right = mutableListOf<ClipTextOverlay>()
+    overlays.forEach { overlay ->
+        val (leftOverlay, rightOverlay) = splitClipTextOverlayAt(overlay, splitPositionMs, clipDurationMs)
+        leftOverlay?.let(left::add)
+        rightOverlay?.let(right::add)
+    }
+    return left to right
+}
+
 /** Keeps caption timing anchored to source time when a clip's in/out points change. */
 internal fun rebaseClipTextOverlayForTrim(
     overlay: ClipTextOverlay?,
@@ -109,6 +130,29 @@ internal fun rebaseClipTextOverlayForTrim(
         startMs = intersectionStartMs - newSourceStartMs,
         endMs = intersectionEndMs - newSourceStartMs,
     )
+}
+
+/** Rebases every text layer independently after a non-destructive source trim. */
+internal fun rebaseClipTextOverlaysForTrim(
+    overlays: List<ClipTextOverlay>,
+    oldSourceStartMs: Long,
+    oldSourceEndMs: Long,
+    newSourceStartMs: Long,
+    newSourceEndMs: Long,
+): List<ClipTextOverlay> = overlays.mapNotNull { overlay ->
+    rebaseClipTextOverlayForTrim(
+        overlay = overlay,
+        oldSourceStartMs = oldSourceStartMs,
+        oldSourceEndMs = oldSourceEndMs,
+        newSourceStartMs = newSourceStartMs,
+        newSourceEndMs = newSourceEndMs,
+    )
+}
+
+/** Seeks to a text layer's first visible millisecond, safely inside its owning clip. */
+internal fun clipTextOverlaySeekPositionMs(startMs: Long?, clipDurationMs: Long): Long {
+    if (clipDurationMs <= 0L) return 0L
+    return (startMs ?: 0L).coerceIn(0L, clipDurationMs - 1L)
 }
 
 /** A simple non-destructive text layer attached to one video clip. */
@@ -326,9 +370,14 @@ private class ClipTextBitmapOverlay(
     }
 }
 
-/** Applies a timed text layer; presentation timestamps are clip-local after Media3 clipping. */
+/** Applies one or more timed text layers; timestamps are clip-local after Media3 clipping. */
 @OptIn(UnstableApi::class)
-internal fun createClipTextOverlayEffects(overlay: ClipTextOverlay?): List<Effect> {
-    if (overlay == null) return emptyList()
-    return listOf(OverlayEffect(listOf(ClipTextBitmapOverlay(overlay))))
+internal fun createClipTextOverlayEffects(overlays: List<ClipTextOverlay>): List<Effect> {
+    if (overlays.isEmpty()) return emptyList()
+    require(overlays.size <= MAX_CLIP_TEXT_OVERLAYS)
+    return listOf(OverlayEffect(overlays.map(::ClipTextBitmapOverlay)))
 }
+
+@OptIn(UnstableApi::class)
+internal fun createClipTextOverlayEffects(overlay: ClipTextOverlay?): List<Effect> =
+    createClipTextOverlayEffects(listOfNotNull(overlay))

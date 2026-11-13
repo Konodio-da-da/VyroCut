@@ -67,7 +67,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionEightBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
+    fun versionNineBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -87,7 +87,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(8, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(9, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
@@ -100,6 +100,58 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(ProjectCanvasSettings("16:9", "DARK"), restored.canvasSettings)
     }
 
+
+    @Test
+    fun multipleTextLayersSurviveProjectSerializationAndVersionNineBackup() {
+        val original = EditClip(
+            id = "layered",
+            uri = "content://media/layered",
+            name = "Layered clip",
+            sourceStartMs = 0L,
+            sourceEndMs = 10_000L,
+            textOverlay = ClipTextOverlay("Opening title", startMs = 500L, endMs = 3_000L),
+            additionalTextOverlays = listOf(
+                ClipTextOverlay("Lower third", 0.8f, ClipTextPosition.BOTTOM, 2_000L, 8_000L),
+                ClipTextOverlay("End card", 1.25f, ClipTextPosition.CENTER, 8_000L, 10_000L),
+            ),
+        )
+
+        val restoredProject = decodeProjectStrict(encodeProject(listOf(original)))
+        assertNotNull(restoredProject)
+        assertEquals(original.allTextOverlays, restoredProject!!.single().allTextOverlays)
+
+        val backup = encodeProjectBackup("Layered project", listOf(original), ProjectCanvasSettings())
+        assertEquals(9, org.json.JSONObject(backup).getInt("version"))
+        val restoredBackup = decodeProjectBackup(backup)
+        assertEquals(original.allTextOverlays, restoredBackup.clips.single().allTextOverlays)
+    }
+
+    @Test
+    fun legacyVersionEightSingleTextOverlayMigratesToTheFirstLayer() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":8,
+            "projectName":"Version eight backup",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Old clip","start":0,"end":1000,"textOverlay":{"text":"Legacy title","fontScale":1.25,"position":"TOP","startMs":100,"endMs":900}}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK"
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals(
+            listOf(ClipTextOverlay("Legacy title", 1.25f, ClipTextPosition.TOP, 100L, 900L)),
+            restored.clips.single().allTextOverlays,
+        )
+    }
+
+    @Test
+    fun rejectsMoreTextLayersThanTheSupportedLimit() {
+        val overlays = (0..MAX_CLIP_TEXT_OVERLAYS).joinToString(",") { index ->
+            """{"text":"Layer $index"}"""
+        }
+        val raw = """[{"id":"too-many","uri":"content://media/too-many","name":"Too many","start":0,"end":1000,"textOverlays":[$overlays]}]"""
+        assertNull(decodeProjectStrict(raw))
+    }
 
     @Test
     fun versionSevenBackupWithoutTextTimingDefaultsToFullClip() {

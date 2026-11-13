@@ -99,14 +99,17 @@ internal data class EditClip(
     val fadeOutMs: Long = 0L,
     val visualAdjustments: ClipVisualAdjustments = ClipVisualAdjustments(),
     val textOverlay: ClipTextOverlay? = null,
+    val additionalTextOverlays: List<ClipTextOverlay> = emptyList(),
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
         require(isValidClipAudioFades(fadeInMs, fadeOutMs)) { "Clip fade durations cannot be negative" }
-        require(textOverlay == null || isValidClipTextOverlayText(textOverlay.text)) {
-            "Clip text overlay is invalid"
+        require((if (textOverlay == null) 0 else 1) + additionalTextOverlays.size <= MAX_CLIP_TEXT_OVERLAYS) {
+            "A clip cannot contain more than $MAX_CLIP_TEXT_OVERLAYS text layers"
         }
     }
+    val allTextOverlays: List<ClipTextOverlay>
+        get() = listOfNotNull(textOverlay) + additionalTextOverlays
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
 
@@ -172,6 +175,14 @@ private fun VyroCutApp() {
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
+    var selectedTextLayerIndex by remember(selectedClip?.id) { mutableIntStateOf(0) }
+    val selectedTextOverlay = selectedClip?.allTextOverlays?.getOrNull(selectedTextLayerIndex)
+    LaunchedEffect(selectedClip?.id, selectedClip?.allTextOverlays?.size) {
+        selectedTextLayerIndex = selectedTextLayerIndex.coerceIn(
+            0,
+            selectedClip?.allTextOverlays?.size ?: 0,
+        )
+    }
     var clipVolumeDraft by remember(selectedClip?.id, selectedClip?.audioVolume) {
         mutableFloatStateOf(selectedClip?.audioVolume ?: DEFAULT_CLIP_AUDIO_VOLUME)
     }
@@ -190,21 +201,21 @@ private fun VyroCutApp() {
     var clipSaturationDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.saturation) {
         mutableFloatStateOf(selectedClip?.visualAdjustments?.saturation?.toFloat() ?: 0f)
     }
-    var clipTextDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.text) {
-        mutableStateOf(selectedClip?.textOverlay?.text ?: "")
+    var clipTextDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.text) {
+        mutableStateOf(selectedTextOverlay?.text ?: "")
     }
-    var clipTextScaleDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.fontScale) {
-        mutableFloatStateOf(selectedClip?.textOverlay?.fontScale ?: 1f)
+    var clipTextScaleDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.fontScale) {
+        mutableFloatStateOf(selectedTextOverlay?.fontScale ?: 1f)
     }
-    var clipTextPositionDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.position) {
-        mutableStateOf(selectedClip?.textOverlay?.position ?: ClipTextPosition.BOTTOM)
+    var clipTextPositionDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.position) {
+        mutableStateOf(selectedTextOverlay?.position ?: ClipTextPosition.BOTTOM)
     }
-    var clipTextStartDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.startMs) {
-        mutableFloatStateOf(selectedClip?.textOverlay?.startMs?.toFloat() ?: 0f)
+    var clipTextStartDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.startMs) {
+        mutableFloatStateOf(selectedTextOverlay?.startMs?.toFloat() ?: 0f)
     }
-    var clipTextEndDraft by remember(selectedClip?.id, selectedClip?.textOverlay?.endMs, selectedClip?.durationMs) {
+    var clipTextEndDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.endMs, selectedClip?.durationMs) {
         mutableFloatStateOf(
-            (selectedClip?.textOverlay?.endMs ?: selectedClip?.durationMs ?: 0L).toFloat(),
+            (selectedTextOverlay?.endMs ?: selectedClip?.durationMs ?: 0L).toFloat(),
         )
     }
     var timelinePositionMs by remember { mutableFloatStateOf(0f) }
@@ -323,7 +334,7 @@ private fun VyroCutApp() {
             }
             player.playWhenReady = false
             val restoredClip = clips[restoreTarget.clipIndex]
-            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.textOverlay))
+            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.allTextOverlays))
             player.setVolume(
                 clipAudioPlaybackGain(
                     restoredClip.audioVolume,
@@ -400,7 +411,7 @@ private fun VyroCutApp() {
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         clips.getOrNull(position.clipIndex)?.let { clip ->
-            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.textOverlay))
+            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays))
             player.setVolume(
                 clipAudioPlaybackGain(
                     clip.audioVolume,
@@ -566,6 +577,7 @@ private fun VyroCutApp() {
         exportMessage = "Clip colour adjustments updated"
     }
     fun commitSelectedClipTextOverlay(
+        layerIndex: Int,
         rawText: String,
         fontScale: Float,
         position: ClipTextPosition,
@@ -574,17 +586,19 @@ private fun VyroCutApp() {
     ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         val normalizedText = rawText.trim()
-        val safeTiming = if (clip.durationMs > 0L) {
-            val safeStartMs = startMs.coerceIn(0L, clip.durationMs - 1L)
-            val safeEndMs = endMs.coerceIn(safeStartMs + 1L, clip.durationMs)
-            safeStartMs to safeEndMs
+        val overlays = clip.allTextOverlays.toMutableList()
+        if (normalizedText.isBlank()) {
+            if (layerIndex !in overlays.indices) return
+            overlays.removeAt(layerIndex)
         } else {
-            null
-        }
-        val overlay = if (normalizedText.isBlank()) {
-            null
-        } else {
-            safeTiming?.let { (safeStartMs, safeEndMs) ->
+            val safeTiming = if (clip.durationMs > 0L) {
+                val safeStartMs = startMs.coerceIn(0L, clip.durationMs - 1L)
+                val safeEndMs = endMs.coerceIn(safeStartMs + 1L, clip.durationMs)
+                safeStartMs to safeEndMs
+            } else {
+                null
+            }
+            val overlay = safeTiming?.let { (safeStartMs, safeEndMs) ->
                 decodeClipTextOverlay(
                     raw = normalizedText,
                     fontScale = fontScale,
@@ -593,16 +607,29 @@ private fun VyroCutApp() {
                     endMs = if (safeEndMs >= clip.durationMs) null else safeEndMs,
                 )
             }
+            if (overlay == null) {
+                exportMessage = "Text timing must be a valid range inside this clip, with at least one millisecond visible."
+                return
+            }
+            when {
+                layerIndex in overlays.indices -> overlays[layerIndex] = overlay
+                layerIndex == overlays.size && overlays.size < MAX_CLIP_TEXT_OVERLAYS -> overlays.add(overlay)
+                else -> {
+                    exportMessage = "A clip can contain up to $MAX_CLIP_TEXT_OVERLAYS text layers."
+                    return
+                }
+            }
         }
-        if (normalizedText.isNotBlank() && overlay == null) {
-            exportMessage = "Text timing must be a valid range inside this clip, with at least one millisecond visible."
-            return
+        val updatedClip = clip.copy(
+            textOverlay = overlays.firstOrNull(),
+            additionalTextOverlays = overlays.drop(1),
+        )
+        if (updatedClip == clip) return
+        changed(clips.toMutableList().apply { this[selectedIndex] = updatedClip })
+        selectedTextLayerIndex = if (overlays.isEmpty()) 0 else {
+            if (normalizedText.isBlank()) layerIndex.coerceAtMost(overlays.lastIndex) else layerIndex
         }
-        if (clip.textOverlay == overlay) return
-        changed(clips.toMutableList().apply {
-            this[selectedIndex] = clip.copy(textOverlay = overlay)
-        })
-        exportMessage = if (overlay == null) "Removed clip text overlay" else "Clip text overlay updated"
+        exportMessage = if (normalizedText.isBlank()) "Removed text layer" else "Text layer updated"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -1068,15 +1095,15 @@ private fun VyroCutApp() {
                             savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
                         }
                     },
-                    onSelectText = { index ->
+                    onSelectText = { index, layerIndex ->
                         clips.getOrNull(index)?.let { clip ->
                             selectedIndex = index
+                            selectedTextLayerIndex = layerIndex
                             activeTool = "Text"
-                            val positionMs = if (player.currentMediaItemIndex == index) {
-                                player.currentPosition
-                            } else {
-                                0L
-                            }
+                            val positionMs = clipTextOverlaySeekPositionMs(
+                                clip.allTextOverlays.getOrNull(layerIndex)?.startMs,
+                                clip.durationMs,
+                            )
                             player.seekTo(index, positionMs)
                             timelinePositionMs = calculateTimelinePositionMs(
                                 clipDurationsMs,
@@ -1110,22 +1137,24 @@ private fun VyroCutApp() {
                         // segment becomes selected at the exact split boundary.
                         val splitOffsetMs = (halves.first.endMs - clip.sourceStartMs)
                             .coerceIn(0L, clip.durationMs)
-                        val (leftTextOverlay, rightTextOverlay) = splitClipTextOverlayAt(
-                            clip.textOverlay,
+                        val (leftTextOverlays, rightTextOverlays) = splitClipTextOverlaysAt(
+                            clip.allTextOverlays,
                             splitOffsetMs,
                             clip.durationMs,
                         )
                         val left = clip.copy(
                             sourceEndMs = halves.first.endMs,
                             fadeOutMs = 0L,
-                            textOverlay = leftTextOverlay,
+                            textOverlay = leftTextOverlays.firstOrNull(),
+                            additionalTextOverlays = leftTextOverlays.drop(1),
                         )
                         val right = clip.copy(
                             id = java.util.UUID.randomUUID().toString(),
                             sourceStartMs = halves.second.startMs,
                             sourceEndMs = halves.second.endMs,
                             fadeInMs = 0L,
-                            textOverlay = rightTextOverlay,
+                            textOverlay = rightTextOverlays.firstOrNull(),
+                            additionalTextOverlays = rightTextOverlays.drop(1),
                         )
                         val updated = clips.toMutableList().apply {
                             removeAt(splitIndex)
@@ -1420,10 +1449,30 @@ private fun VyroCutApp() {
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(7.dp),
                     ) {
-                        Text("CLIP TEXT OVERLAY", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("TEXT LAYERS", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         if (selectedClip == null) {
                             Text("Select a video clip before adding text.", color = StudioMuted, fontSize = 10.sp)
                         } else {
+                            Row(
+                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                selectedClip.allTextOverlays.forEachIndexed { index, _ ->
+                                    FilterChip(
+                                        selected = selectedTextLayerIndex == index,
+                                        onClick = { selectedTextLayerIndex = index },
+                                        label = { Text("Layer " + (index + 1), fontSize = 10.sp) },
+                                    )
+                                }
+                                if (selectedClip.allTextOverlays.size < MAX_CLIP_TEXT_OVERLAYS) {
+                                    FilterChip(
+                                        selected = selectedTextLayerIndex == selectedClip.allTextOverlays.size,
+                                        onClick = { selectedTextLayerIndex = selectedClip.allTextOverlays.size },
+                                        label = { Text("+ Add layer", fontSize = 10.sp) },
+                                    )
+                                }
+                            }
                             OutlinedTextField(
                                 value = clipTextDraft,
                                 onValueChange = { value ->
@@ -1519,6 +1568,7 @@ private fun VyroCutApp() {
                                 Button(
                                     onClick = {
                                         commitSelectedClipTextOverlay(
+                                            selectedTextLayerIndex,
                                             clipTextDraft,
                                             clipTextScaleDraft,
                                             clipTextPositionDraft,
@@ -1529,11 +1579,12 @@ private fun VyroCutApp() {
                                     enabled = clipTextDraft.trim().length <= MAX_CLIP_TEXT_OVERLAY_LENGTH,
                                     colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
                                     modifier = Modifier.weight(1f),
-                                ) { Text("Apply text") }
+                                ) { Text("Apply layer") }
                                 TextButton(
                                     onClick = {
                                         clipTextDraft = ""
                                         commitSelectedClipTextOverlay(
+                                            selectedTextLayerIndex,
                                             "",
                                             clipTextScaleDraft,
                                             clipTextPositionDraft,
@@ -1541,8 +1592,8 @@ private fun VyroCutApp() {
                                             clipTextEndDraft.toLong(),
                                         )
                                     },
-                                    enabled = selectedClip.textOverlay != null || clipTextDraft.isNotBlank(),
-                                ) { Text("Remove") }
+                                    enabled = selectedTextOverlay != null || clipTextDraft.isNotBlank(),
+                                ) { Text("Remove layer") }
                             }
                             Text(
                                 "Non-destructive • Timed overlay is shared by preview and MP4 export",
@@ -1662,7 +1713,7 @@ private fun VyroCutApp() {
                                                     backgroundColorArgb = exportBackgroundArgb,
                                                 )?.let(videoEffects::add)
                                             }
-                                            videoEffects += createClipTextOverlayEffects(clip.textOverlay)
+                                            videoEffects += createClipTextOverlayEffects(clip.allTextOverlays)
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(
                                                     Effects(
@@ -1937,17 +1988,19 @@ private fun VyroCutApp() {
                         onApply = { range ->
                             val index = clips.indexOfFirst { it.id == trimTargetClip.id }
                             if (index >= 0) {
+                                val rebasedTextOverlays = rebaseClipTextOverlaysForTrim(
+                                    overlays = trimTargetClip.allTextOverlays,
+                                    oldSourceStartMs = trimTargetClip.sourceStartMs,
+                                    oldSourceEndMs = trimTargetClip.sourceEndMs,
+                                    newSourceStartMs = range.startMs,
+                                    newSourceEndMs = range.endMs,
+                                )
                                 changed(clips.toMutableList().apply {
                                     this[index] = trimTargetClip.copy(
                                         sourceStartMs = range.startMs,
                                         sourceEndMs = range.endMs,
-                                        textOverlay = rebaseClipTextOverlayForTrim(
-                                            overlay = trimTargetClip.textOverlay,
-                                            oldSourceStartMs = trimTargetClip.sourceStartMs,
-                                            oldSourceEndMs = trimTargetClip.sourceEndMs,
-                                            newSourceStartMs = range.startMs,
-                                            newSourceEndMs = range.endMs,
-                                        ),
+                                        textOverlay = rebasedTextOverlays.firstOrNull(),
+                                        additionalTextOverlays = rebasedTextOverlays.drop(1),
                                     )
                                 })
                                 selectedIndex = index
@@ -2235,15 +2288,17 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("contrast", clip.visualAdjustments.contrast)
             put("saturation", clip.visualAdjustments.saturation)
         })
-        clip.textOverlay?.let { overlay ->
-            put("textOverlay", JSONObject().apply {
-                put("text", overlay.text)
-                put("fontScale", overlay.fontScale.toDouble())
-                put("position", overlay.position.name)
-                put("startMs", overlay.startMs)
-                overlay.endMs?.let { put("endMs", it) }
-            })
-        }
+        put("textOverlays", JSONArray().apply {
+            clip.allTextOverlays.forEach { overlay ->
+                put(JSONObject().apply {
+                    put("text", overlay.text)
+                    put("fontScale", overlay.fontScale.toDouble())
+                    put("position", overlay.position.name)
+                    put("startMs", overlay.startMs)
+                    overlay.endMs?.let { put("endMs", it) }
+                })
+            }
+        })
     }) }
     return array.toString()
 }
@@ -2261,7 +2316,7 @@ internal fun encodeProjectBackup(
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 8)
+        put("version", 9)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -2272,7 +2327,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..8) { "Unsupported backup version" }
+    require(version in 1..9) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -2366,11 +2421,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                 contrast = if (visualJson?.has("contrast") == true) visualJson.optInt("contrast", Int.MIN_VALUE) else 0,
                 saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
             ) ?: error("A clip has invalid visual adjustments")
-            val textOverlay = if (!item.has("textOverlay") || item.isNull("textOverlay")) {
-                null
-            } else {
-                val overlayJson = item.optJSONObject("textOverlay")
-                    ?: error("A clip has an invalid text overlay")
+            fun decodeOverlay(overlayJson: JSONObject): ClipTextOverlay =
                 decodeClipTextOverlay(
                     raw = overlayJson.optString("text"),
                     fontScale = overlayJson.optDouble("fontScale", 1.0).toFloat(),
@@ -2382,6 +2433,26 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                         null
                     },
                 ) ?: error("A clip has an invalid text overlay")
+
+            val textOverlays = if (item.has("textOverlays")) {
+                val overlaysJson = item.optJSONArray("textOverlays")
+                    ?: error("A clip has an invalid text overlay list")
+                require(overlaysJson.length() <= MAX_CLIP_TEXT_OVERLAYS) {
+                    "A clip contains too many text layers"
+                }
+                buildList {
+                    for (overlayIndex in 0 until overlaysJson.length()) {
+                        val overlayJson = overlaysJson.optJSONObject(overlayIndex)
+                            ?: error("A clip has an invalid text overlay")
+                        add(decodeOverlay(overlayJson))
+                    }
+                }
+            } else if (!item.has("textOverlay") || item.isNull("textOverlay")) {
+                emptyList()
+            } else {
+                val overlayJson = item.optJSONObject("textOverlay")
+                    ?: error("A clip has an invalid text overlay")
+                listOf(decodeOverlay(overlayJson))
             }
             add(
                 EditClip(
@@ -2394,7 +2465,8 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     fadeInMs = fadeInMs,
                     fadeOutMs = fadeOutMs,
                     visualAdjustments = visualAdjustments,
-                    textOverlay = textOverlay,
+                    textOverlay = textOverlays.firstOrNull(),
+                    additionalTextOverlays = textOverlays.drop(1),
                 ),
             )
         }
@@ -2519,7 +2591,7 @@ private fun TimelineEditorStrip(
     selectedIndex: Int,
     playheadPositionMs: Long,
     onSeek: (TimelineSeekTarget) -> Unit,
-    onSelectText: (Int) -> Unit,
+    onSelectText: (Int, Int) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
@@ -2650,51 +2722,66 @@ private fun TimelineEditorStrip(
             )
         }
 
+        val textLayerCount = maxOf(
+            1,
+            clips.maxOfOrNull { it.allTextOverlays.size } ?: 0,
+        ).coerceAtMost(MAX_CLIP_TEXT_OVERLAYS)
+        val textTrackHeight = (textLayerCount * 24).dp
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
             Text("TEXT", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Timed text • tap a segment to edit its in/out points", color = StudioMuted, fontSize = 9.sp)
+            Text("Timed layers • tap a row to edit its in/out points", color = StudioMuted, fontSize = 9.sp)
         }
-        Box(Modifier.width(totalWidth).height(28.dp)) {
+        Box(Modifier.width(totalWidth).height(textTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
-                    val overlay = clip.textOverlay
-                    Box(
-                        Modifier.width(clipWidths[index].dp)
-                            .fillMaxHeight()
-                            .background(Color(0xFF202725), RoundedCornerShape(4.dp))
-                            .clickable { onSelectText(index) },
-                    ) {
-                        if (overlay == null) {
-                            Text(
-                                "+ Add text",
-                                color = StudioMuted,
-                                fontSize = 9.sp,
-                                maxLines = 1,
-                                modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 6.dp),
-                            )
-                        } else {
-                            val bounds = calculateClipTextOverlayTimelineBounds(
-                                trackWidthPx = clipWidths[index],
-                                clipDurationMs = clip.durationMs,
-                                overlay = overlay,
-                            )
-                            bounds?.let { segment ->
-                                Box(
-                                    Modifier.offset(x = segment.startOffsetPx.dp)
-                                        .width(segment.widthPx.dp)
-                                        .fillMaxHeight()
-                                        .background(Color(0xFF16483D), RoundedCornerShape(4.dp))
-                                        .padding(horizontal = 6.dp),
-                                    contentAlignment = Alignment.CenterStart,
-                                ) {
-                                    Text(
-                                        overlay.text.replace('\n', ' '),
-                                        color = StudioAccent,
-                                        fontSize = 9.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
+                    Column(Modifier.width(clipWidths[index].dp)) {
+                        repeat(textLayerCount) { layerIndex ->
+                            val overlay = clip.allTextOverlays.getOrNull(layerIndex)
+                            Box(
+                                Modifier.fillMaxWidth()
+                                    .height(24.dp)
+                                    .background(Color(0xFF202725), RoundedCornerShape(4.dp))
+                                    .clickable {
+                                        if (overlay != null || layerIndex == clip.allTextOverlays.size) {
+                                            onSelectText(index, layerIndex)
+                                        }
+                                    },
+                            ) {
+                                if (overlay == null) {
+                                    if (layerIndex == clip.allTextOverlays.size) {
+                                        Text(
+                                            "+ Add layer",
+                                            color = StudioMuted,
+                                            fontSize = 9.sp,
+                                            maxLines = 1,
+                                            modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 6.dp),
+                                        )
+                                    }
+                                } else {
+                                    val bounds = calculateClipTextOverlayTimelineBounds(
+                                        trackWidthPx = clipWidths[index],
+                                        clipDurationMs = clip.durationMs,
+                                        overlay = overlay,
                                     )
+                                    bounds?.let { segment ->
+                                        Box(
+                                            Modifier.offset(x = segment.startOffsetPx.dp)
+                                                .width(segment.widthPx.dp)
+                                                .fillMaxHeight()
+                                                .background(Color(0xFF16483D), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 6.dp),
+                                            contentAlignment = Alignment.CenterStart,
+                                        ) {
+                                            Text(
+                                                overlay.text.replace('\n', ' '),
+                                                color = StudioAccent,
+                                                fontSize = 9.sp,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -2704,7 +2791,7 @@ private fun TimelineEditorStrip(
             Box(
                 Modifier.offset(x = markerX.dp)
                     .width(2.dp)
-                    .height(28.dp)
+                    .height(textTrackHeight)
                     .background(StudioAccent),
             )
         }

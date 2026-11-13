@@ -135,6 +135,50 @@ class ClipTextOverlayTest {
     }
 
     @Test
+    fun splitPreservesEveryTextLayerOnItsVisibleVideoHalf() {
+        val overlays = listOf(
+            ClipTextOverlay("Early", startMs = 500L, endMs = 2_000L),
+            ClipTextOverlay("Late", 1.25f, ClipTextPosition.TOP, 6_000L, 9_000L),
+        )
+
+        val (left, right) = splitClipTextOverlaysAt(overlays, 5_000L, 10_000L)
+
+        assertEquals(listOf(overlays[0]), left)
+        assertEquals(
+            listOf(ClipTextOverlay("Late", 1.25f, ClipTextPosition.TOP, 1_000L, 4_000L)),
+            right,
+        )
+    }
+
+    @Test
+    fun trimRebasesAndDropsEachTextLayerIndependently() {
+        val overlays = listOf(
+            ClipTextOverlay("Keep", startMs = 1_000L, endMs = 5_000L),
+            ClipTextOverlay("Drop", startMs = 7_000L, endMs = 9_000L),
+        )
+
+        assertEquals(
+            listOf(ClipTextOverlay("Keep", startMs = 0L, endMs = 2_000L)),
+            rebaseClipTextOverlaysForTrim(
+                overlays,
+                oldSourceStartMs = 0L,
+                oldSourceEndMs = 10_000L,
+                newSourceStartMs = 4_000L,
+                newSourceEndMs = 6_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun selectingTextLayerSeeksToItsInclusiveInPointWithinTheClip() {
+        assertEquals(1_250L, clipTextOverlaySeekPositionMs(1_250L, 5_000L))
+        assertEquals(0L, clipTextOverlaySeekPositionMs(null, 5_000L))
+        assertEquals(0L, clipTextOverlaySeekPositionMs(-50L, 5_000L))
+        assertEquals(4_999L, clipTextOverlaySeekPositionMs(5_000L, 5_000L))
+        assertEquals(0L, clipTextOverlaySeekPositionMs(1_000L, 0L))
+    }
+
+    @Test
     fun trimmingClipRebasesCaptionAgainstTheNewSourceInPoint() {
         val overlay = ClipTextOverlay("Trimmed caption", startMs = 2_000L, endMs = 7_000L)
 
