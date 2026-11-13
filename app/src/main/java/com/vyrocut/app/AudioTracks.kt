@@ -280,7 +280,8 @@ internal fun decodeAudioTrackClips(
     raw: String?,
     projectDurationMs: Long,
 ): List<AudioTrackClip>? {
-    if (raw.isNullOrBlank()) return emptyList()
+    if (raw == null) return emptyList()
+    if (raw.isBlank()) return null
     return runCatching {
         val array = JSONArray(raw)
         require(array.length() <= MAX_AUDIO_TRACK_CLIPS)
