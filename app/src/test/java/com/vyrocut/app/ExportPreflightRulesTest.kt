@@ -1,7 +1,9 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExportPreflightRulesTest {
@@ -143,5 +145,14 @@ class ExportPreflightRulesTest {
                 mapOf(clip.uri to ExportSourceMetadata(Long.MAX_VALUE, true)),
             ),
         )
+    }
+
+    @Test
+    fun recognizesRealAudioTrackMimeTypesAndRejectsVideoOnlySources() {
+        assertTrue(hasAudioTrackMimeType(listOf("video/avc", "audio/mp4")))
+        assertTrue(hasAudioTrackMimeType(listOf(" AUDIO/AAC ")))
+        assertFalse(hasAudioTrackMimeType(listOf("video/mp4", "application/octet-stream", null)))
+        assertFalse(hasAudioTrackMimeType(listOf("audio/")))
+        assertFalse(hasAudioTrackMimeType(emptyList()))
     }
 }

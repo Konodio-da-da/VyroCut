@@ -1145,7 +1145,7 @@ private fun VyroCutApp() {
                     if (activeProjectId != projectIdAtPick) {
                         exportMessage = "The active project changed while audio was being read. Choose the source again."
                     } else if (metadata == null) {
-                        exportMessage = "Could not read this audio file's duration. It was not added."
+                        exportMessage = "Could not read an audio track and duration from this file. It was not added."
                     } else {
                         val (sourceDurationMs, name) = metadata
                         val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
@@ -3284,6 +3284,21 @@ private fun loadSavedPlaybackPosition(
 }
 
 private fun readAudioDurationMs(context: android.content.Context, uri: Uri): Long? {
+    val extractor = MediaExtractor()
+    val hasAudioTrack = try {
+        extractor.setDataSource(context, uri, null)
+        hasAudioTrackMimeType(
+            (0 until extractor.trackCount).map { index ->
+                extractor.getTrackFormat(index).getString(MediaFormat.KEY_MIME)
+            },
+        )
+    } catch (_: Exception) {
+        false
+    } finally {
+        runCatching { extractor.release() }
+    }
+    if (!hasAudioTrack) return null
+
     val retriever = MediaMetadataRetriever()
     return try {
         retriever.setDataSource(context, uri)

@@ -1,5 +1,17 @@
 package com.vyrocut.app
 
+/**
+ * Returns true only when a source exposes an actual audio MIME track.
+ * Document providers can return a duration for video containers selected
+ * through the audio picker, so duration metadata alone is not sufficient.
+ */
+internal fun hasAudioTrackMimeType(mimeTypes: Iterable<String?>): Boolean =
+    mimeTypes.any { mimeType ->
+        mimeType?.trim()?.let {
+            it.startsWith("audio/", ignoreCase = true) && it.substringAfter('/').isNotBlank()
+        } == true
+    }
+
 internal data class ExportCanvasSize(
     val widthPx: Int,
     val heightPx: Int,
