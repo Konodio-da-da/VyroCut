@@ -68,10 +68,21 @@ internal class AudioWaveformAccumulator(
 }
 
 internal fun audioWaveformCacheKey(clip: AudioTrackClip): String =
-    audioWaveformCacheKey(clip.uri, clip.sourceStartMs, clip.sourceEndMs)
+    audioWaveformCacheKey(
+        clip.uri,
+        clip.sourceStartMs,
+        clip.sourceEndMs,
+        AUDIO_WAVEFORM_BUCKET_COUNT,
+    )
 
-internal fun audioWaveformCacheKey(uri: String, sourceStartMs: Long, sourceEndMs: Long): String {
-    val input = "waveform-v1|$uri|$sourceStartMs|$sourceEndMs"
+internal fun audioWaveformCacheKey(
+    uri: String,
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
+): String {
+    require(bucketCount in 1..512)
+    val input = "waveform-v2|$uri|$sourceStartMs|$sourceEndMs|$bucketCount"
     return MessageDigest.getInstance("SHA-256")
         .digest(input.toByteArray(Charsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) }
@@ -87,10 +98,14 @@ internal fun decodeAudioWaveform(
     sourceStartMs: Long,
     sourceEndMs: Long,
     bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
+    maxRangeMs: Long = MAX_AUDIO_WAVEFORM_RANGE_MS,
 ): List<Float>? {
+    val sourceRangeMs = sourceEndMs - sourceStartMs
     if (uriString.isBlank() || sourceStartMs < 0L ||
-        sourceEndMs - sourceStartMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
-        sourceEndMs - sourceStartMs > MAX_AUDIO_WAVEFORM_RANGE_MS ||
+        sourceRangeMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
+        maxRangeMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
+        sourceRangeMs > maxRangeMs ||
+        sourceEndMs > Long.MAX_VALUE / 1_000L ||
         bucketCount !in 1..512
     ) return null
 
@@ -288,9 +303,10 @@ private fun readPcmSample(buffer: ByteBuffer, encoding: Int): Float? = when (enc
 }
 
 private fun readWaveformCache(file: File, bucketCount: Int): List<Float>? = runCatching {
-    if (!file.isFile || file.length() != 8L + bucketCount * 4L) return null
+    if (!file.isFile || file.length() != 12L + bucketCount * 4L) return null
     DataInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
         require(input.readInt() == AUDIO_WAVEFORM_CACHE_MAGIC)
+        require(input.readInt() == AUDIO_WAVEFORM_CACHE_VERSION)
         require(input.readInt() == bucketCount)
         val values = List(bucketCount) {
             input.readFloat().also { value -> require(value.isFinite() && value in 0f..1f) }
@@ -306,6 +322,7 @@ private fun writeWaveformCache(directory: File, destination: File, values: List<
         val temporary = File(directory, destination.name + ".tmp")
         DataOutputStream(BufferedOutputStream(FileOutputStream(temporary))).use { output ->
             output.writeInt(AUDIO_WAVEFORM_CACHE_MAGIC)
+            output.writeInt(AUDIO_WAVEFORM_CACHE_VERSION)
             output.writeInt(values.size)
             values.forEach(output::writeFloat)
         }

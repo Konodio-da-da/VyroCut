@@ -59,6 +59,27 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun cacheKeySeparatesWaveformBucketResolutions() {
+        val uri = "content://media/track"
+        val defaultResolution = audioWaveformCacheKey(uri, 0L, 5_000L)
+        val explicitDefault = audioWaveformCacheKey(uri, 0L, 5_000L, bucketCount = 96)
+        val compactResolution = audioWaveformCacheKey(uri, 0L, 5_000L, bucketCount = 48)
+
+        assertEquals(defaultResolution, explicitDefault)
+        assertNotEquals(defaultResolution, compactResolution)
+    }
+
+    @Test
+    fun cacheKeyRejectsUnsupportedBucketResolution() {
+        assertEquals(
+            false,
+            runCatching {
+                audioWaveformCacheKey("content://media/track", 0L, 5_000L, bucketCount = 0)
+            }.isSuccess,
+        )
+    }
+
+    @Test
     fun cacheKeyIsStableAndChangesWithSourceTrimRange() {
         val first = audioWaveformCacheKey("content://media/track", 0L, 5_000L)
         val repeated = audioWaveformCacheKey("content://media/track", 0L, 5_000L)
