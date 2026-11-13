@@ -574,23 +574,25 @@ private fun VyroCutApp() {
     ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         val normalizedText = rawText.trim()
-        val timingIsValid = clip.durationMs > 0L &&
-            startMs >= 0L &&
-            startMs < clip.durationMs &&
-            endMs > startMs &&
-            endMs <= clip.durationMs
-        val overlay = if (normalizedText.isBlank()) {
-            null
-        } else if (timingIsValid) {
-            decodeClipTextOverlay(
-                raw = normalizedText,
-                fontScale = fontScale,
-                position = position.name,
-                startMs = startMs,
-                endMs = if (endMs >= clip.durationMs) null else endMs,
-            )
+        val safeTiming = if (clip.durationMs > 0L) {
+            val safeStartMs = startMs.coerceIn(0L, clip.durationMs - 1L)
+            val safeEndMs = endMs.coerceIn(safeStartMs + 1L, clip.durationMs)
+            safeStartMs to safeEndMs
         } else {
             null
+        }
+        val overlay = if (normalizedText.isBlank()) {
+            null
+        } else {
+            safeTiming?.let { (safeStartMs, safeEndMs) ->
+                decodeClipTextOverlay(
+                    raw = normalizedText,
+                    fontScale = fontScale,
+                    position = position.name,
+                    startMs = safeStartMs,
+                    endMs = if (safeEndMs >= clip.durationMs) null else safeEndMs,
+                )
+            }
         }
         if (normalizedText.isNotBlank() && overlay == null) {
             exportMessage = "Text timing must be a valid range inside this clip, with at least one millisecond visible."
