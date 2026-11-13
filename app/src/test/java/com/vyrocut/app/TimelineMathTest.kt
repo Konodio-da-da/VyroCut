@@ -192,6 +192,22 @@ class TimelineMathTest {
     }
 
     @Test
+    fun scrolledTimelineChildOffsetIsMappedOnceInContentCoordinates() {
+        // A pointer 60 px into the viewport after a 100 px scroll reports
+        // content x=160 px. Adding the scroll state again would incorrectly
+        // seek to x=260 px (1,500 ms into the second clip instead of 500 ms).
+        assertEquals(
+            TimelineSeekTarget(1, 500L),
+            resolveTimelineSeekTargetAtOffsetPx(
+                clipDurationsMs = listOf(1_000L, 2_000L),
+                clipWidthsPx = listOf(100f, 200f),
+                offsetPx = 160f,
+                gapPx = 10f,
+            ),
+        )
+    }
+
+    @Test
     fun timelinePixelOffsetInGapSnapsToNextClipStart() {
         assertEquals(
             TimelineSeekTarget(1, 0L),

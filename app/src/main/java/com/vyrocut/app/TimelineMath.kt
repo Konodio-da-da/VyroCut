@@ -330,7 +330,9 @@ internal fun resolvePlaybackRestoreTarget(
  * Maps a horizontal timeline pixel offset to a project-wide Media3 seek target.
  * Clip widths represent the visible filmstrip (not source duration), so each
  * playable clip is mapped proportionally. Gaps snap to the next clip boundary;
- * zero-duration visual slots do not consume playback time.
+ * zero-duration visual slots do not consume playback time. [offsetPx] is in
+ * scrollable-content coordinates: pointer input on a child inside horizontalScroll
+ * already includes the scroll transform, so callers must not add ScrollState.value.
  */
 internal fun resolveTimelineSeekTargetAtOffsetPx(
     clipDurationsMs: List<Long>,

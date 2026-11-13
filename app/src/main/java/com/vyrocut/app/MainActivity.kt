@@ -3369,8 +3369,10 @@ private fun TimelineEditorStrip(
             }
             Box(Modifier.offset(x = markerX.dp).width(2.dp).height(60.dp).background(StudioAccent))
             Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
-            // The overlay makes the entire video strip a direct-manipulation
-            // scrub surface. Dragging and tapping use the same pixel-to-time map.
+            // The overlay is a child inside horizontalScroll, so pointer positions
+            // are already expressed in scrolled content coordinates. Adding
+            // timelineScroll.value here would apply the scroll displacement twice.
+            // Taps and long-press scrubs share the same content-local pixel map.
             val latestOnSeek by rememberUpdatedState(onSeek)
             Box(
                 Modifier.fillMaxSize()
@@ -3379,7 +3381,7 @@ private fun TimelineEditorStrip(
                             resolveTimelineSeekTargetAtOffsetPx(
                                 timelineClipDurationsMs,
                                 clipWidthsPx,
-                                timelineScroll.value + position.x,
+                                position.x,
                                 gapPx,
                             )?.let(latestOnSeek)
                         }
@@ -3390,7 +3392,7 @@ private fun TimelineEditorStrip(
                                 resolveTimelineSeekTargetAtOffsetPx(
                                     timelineClipDurationsMs,
                                     clipWidthsPx,
-                                    timelineScroll.value + position.x,
+                                    position.x,
                                     gapPx,
                                 )?.let(latestOnSeek)
                             },
@@ -3399,7 +3401,7 @@ private fun TimelineEditorStrip(
                                 resolveTimelineSeekTargetAtOffsetPx(
                                     timelineClipDurationsMs,
                                     clipWidthsPx,
-                                    timelineScroll.value + change.position.x,
+                                    change.position.x,
                                     gapPx,
                                 )?.let(latestOnSeek)
                             },
