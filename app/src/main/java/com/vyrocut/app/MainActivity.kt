@@ -1895,7 +1895,12 @@ private fun VyroCutApp() {
                                 .coerceAtMost(sourceDurationMs)
                             Slider(
                                 value = audioTrackSourceEndDraft.coerceIn(minimumSourceEndMs.toFloat(), sourceDurationMs.toFloat()),
-                                onValueChange = { audioTrackSourceEndDraft = it.coerceAtLeast(minimumSourceEndMs.toFloat()) },
+                                onValueChange = {
+                                    audioTrackSourceEndDraft = it.coerceIn(
+                                        minimumSourceEndMs.toFloat(),
+                                        sourceDurationMs.toFloat(),
+                                    )
+                                },
                                 onValueChangeFinished = {
                                     trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
                                 },
