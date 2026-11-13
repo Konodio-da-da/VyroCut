@@ -155,10 +155,6 @@ internal fun resolveAudioTrackInsertionStartMs(
 }
 
 /**
- * Produces a gap-filled sequence for one lane. Gaps become silent media items
- * in preview/export, so every lane has the same project-wide clock.
- */
-/**
  * Changes source in/out points without touching the original file. A trim may
  * expand back to any range inside the source duration captured at import time.
  * The edit is rejected if it would overlap another clip on the same lane.
@@ -213,6 +209,10 @@ internal fun moveAudioTrackClip(
     return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
 }
 
+/**
+ * Produces a gap-filled sequence for one lane. Gaps become silent media items
+ * in preview/export, so every lane has the same project-wide clock.
+ */
 internal fun buildAudioTrackTimelineSegments(
     clips: List<AudioTrackClip>,
     type: AudioTrackType,
