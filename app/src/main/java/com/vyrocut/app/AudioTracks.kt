@@ -190,10 +190,6 @@ internal fun trimAudioTrackClip(
 }
 
 /**
- * Moves one lane item to the first non-overlapping slot at or after the requested
- * project time. Its source trim, volume and fades remain unchanged.
- */
-/**
  * Splits one audio edit-decision-list item at an absolute project time.
  *
  * The left item keeps the original ID and fade-in; the right item receives
@@ -251,6 +247,10 @@ internal fun splitAudioTrackClip(
     return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
 }
 
+/**
+ * Moves one lane item to the first non-overlapping slot at or after the requested
+ * project time. Its source trim, volume and fades remain unchanged.
+ */
 internal fun moveAudioTrackClip(
     clips: List<AudioTrackClip>,
     clipId: String,
