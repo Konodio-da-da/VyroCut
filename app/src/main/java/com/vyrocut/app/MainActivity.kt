@@ -883,7 +883,7 @@ private fun VyroCutApp() {
                 .maxByOrNull { it.endMs }
         changedAudioTracks(updated)
         selectedAudioTrackId = nextSelection?.id
-        exportMessage = "Ripple-deleted \${selected.name}; later \${selected.type.name.lowercase()} clips moved earlier. Source audio is unchanged."
+        exportMessage = "Ripple-deleted ${selected.name}; later ${selected.type.name.lowercase()} clips moved earlier. Source audio is unchanged."
     }
 
     fun splitSelectedAudioTrackAtPlayhead() {
