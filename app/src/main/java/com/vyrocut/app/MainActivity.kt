@@ -732,16 +732,11 @@ private fun VyroCutApp() {
             switchProject(replacement)
         }
         projects.removeAll { it.id == project.id }
-        preferences.edit()
-            .remove("project_${project.id}")
-            .remove("project_${project.id}_undo")
-            .remove("project_${project.id}_redo")
-            .remove("project_${project.id}_recovery")
-            .remove("project_${project.id}_recovery_dismissed")
-            .remove("project_${project.id}_audio_tracks")
-            .remove("project_${project.id}_audio_tracks_recovery")
-            .remove("project_" + project.id + "_canvas_settings")
-            .apply()
+        val deletionEditor = preferences.edit()
+        projectPreferenceKeysForDeletion(project.id).forEach { key ->
+            deletionEditor.remove(key)
+        }
+        deletionEditor.apply()
         saveProjectIndex(preferences, projects)
         projectToDelete = null
         exportMessage = "Deleted ${project.name}"
@@ -3064,6 +3059,22 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
         }
     }
 }.getOrNull()
+
+internal fun projectPreferenceKeysForDeletion(projectId: String): List<String> {
+    require(projectId.isNotBlank()) { "Project ID cannot be blank" }
+    return listOf(
+        "project_$projectId",
+        "project_${projectId}_undo",
+        "project_${projectId}_redo",
+        "project_${projectId}_recovery",
+        "project_${projectId}_recovery_dismissed",
+        "project_${projectId}_audio_tracks",
+        "project_${projectId}_audio_tracks_recovery",
+        "project_${projectId}_canvas_settings",
+        "project_${projectId}_preview_clip_id",
+        "project_${projectId}_preview_source_time_ms",
+    )
+}
 
 private fun persistProjectState(
     preferences: android.content.SharedPreferences,
