@@ -144,6 +144,7 @@ private fun VyroCutApp() {
     }
     var selectedAudioTrackType by remember { mutableStateOf(AudioTrackType.MUSIC) }
     var selectedAudioTrackId by remember { mutableStateOf<String?>(null) }
+    var rippleAudioTrimEnabled by remember(activeProjectId) { mutableStateOf(false) }
     var audioWaveforms by remember(activeProjectId) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
@@ -931,6 +932,37 @@ private fun VyroCutApp() {
         } else {
             changedAudioTracks(updated)
             exportMessage = "Updated " + selected.name + " source range. Original audio remains unchanged."
+        }
+    }
+
+    fun rippleTrimSelectedAudioTrack(sourceStartMs: Long, sourceEndMs: Long) {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val durationDeltaMs = (sourceEndMs - sourceStartMs) - selected.durationMs
+        val updated = rippleTrimAudioTrackClip(
+            audioTrackClips,
+            selected.id,
+            sourceStartMs,
+            sourceEndMs,
+            projectDurationMs,
+        )
+        if (updated == null) {
+            exportMessage = "Ripple trim cannot fit this source range and shifted clips inside the project. No clips were changed."
+        } else {
+            changedAudioTracks(updated)
+            val movement = when {
+                durationDeltaMs < 0L -> "later clips moved earlier by ${-durationDeltaMs} ms"
+                durationDeltaMs > 0L -> "later clips moved later by ${durationDeltaMs} ms"
+                else -> "later clips kept their timing"
+            }
+            exportMessage = "Ripple-trimmed ${selected.name}; $movement on this lane. Source audio remains unchanged."
+        }
+    }
+    fun applySelectedAudioTrackTrim(sourceStartMs: Long, sourceEndMs: Long) {
+        if (rippleAudioTrimEnabled) {
+            rippleTrimSelectedAudioTrack(sourceStartMs, sourceEndMs)
+        } else {
+            trimSelectedAudioTrack(sourceStartMs, sourceEndMs)
         }
     }
     fun commitSelectedClipAudioVolume(volume: Float) {
@@ -2023,6 +2055,20 @@ private fun VyroCutApp() {
                             val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
                             val maximumTimelineStartMs = (projectDurationMs - selectedAudioTrack.durationMs).coerceAtLeast(0L)
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("TRIM MODE", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.weight(1f))
+                                FilterChip(
+                                    selected = !rippleAudioTrimEnabled,
+                                    onClick = { rippleAudioTrimEnabled = false },
+                                    label = { Text("Normal", fontSize = 9.sp) },
+                                )
+                                FilterChip(
+                                    selected = rippleAudioTrimEnabled,
+                                    onClick = { rippleAudioTrimEnabled = true },
+                                    label = { Text("Ripple", fontSize = 9.sp) },
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("SOURCE IN", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
                                 Text(formatTime(audioTrackSourceStartDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
@@ -2038,7 +2084,7 @@ private fun VyroCutApp() {
                                     )
                                 },
                                 onValueChangeFinished = {
-                                    trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
+                                    applySelectedAudioTrackTrim(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
                                 },
                                 valueRange = 0f..(sourceDurationMs - MIN_AUDIO_TRACK_CLIP_DURATION_MS).coerceAtLeast(1L).toFloat(),
                                 enabled = sourceDurationMs > MIN_AUDIO_TRACK_CLIP_DURATION_MS,
@@ -2099,7 +2145,7 @@ private fun VyroCutApp() {
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) { Text("Duplicate", fontSize = 10.sp) }
                                 TextButton(
-                                    onClick = { trimSelectedAudioTrack(0L, sourceDurationMs) },
+                                    onClick = { applySelectedAudioTrackTrim(0L, sourceDurationMs) },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) { Text("Restore full source", fontSize = 10.sp) }
                             }
@@ -2111,7 +2157,7 @@ private fun VyroCutApp() {
                                     Text("Ripple delete", color = Color(0xFFFF8A80), fontSize = 10.sp)
                                 }
                             }
-                            Text("Ripple delete closes the removed duration on this lane only.", color = StudioMuted, fontSize = 9.sp)
+                            Text("Ripple delete closes a removed clip duration; ripple trim shifts later clips by the source-range duration change.", color = StudioMuted, fontSize = 9.sp)
                             Text("Non-destructive source trims and lane moves • independent lanes mix in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                         }
                     }

@@ -548,6 +548,96 @@ class AudioTracksTest {
     }
 
     @Test
+    fun rippleTrimShorteningMovesLaterSameLaneClipsEarlierAndPreservesGaps() {
+        val before = clip("before", startMs = 0L, sourceEndMs = 1_000L)
+        val selected = clip(
+            "selected",
+            startMs = 2_000L,
+            sourceStartMs = 1_000L,
+            sourceEndMs = 5_000L,
+            sourceDurationMs = 6_000L,
+            volume = 0.6f,
+            fadeInMs = 3_500L,
+            fadeOutMs = 3_600L,
+        )
+        val after = clip("after", startMs = 7_000L, sourceEndMs = 1_000L, volume = 0.7f)
+        val afterTwo = clip("after-two", startMs = 10_000L, sourceEndMs = 1_000L)
+        val voice = clip("voice", type = AudioTrackType.VOICEOVER, startMs = 2_500L, sourceEndMs = 1_000L)
+        val original = listOf(before, selected, after, afterTwo, voice)
+
+        val updated = rippleTrimAudioTrackClip(original, "selected", 2_000L, 5_000L, 12_000L)
+            ?: error("Expected the shorter source range to ripple successfully")
+
+        assertEquals(selected.copy(
+            sourceStartMs = 2_000L,
+            fadeInMs = 3_000L,
+            fadeOutMs = 3_000L,
+        ), updated.single { it.id == "selected" })
+        assertEquals(after.copy(startMs = 6_000L), updated.single { it.id == "after" })
+        assertEquals(afterTwo.copy(startMs = 9_000L), updated.single { it.id == "after-two" })
+        assertEquals(before, updated.single { it.id == "before" })
+        assertEquals(voice, updated.single { it.id == "voice" })
+        assertEquals(1_000L, updated.single { it.id == "after" }.startMs -
+            updated.single { it.id == "selected" }.endMs)
+        assertEquals(2_000L, updated.single { it.id == "after-two" }.startMs -
+            updated.single { it.id == "after" }.endMs)
+        assertTrue(validateAudioTrackClips(updated, 12_000L))
+        assertEquals(original, listOf(before, selected, after, afterTwo, voice))
+    }
+
+    @Test
+    fun rippleTrimExtensionMovesLaterSameLaneClipsLaterAndPreservesGaps() {
+        val selected = clip(
+            "selected",
+            startMs = 1_000L,
+            sourceStartMs = 1_000L,
+            sourceEndMs = 3_000L,
+            sourceDurationMs = 5_000L,
+            volume = 0.55f,
+            fadeInMs = 400L,
+            fadeOutMs = 500L,
+        )
+        val after = clip("after", startMs = 4_000L, sourceEndMs = 1_000L)
+        val afterTwo = clip("after-two", startMs = 6_000L, sourceEndMs = 1_000L)
+        val voice = clip("voice", type = AudioTrackType.VOICEOVER, startMs = 2_000L, sourceEndMs = 1_000L)
+        val original = listOf(selected, after, afterTwo, voice)
+
+        val updated = rippleTrimAudioTrackClip(original, "selected", 0L, 4_000L, 10_000L)
+            ?: error("Expected the longer source range to ripple successfully")
+
+        assertEquals(selected.copy(sourceStartMs = 0L, sourceEndMs = 4_000L),
+            updated.single { it.id == "selected" })
+        assertEquals(after.copy(startMs = 6_000L), updated.single { it.id == "after" })
+        assertEquals(afterTwo.copy(startMs = 8_000L), updated.single { it.id == "after-two" })
+        assertEquals(voice, updated.single { it.id == "voice" })
+        assertEquals(1_000L, updated.single { it.id == "after" }.startMs -
+            updated.single { it.id == "selected" }.endMs)
+        assertEquals(1_000L, updated.single { it.id == "after-two" }.startMs -
+            updated.single { it.id == "after" }.endMs)
+        assertTrue(validateAudioTrackClips(updated, 10_000L))
+        assertEquals(original, listOf(selected, after, afterTwo, voice))
+    }
+
+    @Test
+    fun rippleTrimRejectsInvalidRangesAndProjectOverflowWithoutMutation() {
+        val selected = clip(
+            "selected",
+            startMs = 1_000L,
+            sourceStartMs = 1_000L,
+            sourceEndMs = 3_000L,
+            sourceDurationMs = 5_000L,
+        )
+        val after = clip("after", startMs = 4_000L, sourceEndMs = 3_000L)
+        val original = listOf(selected, after)
+
+        assertNull(rippleTrimAudioTrackClip(original, "missing", 0L, 2_000L, 8_000L))
+        assertNull(rippleTrimAudioTrackClip(original, "selected", 0L, 99L, 8_000L))
+        assertNull(rippleTrimAudioTrackClip(original, "selected", 0L, 6_000L, 8_000L))
+        assertNull(rippleTrimAudioTrackClip(original, "selected", 0L, 4_000L, 8_000L))
+        assertEquals(original, listOf(selected, after))
+    }
+
+    @Test
     fun splitPreservesContiguousSourceRangeAndOriginalFadeEnvelope() {
         val original = clip(
             id = "music",

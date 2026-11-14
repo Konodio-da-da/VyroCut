@@ -37,6 +37,7 @@ Record device model, Android version, source formats, project duration, export d
    - Test leading, internal, and trailing gaps; source trims; lane offsets; fades; and volume.
    - Duplicate a selected Music, SFX, and Voiceover clip; verify it lands in the next available non-overlapping slot, preserves source trim/volume/fades, remains independently selectable, and survives undo/redo plus force-stop/reopen.
    - Ripple-delete a selected Music, SFX, and Voiceover clip; verify only later clips on that lane shift left by the removed duration, source IN/OUT, volume and fades remain unchanged, gaps between later clips are preserved, other lanes do not move, and undo/redo plus force-stop/reopen restore the edit.
+   - Use Normal trim and Ripple trim on Music, SFX, and Voiceover clips; verify shortening shifts only later same-lane clips earlier, extending shifts only later same-lane clips later, existing gaps and other lanes remain unchanged, source media is untouched, and undo/redo plus force-stop/reopen restore the edit. Confirm an extension that would exceed project duration is rejected without changing any clip.
    - Split a selected Music, SFX, and Voiceover clip at the playhead; verify source ranges remain contiguous and the original audio is unchanged.
    - Listen across clip transitions and repeated scrubs for drift, clicks, missing audio, or repeated seek glitches.
    - Test source video with audio, silent video, and all three independent lanes together.

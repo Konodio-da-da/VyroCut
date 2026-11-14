@@ -198,6 +198,52 @@ internal fun trimAudioTrackClip(
  * non-zero starting gain on a newly split item without changing the sound.
  * Both items continue to reference the same untouched source URI.
  */
+/**
+ * Trims one audio clip and ripples only later clips on the same lane by the
+ * resulting duration delta. Shortening pulls later clips earlier; extending
+ * pushes them later. Existing gaps and all other lanes remain unchanged.
+ *
+ * The edit is atomic: if the source range is invalid or any shifted clip would
+ * leave the project, no updated list is returned.
+ */
+internal fun rippleTrimAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    sourceStartMs: Long,
+    sourceEndMs: Long,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (!validateAudioTrackClips(clips, projectDurationMs)) return null
+    val selected = clips.singleOrNull { it.id == clipId } ?: return null
+    if (sourceStartMs < 0L ||
+        sourceEndMs > selected.sourceDurationMs ||
+        sourceEndMs - sourceStartMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS
+    ) return null
+
+    val nextDurationMs = sourceEndMs - sourceStartMs
+    val durationDeltaMs = nextDurationMs - selected.durationMs
+    val updated = clips.map { clip ->
+        when {
+            clip.id == selected.id -> clip.copy(
+                sourceStartMs = sourceStartMs,
+                sourceEndMs = sourceEndMs,
+                fadeInMs = clip.fadeInMs.coerceAtMost(nextDurationMs),
+                fadeOutMs = clip.fadeOutMs.coerceAtMost(nextDurationMs),
+            )
+            clip.type == selected.type && clip.startMs >= selected.endMs -> {
+                val nextStartMs = if (durationDeltaMs >= 0L) {
+                    addAudioTimelineTime(clip.startMs, durationDeltaMs)
+                } else {
+                    clip.startMs - (-durationDeltaMs)
+                }
+                clip.copy(startMs = nextStartMs)
+            }
+            else -> clip
+        }
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
 internal fun splitAudioTrackClip(
     clips: List<AudioTrackClip>,
     clipId: String,
