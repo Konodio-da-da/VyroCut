@@ -749,10 +749,14 @@ internal fun resolvePreviewFrameStepTargetMs(
         frameRate,
     )
 
-    // Before the first source frame in a trimmed range, the next step is that
-    // first available frame; there is no previous frame inside this clip.
+    // A seek to the clipped item's local zero presents its first available
+    // source frame, even when that frame's source timestamp is after the trim IN.
+    // Treat that frame as current so NEXT advances rather than showing it twice.
     if (currentMs < firstFrameOffsetMs) {
-        return if (direction == PreviewFrameStepDirection.NEXT) firstFrameOffsetMs else null
+        if (direction == PreviewFrameStepDirection.PREVIOUS) return null
+        val nextFrameIndex = range.firstFrameIndex + 1L
+        if (nextFrameIndex > range.lastFrameIndex) return null
+        return previewFrameOffsetMs(nextFrameIndex, sourceStartMs, clipDurationMs, frameRate)
     }
 
     val currentSourceMs = sourceStartMs + currentMs

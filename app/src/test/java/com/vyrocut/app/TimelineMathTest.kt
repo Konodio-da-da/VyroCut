@@ -110,8 +110,10 @@ class TimelineMathTest {
 
     @Test
     fun frameSteppingUsesOriginalSourceFrameGridForNonAlignedTrimOffsets() {
+        // The clip's initial seek presents its first source frame (125 ms),
+        // so NEXT must move to the following frame (167 ms), not repeat it.
         assertEquals(
-            25L,
+            67L,
             resolvePreviewFrameStepTargetMs(
                 currentPositionMs = 0L,
                 clipDurationMs = 1_000L,
