@@ -829,4 +829,28 @@ class TimelineMathTest {
         assertEquals(Long.MAX_VALUE, ticks.last().timeMs)
     }
 
+
+    @Test
+    fun playbackProgressUsesVideoFriendlyActiveCadenceAndLighterIdleCadence() {
+        assertEquals(33L, playbackProgressUpdateIntervalMs(isPlaying = true))
+        assertEquals(100L, playbackProgressUpdateIntervalMs(isPlaying = false))
+    }
+
+    @Test
+    fun previewCheckpointPersistsImmediatelyAndAtTheIntervalBoundary() {
+        assertTrue(shouldPersistPreviewCheckpoint(nowElapsedMs = 1_500L, lastPersistedElapsedMs = null))
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 1_999L, lastPersistedElapsedMs = 0L))
+        assertTrue(shouldPersistPreviewCheckpoint(nowElapsedMs = 2_000L, lastPersistedElapsedMs = 0L))
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 4_499L, lastPersistedElapsedMs = 2_500L))
+        assertTrue(shouldPersistPreviewCheckpoint(nowElapsedMs = 4_500L, lastPersistedElapsedMs = 2_500L))
+    }
+
+    @Test
+    fun previewCheckpointRejectsClockRegressionAndInvalidIntervals() {
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 900L, lastPersistedElapsedMs = 1_000L))
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = -1L, lastPersistedElapsedMs = null))
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 1_000L, lastPersistedElapsedMs = null, minimumIntervalMs = 0L))
+        assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 1_000L, lastPersistedElapsedMs = -1L))
+    }
+
 }
