@@ -21,6 +21,7 @@ Record device model, Android version, source formats, project duration, export d
    - Install the latest successful CI debug APK on Android 10 / API 29 and one current Android release.
    - Create a project, import at least three local videos, then force-stop and reopen.
    - Verify clip order, source trims, audio lanes, text layers, canvas settings, and preview checkpoint survive restart.
+   - Export a JSON backup while the playhead is partway through a trimmed clip, restore it as a new project, and verify the stable clip ID/source timestamp is restored. Version 1–12 backups remain importable; older backups without a checkpoint start at the first clip.
    - Exercise undo/redo, JSON backup/restore, missing-source detection, and relinking while offline.
    - Export a backup at a non-default preview speed, restore it as a new project, and confirm the speed returns; verify older v1-v11 backups default to 1×.
 

@@ -974,12 +974,19 @@ private fun VyroCutApp() {
     val backupExporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) {
             val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "VyroCut project"
+            val currentPreviewPosition = clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
+                createSavedPlaybackPosition(
+                    ClipPlaybackRange(clip.id, clip.sourceStartMs, clip.sourceEndMs),
+                    player.currentPosition,
+                )
+            } ?: loadSavedPlaybackPosition(preferences, activeProjectId)
             val backup = encodeProjectBackup(
                 projectName,
                 clips,
                 projectCanvasSettingsFor(canvasAspectRatio, canvasBackground),
                 audioTrackClips,
                 previewPlaybackSpeed,
+                currentPreviewPosition,
             )
             val result = runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
@@ -1005,7 +1012,7 @@ private fun VyroCutApp() {
                     backup.clips,
                     backup.audioTracks,
                 )
-                preferences.edit()
+                val importedSettings = preferences.edit()
                     .putString(
                         "project_" + imported.id + "_canvas_settings",
                         encodeProjectCanvasSettings(backup.canvasSettings),
@@ -1014,7 +1021,12 @@ private fun VyroCutApp() {
                         projectPreviewPlaybackSpeedPreferenceKey(imported.id),
                         backup.previewPlaybackSpeed,
                     )
-                    .apply()
+                backup.previewPosition?.let { position ->
+                    importedSettings
+                        .putString("project_${imported.id}_preview_clip_id", position.clipId)
+                        .putLong("project_${imported.id}_preview_source_time_ms", position.sourceTimeMs)
+                }
+                importedSettings.apply()
                 switchProject(imported)
                 showProjects = false
                 exportMessage = "Restored ${imported.name} (${backup.clips.size} clips)"
@@ -2885,6 +2897,7 @@ internal data class ProjectBackup(
     val canvasSettings: ProjectCanvasSettings,
     val audioTracks: List<AudioTrackClip> = emptyList(),
     val previewPlaybackSpeed: Float = 1f,
+    val previewPosition: SavedPlaybackPosition? = null,
 )
 
 internal fun encodeProjectBackup(
@@ -2893,23 +2906,33 @@ internal fun encodeProjectBackup(
     canvasSettings: ProjectCanvasSettings,
     audioTracks: List<AudioTrackClip> = emptyList(),
     previewPlaybackSpeed: Float = 1f,
-): String =
-    JSONObject().apply {
+    previewPosition: SavedPlaybackPosition? = null,
+): String {
+    val validPreviewPosition = validateSavedPlaybackPosition(
+        clips.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) },
+        previewPosition,
+    )
+    return JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 12)
+        put("version", 13)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
         put("canvasSettings", encodeProjectCanvasSettings(canvasSettings))
         put("audioTracks", JSONArray(encodeAudioTrackClips(audioTracks)))
         put("previewPlaybackSpeed", normalizePreviewPlaybackSpeed(previewPlaybackSpeed).toDouble())
+        validPreviewPosition?.let { position ->
+            put("previewClipId", position.clipId)
+            put("previewSourceTimeMs", position.sourceTimeMs)
+        }
     }.toString(2)
+}
 
 internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..12) { "Unsupported backup version" }
+    require(version in 1..13) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -2931,7 +2954,21 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     } else {
         1f
     }
-    return ProjectBackup(name, clips, canvasSettings, audioTracks, previewPlaybackSpeed)
+    val previewPosition = if (version >= 13) {
+        val clipId = root.opt("previewClipId") as? String
+        val sourceTimeMs = (root.opt("previewSourceTimeMs") as? Number)?.toLong()
+        if (clipId != null && sourceTimeMs != null) {
+            validateSavedPlaybackPosition(
+                clips.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) },
+                SavedPlaybackPosition(clipId, sourceTimeMs),
+            )
+        } else {
+            null
+        }
+    } else {
+        null
+    }
+    return ProjectBackup(name, clips, canvasSettings, audioTracks, previewPlaybackSpeed, previewPosition)
 }
 
 internal fun encodeProjectEditSnapshot(snapshot: ProjectEditSnapshot): String =

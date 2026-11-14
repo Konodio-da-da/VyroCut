@@ -581,6 +581,52 @@ class TimelineMathTest {
         assertNull(resolveSavedPlaybackTarget(emptyList(), SavedPlaybackPosition("clip", 500L)))
     }
 
+    @Test
+    fun createsPortablePreviewCheckpointUsingAbsoluteSourceTime() {
+        val clip = ClipPlaybackRange("clip", 2_000L, 7_000L)
+
+        assertEquals(
+            SavedPlaybackPosition("clip", 4_500L),
+            createSavedPlaybackPosition(clip, 2_500L),
+        )
+        assertEquals(
+            SavedPlaybackPosition("clip", 6_999L),
+            createSavedPlaybackPosition(clip, 99_000L),
+        )
+        assertEquals(
+            SavedPlaybackPosition("clip", 2_000L),
+            createSavedPlaybackPosition(clip, -500L),
+        )
+    }
+
+    @Test
+    fun invalidClipCannotProducePortablePreviewCheckpoint() {
+        assertNull(createSavedPlaybackPosition(null, 500L))
+        assertNull(createSavedPlaybackPosition(ClipPlaybackRange("", 0L, 1_000L), 500L))
+        assertNull(createSavedPlaybackPosition(ClipPlaybackRange("empty", 500L, 500L), 0L))
+        assertNull(createSavedPlaybackPosition(ClipPlaybackRange("negative", -1L, 500L), 0L))
+    }
+
+    @Test
+    fun portablePreviewCheckpointMustMatchOneClipAndItsSourceRange() {
+        val clips = listOf(
+            ClipPlaybackRange("first", 0L, 1_000L),
+            ClipPlaybackRange("second", 2_000L, 5_000L),
+        )
+        val valid = SavedPlaybackPosition("second", 3_500L)
+
+        assertEquals(valid, validateSavedPlaybackPosition(clips, valid))
+        assertNull(validateSavedPlaybackPosition(clips, SavedPlaybackPosition("missing", 3_500L)))
+        assertNull(validateSavedPlaybackPosition(clips, SavedPlaybackPosition("second", 5_000L)))
+        assertNull(validateSavedPlaybackPosition(clips, SavedPlaybackPosition("second", -1L)))
+        assertNull(
+            validateSavedPlaybackPosition(
+                clips + ClipPlaybackRange("second", 6_000L, 7_000L),
+                valid,
+            ),
+        )
+    }
+
 
     @Test
     fun timelineAutoFollowDoesNotScrollWhenPausedOrNotScrollable() {

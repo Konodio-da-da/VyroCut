@@ -323,6 +323,31 @@ internal data class SavedPlaybackPosition(
     val sourceTimeMs: Long,
 )
 
+/** Captures a clip-relative player position as an absolute source timestamp. */
+internal fun createSavedPlaybackPosition(
+    clip: ClipPlaybackRange?,
+    clipPositionMs: Long,
+): SavedPlaybackPosition? {
+    if (clip == null || clip.id.isBlank()) return null
+    if (clip.sourceStartMs < 0L || clip.sourceEndMs <= clip.sourceStartMs) return null
+    val relativePositionMs = clipPositionMs.coerceIn(0L, clip.durationMs - 1L)
+    val sourceTimeMs = addWithoutOverflow(clip.sourceStartMs, relativePositionMs)
+    if (sourceTimeMs >= clip.sourceEndMs) return null
+    return SavedPlaybackPosition(clip.id, sourceTimeMs)
+}
+
+/** Rejects checkpoints whose stable clip ID or source timestamp is not in this edit list. */
+internal fun validateSavedPlaybackPosition(
+    clips: List<ClipPlaybackRange>,
+    savedPosition: SavedPlaybackPosition?,
+): SavedPlaybackPosition? {
+    val saved = savedPosition ?: return null
+    if (saved.clipId.isBlank() || saved.sourceTimeMs < 0L) return null
+    val clip = clips.singleOrNull { it.id == saved.clipId } ?: return null
+    if (clip.sourceStartMs < 0L || clip.sourceEndMs <= clip.sourceStartMs) return null
+    return saved.takeIf { it.sourceTimeMs >= clip.sourceStartMs && it.sourceTimeMs < clip.sourceEndMs }
+}
+
 /**
  * Restores a project's last saved preview location. A saved source time outside a
  * newly-trimmed range is clamped to the nearest playable millisecond.
