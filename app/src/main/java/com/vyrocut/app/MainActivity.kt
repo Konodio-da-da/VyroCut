@@ -979,6 +979,7 @@ private fun VyroCutApp() {
                 clips,
                 projectCanvasSettingsFor(canvasAspectRatio, canvasBackground),
                 audioTrackClips,
+                previewPlaybackSpeed,
             )
             val result = runCatching {
                 context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { it.write(backup) }
@@ -1008,6 +1009,10 @@ private fun VyroCutApp() {
                     .putString(
                         "project_" + imported.id + "_canvas_settings",
                         encodeProjectCanvasSettings(backup.canvasSettings),
+                    )
+                    .putFloat(
+                        projectPreviewPlaybackSpeedPreferenceKey(imported.id),
+                        backup.previewPlaybackSpeed,
                     )
                     .apply()
                 switchProject(imported)
@@ -2569,7 +2574,7 @@ private fun VyroCutApp() {
                                     ) { Text("Restore") }
                                 }
                                 Text(
-                                    "Backups save your edit list and media references. Keep the original video files available; the videos themselves are not copied into the backup.",
+                                    "Backups save your edit list, media references, canvas settings and preview speed. Keep the original video and audio files available; media files are not copied into the backup.",
                                     color = StudioMuted,
                                     fontSize = 10.sp
                                 )
@@ -2879,6 +2884,7 @@ internal data class ProjectBackup(
     val clips: List<EditClip>,
     val canvasSettings: ProjectCanvasSettings,
     val audioTracks: List<AudioTrackClip> = emptyList(),
+    val previewPlaybackSpeed: Float = 1f,
 )
 
 internal fun encodeProjectBackup(
@@ -2886,22 +2892,24 @@ internal fun encodeProjectBackup(
     clips: List<EditClip>,
     canvasSettings: ProjectCanvasSettings,
     audioTracks: List<AudioTrackClip> = emptyList(),
+    previewPlaybackSpeed: Float = 1f,
 ): String =
     JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 11)
+        put("version", 12)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
         put("canvasSettings", encodeProjectCanvasSettings(canvasSettings))
         put("audioTracks", JSONArray(encodeAudioTrackClips(audioTracks)))
+        put("previewPlaybackSpeed", normalizePreviewPlaybackSpeed(previewPlaybackSpeed).toDouble())
     }.toString(2)
 
 internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..11) { "Unsupported backup version" }
+    require(version in 1..12) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -2918,7 +2926,12 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
         audioTracksRaw,
         calculateTimelineDurationMs(clips.map { it.durationMs }),
     ) ?: error("The backup contains invalid audio track clips")
-    return ProjectBackup(name, clips, canvasSettings, audioTracks)
+    val previewPlaybackSpeed = if (version >= 12) {
+        normalizePreviewPlaybackSpeed(root.optDouble("previewPlaybackSpeed", 1.0).toFloat())
+    } else {
+        1f
+    }
+    return ProjectBackup(name, clips, canvasSettings, audioTracks, previewPlaybackSpeed)
 }
 
 internal fun encodeProjectEditSnapshot(snapshot: ProjectEditSnapshot): String =

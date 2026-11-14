@@ -22,6 +22,7 @@ Record device model, Android version, source formats, project duration, export d
    - Create a project, import at least three local videos, then force-stop and reopen.
    - Verify clip order, source trims, audio lanes, text layers, canvas settings, and preview checkpoint survive restart.
    - Exercise undo/redo, JSON backup/restore, missing-source detection, and relinking while offline.
+   - Export a backup at a non-default preview speed, restore it as a new project, and confirm the speed returns; verify older v1-v11 backups default to 1×.
 
 2. **Continuous preview and timeline**
    - Play through at least three clips without touching the controls; verify no freeze, unexpected restart, or black gap at clip boundaries.

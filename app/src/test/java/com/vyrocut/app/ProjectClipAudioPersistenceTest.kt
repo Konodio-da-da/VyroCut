@@ -68,7 +68,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionElevenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
+    fun versionTwelveBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -88,7 +88,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(12, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
@@ -103,7 +103,77 @@ class ProjectClipAudioPersistenceTest {
 
 
     @Test
-    fun multipleTextLayersSurviveProjectSerializationAndVersionElevenBackup() {
+    fun versionTwelveBackupRoundTripsEverySupportedPreviewSpeed() {
+        val video = EditClip(
+            id = "video",
+            uri = "content://media/video",
+            name = "Video",
+            sourceStartMs = 0L,
+            sourceEndMs = 5_000L,
+        )
+
+        PREVIEW_PLAYBACK_SPEEDS.forEach { speed ->
+            val backup = encodeProjectBackup(
+                name = "Speed project",
+                clips = listOf(video),
+                canvasSettings = ProjectCanvasSettings(),
+                previewPlaybackSpeed = speed,
+            )
+            val json = org.json.JSONObject(backup)
+
+            assertEquals(12, json.getInt("version"))
+            assertEquals(speed.toDouble(), json.getDouble("previewPlaybackSpeed"), 0.0001)
+            assertEquals(speed, decodeProjectBackup(backup).previewPlaybackSpeed, 0f)
+        }
+    }
+
+    @Test
+    fun versionElevenAndOlderBackupsDefaultPreviewSpeedToNormal() {
+        val versionEleven = """{
+            "format":"vyrocut-project",
+            "version":11,
+            "projectName":"Legacy speed",
+            "clips":[{"id":"video","uri":"content://media/video","name":"Video","start":0,"end":5000}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK",
+            "audioTracks":[]
+        }"""
+        val versionNine = versionEleven.replace("\"version\":11", "\"version\":9")
+
+        assertEquals(1f, decodeProjectBackup(versionEleven).previewPlaybackSpeed, 0f)
+        assertEquals(1f, decodeProjectBackup(versionNine).previewPlaybackSpeed, 0f)
+    }
+
+    @Test
+    fun unsupportedOrMalformedVersionTwelvePreviewSpeedFallsBackToNormal() {
+        val video = EditClip(
+            id = "video",
+            uri = "content://media/video",
+            name = "Video",
+            sourceStartMs = 0L,
+            sourceEndMs = 5_000L,
+        )
+        val json = org.json.JSONObject(
+            encodeProjectBackup(
+                name = "Invalid speed",
+                clips = listOf(video),
+                canvasSettings = ProjectCanvasSettings(),
+                previewPlaybackSpeed = 1.5f,
+            ),
+        )
+
+        json.put("previewPlaybackSpeed", 1.1)
+        assertEquals(1f, decodeProjectBackup(json.toString()).previewPlaybackSpeed, 0f)
+
+        json.put("previewPlaybackSpeed", "NaN")
+        assertEquals(1f, decodeProjectBackup(json.toString()).previewPlaybackSpeed, 0f)
+
+        json.put("previewPlaybackSpeed", org.json.JSONObject.NULL)
+        assertEquals(1f, decodeProjectBackup(json.toString()).previewPlaybackSpeed, 0f)
+    }
+
+
+    @Test
+    fun multipleTextLayersSurviveProjectSerializationAndVersionTwelveBackup() {
         val original = EditClip(
             id = "layered",
             uri = "content://media/layered",
@@ -261,7 +331,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionElevenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
+    fun versionTwelveBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
         val video = EditClip(
             id = "video",
             uri = "content://media/video",

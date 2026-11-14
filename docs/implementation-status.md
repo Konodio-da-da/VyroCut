@@ -1,6 +1,7 @@
 # Implementation status
 
 ## Last verified build
+- Feature head `ed32f4bc556ab480069877e39c717bd6ef9d50a2` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #320](https://github.com/Konodio-da-da/VyroCut/actions/runs/43561381983). This is the baseline for the next backup-format revision.
 - Feature head `393b7fb204a67ea9de859a17b66cf4a68cf50136` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #318](https://github.com/Konodio-da-da/VyroCut/actions/runs/43555985260). This includes the six-rate preview playback control and shared Media3 playback parameters; the next change persists that rate per project.
 - The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
 - Feature branch `fix/capcut-workflow-ui` commit `b9b7bb4113b8ef27af74f2c762de7e1295752e82` passed `assembleDebug` and `testDebugUnitTest` in [Android build run #295](https://github.com/Konodio-da-da/VyroCut/actions/runs/43490355930). This fixed the missing `MediaFormat` import exposed by the earlier failed [run #293](https://github.com/Konodio-da-da/VyroCut/actions/runs/43482479845). The debug APK artifact was uploaded.
@@ -12,7 +13,7 @@
 - CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
 
 ## Editing workspace milestone (in progress)
-- Preview playback speed cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; the selected Media3 playback parameters are applied to the video player and all Music/SFX/Voiceover players so their clocks advance at the same rate. The selected rate is now stored under a project-scoped local preference, restored when switching back or reopening, normalized to 1× if corrupt/unsupported, and removed with the project. Pure Kotlin tests cover cycling, normalization, project-key isolation and labels; physical-device audio-sync and persistence checks remain pending.
+- Preview playback speed cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; the selected Media3 playback parameters are applied to the video player and all Music/SFX/Voiceover players so their clocks advance at the same rate. The selected rate is stored per project and included in v12 JSON backups, restored when switching projects or importing a backup, normalized to 1× if missing/corrupt/unsupported, and removed with the project. Pure Kotlin tests cover cycling, normalization, project-key isolation, labels and backup migration; physical-device audio-sync and persistence checks remain pending.
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.
@@ -21,7 +22,7 @@
 - Timeline seek mapping is isolated in pure Kotlin helpers and has unit tests for clip boundaries, the exact project end, empty/zero-length timelines, clamping, and duration overflow.
 - Timeline cards asynchronously generate frame thumbnails from their source videos; generated frames are cached on disk for reuse.
 - Multiple named local projects can be created, renamed, deleted, switched, and autosaved independently; deleting the active project opens another project first and the final remaining project is protected.
-- Projects can be exported to a versioned `.vyrocut.json` backup and restored as a new project through Android's document picker; malformed or unsupported backup files are rejected.
+- Projects can be exported to a versioned `.vyrocut.json` backup and restored as a new project through Android's document picker; version 12 also preserves the project preview playback speed, while v1-v11 backups safely default to 1×. Malformed or unsupported backup files are rejected.
 - Undo/redo supports up to 50 timeline edit states per project and persists its history across app restarts.
 - Timeline audio waveforms are decoded from each clip's source audio on a background dispatcher, bucketed into 48 peak-amplitude samples, and aligned to the clip's trimmed source range.
 - Waveform cache filenames include the requested bucket count, so compact and detailed resolutions for the same source range cannot overwrite or invalidate each other's cache entries.
