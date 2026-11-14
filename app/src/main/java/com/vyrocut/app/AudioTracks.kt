@@ -193,6 +193,64 @@ internal fun trimAudioTrackClip(
  * Moves one lane item to the first non-overlapping slot at or after the requested
  * project time. Its source trim, volume and fades remain unchanged.
  */
+/**
+ * Splits one audio edit-decision-list item at an absolute project time.
+ *
+ * The left item keeps the original ID and fade-in; the right item receives
+ * [newClipId] and keeps the original fade-out. Splits inside an active fade
+ * ramp are rejected because the current fade model cannot represent a
+ * non-zero starting gain on a newly split item without changing the sound.
+ * Both items continue to reference the same untouched source URI.
+ */
+internal fun splitAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    splitTimelineMs: Long,
+    newClipId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (!validateAudioTrackClips(clips, projectDurationMs) ||
+        clips.size >= MAX_AUDIO_TRACK_CLIPS ||
+        newClipId.isBlank() ||
+        clips.any { it.id == newClipId }
+    ) return null
+
+    val selectedIndex = clips.indexOfFirst { it.id == clipId }
+    if (selectedIndex < 0) return null
+    val selected = clips[selectedIndex]
+    if (splitTimelineMs <= selected.startMs || splitTimelineMs >= selected.endMs) return null
+
+    val splitOffsetMs = splitTimelineMs - selected.startMs
+    val rightDurationMs = selected.durationMs - splitOffsetMs
+    if (splitOffsetMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
+        rightDurationMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS
+    ) return null
+
+    val lastFadeInMs = selected.fadeInMs
+    val firstFadeOutMs = selected.durationMs - selected.fadeOutMs
+    if (splitOffsetMs < lastFadeInMs || splitOffsetMs > firstFadeOutMs) return null
+
+    // The validated source range guarantees this addition remains <= sourceEndMs.
+    val splitSourceMs = selected.sourceStartMs + splitOffsetMs
+    if (splitSourceMs <= selected.sourceStartMs || splitSourceMs >= selected.sourceEndMs) return null
+
+    val left = selected.copy(
+        sourceEndMs = splitSourceMs,
+        fadeOutMs = 0L,
+    )
+    val right = selected.copy(
+        id = newClipId,
+        startMs = splitTimelineMs,
+        sourceStartMs = splitSourceMs,
+        fadeInMs = 0L,
+    )
+    val updated = clips.toMutableList().apply {
+        this[selectedIndex] = left
+        add(selectedIndex + 1, right)
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
 internal fun moveAudioTrackClip(
     clips: List<AudioTrackClip>,
     clipId: String,
