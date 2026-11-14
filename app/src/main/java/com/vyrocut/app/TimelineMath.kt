@@ -262,21 +262,34 @@ internal fun calculateTimelineRulerTicks(
     // greater than the cap, so this product cannot exceed totalDurationMs.
     val effectiveIntervalMs = tickIntervalMs * intervalMultiplier
 
+    fun createTick(timeMs: Long) = TimelineRulerTick(
+        timeMs = timeMs,
+        offsetPx = calculateTimelinePlayheadOffsetPx(
+            clipDurationsMs = clipDurationsMs,
+            clipWidthsPx = clipWidthsPx,
+            playheadPositionMs = timeMs,
+            gapPx = gapPx,
+        ),
+        isMajor = timeMs % majorIntervalMs == 0L,
+    )
+
     val ticks = mutableListOf<TimelineRulerTick>()
     var timeMs = 0L
-    while (timeMs <= totalDurationMs && ticks.size <= MAX_TIMELINE_RULER_TICKS) {
-        ticks += TimelineRulerTick(
-            timeMs = timeMs,
-            offsetPx = calculateTimelinePlayheadOffsetPx(
-                clipDurationsMs = clipDurationsMs,
-                clipWidthsPx = clipWidthsPx,
-                playheadPositionMs = timeMs,
-                gapPx = gapPx,
-            ),
-            isMajor = timeMs % majorIntervalMs == 0L,
-        )
+    while (timeMs <= totalDurationMs && ticks.size < MAX_TIMELINE_RULER_TICKS) {
+        ticks += createTick(timeMs)
         if (totalDurationMs - timeMs < effectiveIntervalMs) break
         timeMs += effectiveIntervalMs
+    }
+
+    // Keep the project-end marker even when the regular interval does not land
+    // on it. Replacing the final regular tick preserves the strict child cap.
+    if (ticks.lastOrNull()?.timeMs != totalDurationMs) {
+        val endTick = createTick(totalDurationMs)
+        if (ticks.size < MAX_TIMELINE_RULER_TICKS) {
+            ticks += endTick
+        } else {
+            ticks[ticks.lastIndex] = endTick
+        }
     }
     return ticks
 }

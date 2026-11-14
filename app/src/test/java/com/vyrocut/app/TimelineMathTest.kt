@@ -682,6 +682,26 @@ class TimelineMathTest {
     }
 
     @Test
+    fun rulerTicksIncludeProjectEndAndNeverExceedMaximum() {
+        val cappedTicks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(2_000_000L),
+            clipWidthsPx = listOf(320f),
+            gapPx = 6f,
+        )
+        assertEquals(2_000, cappedTicks.size)
+        assertEquals(2_000_000L, cappedTicks.last().timeMs)
+        assertEquals(320f, cappedTicks.last().offsetPx, 0.001f)
+        assertTrue(cappedTicks.last().isMajor)
+
+        val shortProjectTicks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(500L),
+            clipWidthsPx = listOf(100f),
+            gapPx = 6f,
+        )
+        assertEquals(listOf(0L, 500L), shortProjectTicks.map { it.timeMs })
+    }
+
+    @Test
     fun rulerTicksRejectInvalidIntervalsAndBoundVeryLongProjects() {
         assertTrue(calculateTimelineRulerTicks(listOf(1_000L), listOf(100f), 6f, 0L).isEmpty())
         assertTrue(calculateTimelineRulerTicks(listOf(1_000L), listOf(100f), 6f, majorIntervalMs = 0L).isEmpty())
@@ -691,8 +711,9 @@ class TimelineMathTest {
             clipWidthsPx = listOf(320f),
             gapPx = 6f,
         )
-        assertTrue(ticks.size <= 2_001)
+        assertTrue(ticks.size <= 2_000)
         assertEquals(0L, ticks.first().timeMs)
+        assertEquals(Long.MAX_VALUE, ticks.last().timeMs)
     }
 
 }

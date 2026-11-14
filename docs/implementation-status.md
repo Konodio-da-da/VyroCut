@@ -13,6 +13,7 @@
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.
 - Project-wide timeline scrubber maps elapsed project time back to the correct clip and clip-relative position.
+- Timeline ruler generation uses the same absolute-time-to-pixel mapping as the playhead, always includes the project-end marker, and is strictly capped at 2,000 Compose ticks even when the duration lands exactly on a regular interval.
 - Timeline seek mapping is isolated in pure Kotlin helpers and has unit tests for clip boundaries, the exact project end, empty/zero-length timelines, clamping, and duration overflow.
 - Timeline cards asynchronously generate frame thumbnails from their source videos; generated frames are cached on disk for reuse.
 - Multiple named local projects can be created, renamed, deleted, switched, and autosaved independently; deleting the active project opens another project first and the final remaining project is protected.
