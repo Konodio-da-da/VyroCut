@@ -148,12 +148,24 @@ class TimelineMathTest {
                 direction = PreviewFrameStepDirection.PREVIOUS,
             ),
         )
-        assertNull(
+        // 958 ms is between frames at 59.94 fps, so the next frame is still
+        // inside this one-second clip. The final frame is at approximately 984 ms.
+        assertEquals(
+            PreviewFrameStepTarget(1, 967L),
             resolvePreviewFrameStepAcrossClips(
                 clipDurationsMs = durations,
                 frameRatesByClip = listOf(24f, 59.94f),
                 currentClipIndex = 1,
                 currentPositionMs = 958L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f, 59.94f),
+                currentClipIndex = 1,
+                currentPositionMs = 984L,
                 direction = PreviewFrameStepDirection.NEXT,
             ),
         )
