@@ -391,4 +391,90 @@ class AudioTracksTest {
         )
     }
 
+    @Test
+    fun splitPreservesContiguousSourceRangeAndOriginalFadeEnvelope() {
+        val original = clip(
+            id = "music",
+            startMs = 1_000L,
+            sourceStartMs = 2_000L,
+            sourceEndMs = 5_000L,
+            sourceDurationMs = 6_000L,
+            volume = 0.6f,
+            fadeInMs = 300L,
+            fadeOutMs = 400L,
+        )
+        val split = splitAudioTrackClip(
+            clips = listOf(original),
+            clipId = original.id,
+            splitTimelineMs = 2_500L,
+            newClipId = "music-right",
+            projectDurationMs = 10_000L,
+        ) ?: error("Expected the flat section to be splittable")
+        val left = split.first { it.id == "music" }
+        val right = split.first { it.id == "music-right" }
+
+        assertEquals(1_000L, left.startMs)
+        assertEquals(2_000L, left.sourceStartMs)
+        assertEquals(3_500L, left.sourceEndMs)
+        assertEquals(2_500L, right.startMs)
+        assertEquals(3_500L, right.sourceStartMs)
+        assertEquals(5_000L, right.sourceEndMs)
+        assertEquals(300L, left.fadeInMs)
+        assertEquals(0L, left.fadeOutMs)
+        assertEquals(0L, right.fadeInMs)
+        assertEquals(400L, right.fadeOutMs)
+        assertEquals(original.uri, right.uri)
+        assertEquals(original.volume, right.volume, 0.0001f)
+        assertTrue(validateAudioTrackClips(split, 10_000L))
+        assertEquals(1_000L, original.startMs)
+        assertEquals(2_000L, original.sourceStartMs)
+        assertEquals(5_000L, original.sourceEndMs)
+
+        for (positionMs in original.startMs until original.endMs) {
+            val originalGain = audioTrackGainAtTimelinePosition(original, positionMs)
+            val splitGain = split
+                .sumOf { audioTrackGainAtTimelinePosition(it, positionMs).toDouble() }
+                .toFloat()
+            assertEquals("Gain changed at $positionMs ms", originalGain, splitGain, 0.0001f)
+        }
+    }
+
+    @Test
+    fun splitRejectsClipEdgesAndPositionsInsideFadeRamps() {
+        val original = clip(
+            id = "music",
+            sourceEndMs = 3_000L,
+            sourceDurationMs = 3_000L,
+            fadeInMs = 300L,
+            fadeOutMs = 400L,
+        )
+        assertNull(splitAudioTrackClip(listOf(original), "music", 0L, "right", 5_000L))
+        assertNull(splitAudioTrackClip(listOf(original), "music", 200L, "right", 5_000L))
+        assertNull(splitAudioTrackClip(listOf(original), "music", 2_700L, "right", 5_000L))
+        assertNull(splitAudioTrackClip(listOf(original), "music", 3_000L, "right", 5_000L))
+        assertNull(splitAudioTrackClip(listOf(original), "missing", 1_500L, "right", 5_000L))
+        assertNull(splitAudioTrackClip(listOf(original), "music", 1_500L, "music", 5_000L))
+    }
+
+    @Test
+    fun splitRejectsWhenAudioClipLimitIsAlreadyReached() {
+        val fullLane = (0 until MAX_AUDIO_TRACK_CLIPS).map { index ->
+            clip(
+                id = "clip-$index",
+                startMs = index * 1_000L,
+                sourceEndMs = 1_000L,
+                sourceDurationMs = 1_000L,
+            )
+        }
+        assertNull(
+            splitAudioTrackClip(
+                clips = fullLane,
+                clipId = "clip-0",
+                splitTimelineMs = 500L,
+                newClipId = "clip-right",
+                projectDurationMs = MAX_AUDIO_TRACK_CLIPS * 1_000L,
+            ),
+        )
+    }
+
 }
