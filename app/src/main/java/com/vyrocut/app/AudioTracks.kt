@@ -310,6 +310,31 @@ internal fun duplicateAudioTrackClip(
 }
 
 /**
+ * Removes one audio clip and closes its duration on the same lane.
+ *
+ * Only later clips on the selected lane move left. Clips before it, clips on
+ * other lanes, source trims, volume and fades remain unchanged. Any gaps on
+ * either side of the removed clip are combined rather than erased.
+ */
+internal fun rippleDeleteAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (!validateAudioTrackClips(clips, projectDurationMs)) return null
+    val selected = clips.singleOrNull { it.id == clipId } ?: return null
+    val shiftMs = selected.durationMs
+    val updated = clips.filterNot { it.id == selected.id }.map { clip ->
+        if (clip.type == selected.type && clip.startMs >= selected.endMs) {
+            clip.copy(startMs = clip.startMs - shiftMs)
+        } else {
+            clip
+        }
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
+/**
  * Produces a gap-filled sequence for one lane. Gaps become silent media items
  * in preview/export, so every lane has the same project-wide clock.
  */

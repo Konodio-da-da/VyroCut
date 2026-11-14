@@ -462,6 +462,92 @@ class AudioTracksTest {
     }
 
     @Test
+    fun rippleDeleteShiftsOnlyLaterClipsOnTheSelectedLaneAndPreservesEdits() {
+        val before = clip(
+            id = "before",
+            startMs = 0L,
+            sourceEndMs = 1_000L,
+            volume = 0.8f,
+            fadeInMs = 100L,
+        )
+        val selected = clip(
+            id = "selected",
+            startMs = 2_000L,
+            sourceStartMs = 1_000L,
+            sourceEndMs = 2_000L,
+            sourceDurationMs = 4_000L,
+            volume = 0.6f,
+            fadeInMs = 100L,
+            fadeOutMs = 200L,
+        )
+        val after = clip(
+            id = "after",
+            startMs = 5_000L,
+            sourceStartMs = 500L,
+            sourceEndMs = 2_500L,
+            sourceDurationMs = 3_000L,
+            volume = 0.4f,
+            fadeInMs = 150L,
+            fadeOutMs = 250L,
+        )
+        val afterTwo = clip(
+            id = "after-two",
+            startMs = 9_000L,
+            sourceEndMs = 1_000L,
+        )
+        val voice = clip(
+            id = "voice",
+            type = AudioTrackType.VOICEOVER,
+            startMs = 2_500L,
+            sourceEndMs = 1_000L,
+        )
+        val sfx = clip(
+            id = "sfx",
+            type = AudioTrackType.SFX,
+            startMs = 6_000L,
+            sourceEndMs = 1_000L,
+        )
+        val original = listOf(before, selected, after, afterTwo, voice, sfx)
+
+        val updated = rippleDeleteAudioTrackClip(original, "selected", 12_000L)
+            ?: error("Expected the selected audio clip to be ripple-deleted")
+
+        assertEquals(listOf("before", "after", "after-two", "voice", "sfx"), updated.map { it.id })
+        assertEquals(before, updated.single { it.id == "before" })
+        assertEquals(after.copy(startMs = 4_000L), updated.single { it.id == "after" })
+        assertEquals(afterTwo.copy(startMs = 8_000L), updated.single { it.id == "after-two" })
+        assertEquals(2_000L, updated.single { it.id == "after-two" }.startMs -
+            updated.single { it.id == "after" }.endMs)
+        assertEquals(3_000L, updated.single { it.id == "after" }.startMs -
+            updated.single { it.id == "before" }.endMs)
+        assertEquals(voice, updated.single { it.id == "voice" })
+        assertEquals(sfx, updated.single { it.id == "sfx" })
+        assertTrue(validateAudioTrackClips(updated, 12_000L))
+        assertEquals(original, listOf(before, selected, after, afterTwo, voice, sfx))
+    }
+
+    @Test
+    fun rippleDeleteOfLastClipLeavesEarlierAndOtherLaneClipsUntouched() {
+        val earlier = clip("earlier", startMs = 0L, sourceEndMs = 1_000L)
+        val last = clip("last", startMs = 2_000L, sourceEndMs = 1_000L)
+        val voice = clip("voice", type = AudioTrackType.VOICEOVER, startMs = 1_000L, sourceEndMs = 2_000L)
+
+        val updated = rippleDeleteAudioTrackClip(listOf(earlier, last, voice), "last", 5_000L)
+            ?: error("Expected the last clip to be removed")
+
+        assertEquals(listOf(earlier, voice), updated)
+    }
+
+    @Test
+    fun rippleDeleteRejectsUnknownClipAndInvalidLaneState() {
+        val selected = clip("selected", startMs = 1_000L, sourceEndMs = 1_000L)
+        val overlapping = clip("overlap", startMs = 1_500L, sourceEndMs = 1_000L)
+
+        assertNull(rippleDeleteAudioTrackClip(listOf(selected), "missing", 5_000L))
+        assertNull(rippleDeleteAudioTrackClip(listOf(selected, overlapping), "selected", 5_000L))
+    }
+
+    @Test
     fun splitPreservesContiguousSourceRangeAndOriginalFadeEnvelope() {
         val original = clip(
             id = "music",

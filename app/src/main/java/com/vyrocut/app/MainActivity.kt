@@ -867,6 +867,25 @@ private fun VyroCutApp() {
         exportMessage = "Duplicated ${selected.name} into the next free lane position. Original source audio remains unchanged."
     }
 
+    fun rippleDeleteSelectedAudioTrack() {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val updated = rippleDeleteAudioTrackClip(audioTrackClips, selected.id, projectDurationMs)
+        if (updated == null) {
+            exportMessage = "Could not ripple-delete this clip because the audio lane state is invalid."
+            return
+        }
+        val nextSelection = updated
+            .filter { it.type == selected.type && it.startMs >= selected.startMs }
+            .minByOrNull { it.startMs }
+            ?: updated
+                .filter { it.type == selected.type && it.endMs <= selected.startMs }
+                .maxByOrNull { it.endMs }
+        changedAudioTracks(updated)
+        selectedAudioTrackId = nextSelection?.id
+        exportMessage = "Ripple-deleted \${selected.name}; later \${selected.type.name.lowercase()} clips moved earlier. Source audio is unchanged."
+    }
+
     fun splitSelectedAudioTrackAtPlayhead() {
         val selected = selectedAudioTrack ?: return
         val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
@@ -2084,6 +2103,15 @@ private fun VyroCutApp() {
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) { Text("Restore full source", fontSize = 10.sp) }
                             }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = { rippleDeleteSelectedAudioTrack() },
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                ) {
+                                    Text("Ripple delete", color = Color(0xFFFF8A80), fontSize = 10.sp)
+                                }
+                            }
+                            Text("Ripple delete closes the removed duration on this lane only.", color = StudioMuted, fontSize = 9.sp)
                             Text("Non-destructive source trims and lane moves • independent lanes mix in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
                         }
                     }
