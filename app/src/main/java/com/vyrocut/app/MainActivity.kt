@@ -799,6 +799,29 @@ private fun VyroCutApp() {
             exportMessage = "Moved " + selected.name + " without changing its source audio."
         }
     }
+    fun duplicateSelectedAudioTrack() {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val duplicateId = java.util.UUID.randomUUID().toString()
+        val updated = duplicateAudioTrackClip(
+            clips = audioTrackClips,
+            clipId = selected.id,
+            newClipId = duplicateId,
+            projectDurationMs = projectDurationMs,
+        )
+        if (updated == null) {
+            exportMessage = when {
+                audioTrackClips.size >= MAX_AUDIO_TRACK_CLIPS ->
+                    "Audio clip limit reached. Remove an item before duplicating."
+                else -> "No free space remains after this clip on its audio lane."
+            }
+            return
+        }
+        changedAudioTracks(updated)
+        selectedAudioTrackId = duplicateId
+        exportMessage = "Duplicated ${selected.name} into the next free lane position. Original source audio remains unchanged."
+    }
+
     fun splitSelectedAudioTrackAtPlayhead() {
         val selected = selectedAudioTrack ?: return
         val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
@@ -2046,6 +2069,13 @@ private fun VyroCutApp() {
                                         audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) { Text("Split at playhead", fontSize = 10.sp) }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(
+                                    onClick = { duplicateSelectedAudioTrack() },
+                                    enabled = audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                ) { Text("Duplicate", fontSize = 10.sp) }
                                 TextButton(
                                     onClick = { trimSelectedAudioTrack(0L, sourceDurationMs) },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),

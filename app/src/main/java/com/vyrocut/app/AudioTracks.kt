@@ -274,6 +274,42 @@ internal fun moveAudioTrackClip(
 }
 
 /**
+ * Duplicates an audio edit-decision-list item into the first free slot at or
+ * after the selected clip's end on the same lane. The new item keeps the
+ * original source range, volume and fades, but receives an independent ID.
+ */
+internal fun duplicateAudioTrackClip(
+    clips: List<AudioTrackClip>,
+    clipId: String,
+    newClipId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip>? {
+    if (!validateAudioTrackClips(clips, projectDurationMs) ||
+        clips.size >= MAX_AUDIO_TRACK_CLIPS ||
+        newClipId.isBlank() ||
+        clips.any { it.id == newClipId }
+    ) return null
+
+    val selectedIndex = clips.indexOfFirst { it.id == clipId }
+    if (selectedIndex < 0) return null
+    val selected = clips[selectedIndex]
+    val otherClips = clips.filterNot { it.id == clipId }
+    val duplicateStartMs = resolveAudioTrackInsertionStartMs(
+        clips = otherClips,
+        type = selected.type,
+        requestedStartMs = selected.endMs,
+        clipDurationMs = selected.durationMs,
+        projectDurationMs = projectDurationMs,
+    ) ?: return null
+
+    val duplicate = selected.copy(id = newClipId, startMs = duplicateStartMs)
+    val updated = clips.toMutableList().apply {
+        add(selectedIndex + 1, duplicate)
+    }
+    return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
+}
+
+/**
  * Produces a gap-filled sequence for one lane. Gaps become silent media items
  * in preview/export, so every lane has the same project-wide clock.
  */

@@ -392,6 +392,76 @@ class AudioTracksTest {
     }
 
     @Test
+    fun duplicatePreservesSourceEditsAndUsesFirstFreeSlotAfterSelectedClip() {
+        val selected = clip(
+            id = "music",
+            startMs = 1_000L,
+            sourceStartMs = 250L,
+            sourceEndMs = 1_250L,
+            sourceDurationMs = 2_000L,
+            volume = 0.65f,
+            fadeInMs = 100L,
+            fadeOutMs = 200L,
+        )
+        val following = clip("following", startMs = 3_000L, sourceEndMs = 1_000L)
+        val original = listOf(selected, following)
+
+        val duplicated = duplicateAudioTrackClip(
+            clips = original,
+            clipId = "music",
+            newClipId = "music-copy",
+            projectDurationMs = 7_000L,
+        ) ?: error("Expected the duplicate to fit in the first free gap")
+
+        val copy = duplicated.first { it.id == "music-copy" }
+        assertEquals(selected.copy(id = "music-copy", startMs = 2_000L), copy)
+        assertEquals(selected, duplicated.first { it.id == "music" })
+        assertEquals(original, listOf(selected, following))
+        assertTrue(validateAudioTrackClips(duplicated, 7_000L))
+    }
+
+    @Test
+    fun duplicateSkipsAGapThatIsTooShortAndUsesTheNextAvailableSlot() {
+        val selected = clip("music", startMs = 0L, sourceEndMs = 1_000L)
+        val blocker = clip("blocker", startMs = 1_500L, sourceEndMs = 1_000L)
+
+        val duplicated = duplicateAudioTrackClip(
+            clips = listOf(selected, blocker),
+            clipId = "music",
+            newClipId = "music-copy",
+            projectDurationMs = 5_000L,
+        ) ?: error("Expected a later free slot")
+
+        assertEquals(2_500L, duplicated.first { it.id == "music-copy" }.startMs)
+        assertTrue(validateAudioTrackClips(duplicated, 5_000L))
+    }
+
+    @Test
+    fun duplicateRejectsMissingOrDuplicateIdsAndProjectsWithoutRoom() {
+        val selected = clip("music", startMs = 4_000L, sourceEndMs = 1_000L)
+        assertNull(duplicateAudioTrackClip(listOf(selected), "missing", "copy", 5_000L))
+        assertNull(duplicateAudioTrackClip(listOf(selected), "music", "music", 5_000L))
+        assertNull(duplicateAudioTrackClip(listOf(selected), "music", "copy", 5_000L))
+
+        val fullProject = (0 until MAX_AUDIO_TRACK_CLIPS).map { index ->
+            clip(
+                id = "clip-$index",
+                startMs = index * 1_000L,
+                sourceEndMs = 1_000L,
+                sourceDurationMs = 1_000L,
+            )
+        }
+        assertNull(
+            duplicateAudioTrackClip(
+                clips = fullProject,
+                clipId = "clip-0",
+                newClipId = "clip-copy",
+                projectDurationMs = MAX_AUDIO_TRACK_CLIPS * 1_000L,
+            ),
+        )
+    }
+
+    @Test
     fun splitPreservesContiguousSourceRangeAndOriginalFadeEnvelope() {
         val original = clip(
             id = "music",
