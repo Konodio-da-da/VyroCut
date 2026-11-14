@@ -563,6 +563,22 @@ internal fun <T> duplicateTimelineItemAfter(
 
 
 /**
+ * Suspends timeline auto-follow only after a deliberate horizontal drag crosses
+ * touch slop. Vertical gestures and sub-slop movement must not take ownership.
+ */
+internal fun shouldSuspendTimelineAutoFollowForDrag(
+    deltaX: Float,
+    deltaY: Float,
+    touchSlopPx: Float,
+): Boolean {
+    if (!deltaX.isFinite() || !deltaY.isFinite() || !touchSlopPx.isFinite() || touchSlopPx < 0f) {
+        return false
+    }
+    return kotlin.math.abs(deltaX) > touchSlopPx &&
+        kotlin.math.abs(deltaX) > kotlin.math.abs(deltaY)
+}
+
+/**
  * Keeps a playing playhead inside a safe horizontal viewport band without
  * taking control away from the user while paused or after a manual timeline
  * drag. Manual scrolling suppresses auto-follow until playback is restarted

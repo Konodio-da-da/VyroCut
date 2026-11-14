@@ -89,3 +89,10 @@
 - Audio, image, text, transitions, and effects tracks.
 
 A control is only considered complete when its operation is connected to the project state and verified by the Android build. Device playback and rendering still require hands-on testing on an Android device.
+
+
+## Manual timeline-scroll override CI repair
+- The timeline now observes pointer movement on the Initial pass and only suspends auto-follow after horizontal movement exceeds the device touch slop.
+- The observer does not consume pointer changes; the existing horizontal scroll modifier remains the sole owner of timeline scrolling.
+- Vertical gestures and small incidental movements do not suspend auto-follow. Pure Kotlin tests cover horizontal intent, touch-slop boundaries, vertical movement, and invalid measurements.
+- This replaces an unsupported `interactionSource` argument on the pinned Compose `horizontalScroll` API. The previous PR run failed at Kotlin compilation on that argument; the replacement is designed against the project's Compose BOM and must be confirmed by the next Android CI run.

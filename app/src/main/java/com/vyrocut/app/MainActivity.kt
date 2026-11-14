@@ -19,12 +19,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -3556,12 +3557,7 @@ private fun TimelineEditorStrip(
     // same origin and offset. Multiple scroll containers sharing one state
     // can fight over viewport measurements on smaller devices.
     val timelineScroll = rememberScrollState()
-    val timelineInteractionSource = remember { MutableInteractionSource() }
-    val isTimelineDragged by timelineInteractionSource.collectIsDraggedAsState()
     var autoFollowSuppressedByUser by remember { mutableStateOf(false) }
-    LaunchedEffect(isTimelineDragged) {
-        if (isTimelineDragged) autoFollowSuppressedByUser = true
-    }
     LaunchedEffect(isPlaying) {
         if (isPlaying) autoFollowSuppressedByUser = false
     }
@@ -3590,7 +3586,6 @@ private fun TimelineEditorStrip(
         markerPositionPx,
         viewportWidthPx,
         timelineScroll.maxValue,
-        isTimelineDragged,
         autoFollowSuppressedByUser,
     ) {
         val targetScrollPx = calculateTimelineAutoFollowScrollTargetPx(
@@ -3599,7 +3594,7 @@ private fun TimelineEditorStrip(
             viewportWidthPx = viewportWidthPx,
             maxScrollPx = timelineScroll.maxValue,
             isPlaying = isPlaying,
-            isUserScrollOverride = isTimelineDragged || autoFollowSuppressedByUser,
+            isUserScrollOverride = autoFollowSuppressedByUser,
         )
         if (targetScrollPx != null) {
             // Jump only when the playhead leaves the safe viewport band. Manual
@@ -3620,7 +3615,34 @@ private fun TimelineEditorStrip(
     Column(
         Modifier.fillMaxWidth()
             .onSizeChanged { viewportWidthPx = it.width }
-            .horizontalScroll(timelineScroll, interactionSource = timelineInteractionSource),
+            // Observe horizontal drags on the Initial pass without consuming them.
+            // horizontalScroll remains the only modifier that owns scrolling.
+            .pointerInput(timelineScroll) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(
+                        requireUnconsumed = false,
+                        pass = PointerEventPass.Initial,
+                    )
+                    var dragObserved = false
+                    while (!dragObserved) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        val delta = change.position - down.position
+                        if (
+                            shouldSuspendTimelineAutoFollowForDrag(
+                                deltaX = delta.x,
+                                deltaY = delta.y,
+                                touchSlopPx = viewConfiguration.touchSlop,
+                            )
+                        ) {
+                            autoFollowSuppressedByUser = true
+                            dragObserved = true
+                        }
+                    }
+                }
+            }
+            .horizontalScroll(timelineScroll),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {

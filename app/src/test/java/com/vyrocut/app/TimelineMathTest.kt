@@ -730,6 +730,22 @@ class TimelineMathTest {
     }
 
     @Test
+    fun timelineAutoFollowOverrideRequiresHorizontalMovementBeyondTouchSlop() {
+        assertTrue(shouldSuspendTimelineAutoFollowForDrag(deltaX = 24f, deltaY = 3f, touchSlopPx = 8f))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(deltaX = 8f, deltaY = 0f, touchSlopPx = 8f))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(deltaX = 4f, deltaY = 1f, touchSlopPx = 8f))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(deltaX = 3f, deltaY = 24f, touchSlopPx = 8f))
+    }
+
+    @Test
+    fun timelineAutoFollowOverrideRejectsInvalidGestureMeasurements() {
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(Float.NaN, 0f, 8f))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(20f, Float.POSITIVE_INFINITY, 8f))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(20f, 0f, Float.NaN))
+        assertFalse(shouldSuspendTimelineAutoFollowForDrag(20f, 0f, -1f))
+    }
+
+    @Test
     fun timelineAutoFollowMovesForwardWhenPlayheadLeavesRightSafeBoundary() {
         assertEquals(
             725,
