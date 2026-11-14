@@ -91,6 +91,7 @@ private val StudioAccent = Color(0xFF0FE8B8)
 private val StudioText = Color(0xFFE5EDEA)
 private val StudioMuted = Color(0xFF9BAAA5)
 
+@OptIn(UnstableApi::class)
 private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
     when (previewSeekPrecisionFor(intent)) {
         PreviewSeekPrecision.EXACT -> SeekParameters.EXACT
