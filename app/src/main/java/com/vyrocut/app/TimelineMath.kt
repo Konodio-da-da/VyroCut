@@ -659,30 +659,107 @@ internal fun resolveSelectedPreviewFrameRate(
 
 internal enum class PreviewFrameStepDirection { PREVIOUS, NEXT }
 
+/** Inclusive source-frame index bounds intersecting one clip's source trim. */
+private data class PreviewFrameIndexRange(
+    val firstFrameIndex: Long,
+    val lastFrameIndex: Long,
+)
+
 /**
- * Resolves one adjacent frame inside the active clipped playlist item.
+ * Returns the source-frame indices whose presentation timestamps fall inside
+ * [sourceStartMs, sourceStartMs + clipDurationMs). The source offset matters:
+ * a non-destructive trim can begin between two frames, so clip-relative zero
+ * is not necessarily a frame boundary.
+ */
+private fun resolvePreviewFrameIndexRange(
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    frameRate: Float,
+): PreviewFrameIndexRange? {
+    if (sourceStartMs < 0L || clipDurationMs <= 0L ||
+        sourceStartMs > Long.MAX_VALUE - clipDurationMs ||
+        !isValidPreviewFrameRate(frameRate)
+    ) return null
+
+    val sourceEndMs = sourceStartMs + clipDurationMs
+    val framesPerSecond = frameRate.toDouble()
+    val firstFramePosition = sourceStartMs.toDouble() * framesPerSecond / 1_000.0
+    val endFramePosition = sourceEndMs.toDouble() * framesPerSecond / 1_000.0
+
+    // Subtract a tiny epsilon so an exact frame boundary remains inclusive at
+    // the trim start and exclusive at the trim end despite floating-point noise.
+    val firstFrameIndex = ceil(firstFramePosition - 1e-9).toLong().coerceAtLeast(0L)
+    val endExclusiveFrameIndex = ceil(endFramePosition - 1e-9).toLong()
+    val lastFrameIndex = endExclusiveFrameIndex - 1L
+    if (lastFrameIndex < firstFrameIndex) return null
+
+    return PreviewFrameIndexRange(firstFrameIndex, lastFrameIndex)
+}
+
+private fun previewFrameTimestampMs(frameIndex: Long, frameRate: Float): Long =
+    (frameIndex.toDouble() * 1_000.0 / frameRate.toDouble()).roundToLong()
+
+private fun previewFrameOffsetMs(
+    frameIndex: Long,
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    frameRate: Float,
+): Long = (previewFrameTimestampMs(frameIndex, frameRate) - sourceStartMs)
+    .coerceIn(0L, clipDurationMs - 1L)
+
+private fun resolveFirstPreviewFrameOffsetMs(
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    frameRate: Float,
+): Long? {
+    val range = resolvePreviewFrameIndexRange(sourceStartMs, clipDurationMs, frameRate) ?: return null
+    return previewFrameOffsetMs(range.firstFrameIndex, sourceStartMs, clipDurationMs, frameRate)
+}
+
+private fun resolveLastPreviewFrameOffsetMs(
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    frameRate: Float,
+): Long? {
+    val range = resolvePreviewFrameIndexRange(sourceStartMs, clipDurationMs, frameRate) ?: return null
+    return previewFrameOffsetMs(range.lastFrameIndex, sourceStartMs, clipDurationMs, frameRate)
+}
+
+/**
+ * Resolves one adjacent source frame inside the active clipped playlist item.
  *
- * Media3 reports positions in milliseconds while common frame rates are
- * fractional (for example 23.976 or 29.97 fps). Frame indices are calculated
- * from the rate and converted back only once, avoiding cumulative 33/34 ms
- * or 41/42 ms rounding drift. A step at either clip edge returns null rather
- * than silently crossing into a clip with a potentially different frame rate.
+ * Media3 reports positions relative to the clipped item, but frame timestamps
+ * remain anchored to the original source. [sourceStartMs] therefore participates
+ * in frame-index calculation and the result is converted back to clip-relative
+ * time only after the target frame has been validated against the source range.
  */
 internal fun resolvePreviewFrameStepTargetMs(
     currentPositionMs: Long,
     clipDurationMs: Long,
     frameRate: Float,
     direction: PreviewFrameStepDirection,
+    sourceStartMs: Long = 0L,
 ): Long? {
-    if (clipDurationMs <= 0L || !frameRate.isFinite() ||
-        frameRate !in MIN_PREVIEW_FRAME_RATE..MAX_PREVIEW_FRAME_RATE
-    ) return null
-
+    val range = resolvePreviewFrameIndexRange(sourceStartMs, clipDurationMs, frameRate) ?: return null
     val currentMs = currentPositionMs.coerceIn(0L, clipDurationMs - 1L)
-    val framePosition = currentMs.toDouble() * frameRate.toDouble() / 1_000.0
+    val firstFrameOffsetMs = previewFrameOffsetMs(
+        range.firstFrameIndex,
+        sourceStartMs,
+        clipDurationMs,
+        frameRate,
+    )
+
+    // Before the first source frame in a trimmed range, the next step is that
+    // first available frame; there is no previous frame inside this clip.
+    if (currentMs < firstFrameOffsetMs) {
+        return if (direction == PreviewFrameStepDirection.NEXT) firstFrameOffsetMs else null
+    }
+
+    val currentSourceMs = sourceStartMs + currentMs
+    val framePosition = currentSourceMs.toDouble() * frameRate.toDouble() / 1_000.0
     val nearestFrameIndex = framePosition.roundToLong()
-    val nearestFrameMs = (nearestFrameIndex * 1_000.0 / frameRate.toDouble()).roundToLong()
-    val isOnFrameBoundary = abs(nearestFrameMs - currentMs) <= 1L
+    val nearestFrameMs = previewFrameTimestampMs(nearestFrameIndex, frameRate)
+    val isOnFrameBoundary = abs(nearestFrameMs - currentSourceMs) <= 1L
 
     val targetFrameIndex = when (direction) {
         PreviewFrameStepDirection.PREVIOUS -> {
@@ -692,10 +769,10 @@ internal fun resolvePreviewFrameStepTargetMs(
             if (isOnFrameBoundary) nearestFrameIndex + 1L else floor(framePosition).toLong() + 1L
         }
     }
-    if (targetFrameIndex < 0L) return null
+    if (targetFrameIndex !in range.firstFrameIndex..range.lastFrameIndex) return null
 
-    val targetMs = (targetFrameIndex * 1_000.0 / frameRate.toDouble()).roundToLong()
-    return targetMs.takeIf { it in 0 until clipDurationMs && it != currentMs }
+    val targetMs = previewFrameOffsetMs(targetFrameIndex, sourceStartMs, clipDurationMs, frameRate)
+    return targetMs.takeIf { it != currentMs }
 }
 
 internal data class PreviewFrameStepTarget(
@@ -704,10 +781,11 @@ internal data class PreviewFrameStepTarget(
 )
 
 /**
- * Steps one decoded-frame position across an ordered playlist. The active clip
- * is stepped using its Media3-selected frame rate; when that step reaches a
- * clip edge, the adjacent clip's own source frame rate is used. This avoids
- * assuming that neighbouring clips share a frame rate.
+ * Steps one decoded-frame position across an ordered playlist. Each clip's
+ * frame grid is anchored to its original source timestamps, not to the trimmed
+ * playlist item's local zero. This keeps frame navigation aligned when a
+ * non-destructive source IN point falls between frames or adjacent clips use
+ * different frame rates.
  */
 internal fun resolvePreviewFrameStepAcrossClips(
     clipDurationsMs: List<Long>,
@@ -715,16 +793,20 @@ internal fun resolvePreviewFrameStepAcrossClips(
     currentClipIndex: Int,
     currentPositionMs: Long,
     direction: PreviewFrameStepDirection,
+    sourceStartMsByClip: List<Long> = emptyList(),
 ): PreviewFrameStepTarget? {
     if (clipDurationsMs.isEmpty() ||
         frameRatesByClip.size != clipDurationsMs.size ||
-        currentClipIndex !in clipDurationsMs.indices
+        currentClipIndex !in clipDurationsMs.indices ||
+        (sourceStartMsByClip.isNotEmpty() && sourceStartMsByClip.size != clipDurationsMs.size)
     ) return null
 
+    val sourceStarts = sourceStartMsByClip.ifEmpty { List(clipDurationsMs.size) { 0L } }
     val currentDurationMs = clipDurationsMs[currentClipIndex]
+    val currentSourceStartMs = sourceStarts[currentClipIndex]
     val currentFrameRate = frameRatesByClip[currentClipIndex]
-    if (currentDurationMs <= 0L || currentFrameRate == null ||
-        !isValidPreviewFrameRate(currentFrameRate)
+    if (currentFrameRate == null ||
+        resolvePreviewFrameIndexRange(currentSourceStartMs, currentDurationMs, currentFrameRate) == null
     ) return null
 
     resolvePreviewFrameStepTargetMs(
@@ -732,6 +814,7 @@ internal fun resolvePreviewFrameStepAcrossClips(
         clipDurationMs = currentDurationMs,
         frameRate = currentFrameRate,
         direction = direction,
+        sourceStartMs = currentSourceStartMs,
     )?.let { return PreviewFrameStepTarget(currentClipIndex, it) }
 
     val adjacentClipIndex = currentClipIndex + when (direction) {
@@ -741,19 +824,21 @@ internal fun resolvePreviewFrameStepAcrossClips(
     if (adjacentClipIndex !in clipDurationsMs.indices) return null
 
     val adjacentDurationMs = clipDurationsMs[adjacentClipIndex]
+    val adjacentSourceStartMs = sourceStarts[adjacentClipIndex]
     val adjacentFrameRate = frameRatesByClip[adjacentClipIndex]
-    if (adjacentDurationMs <= 0L || adjacentFrameRate == null ||
-        !isValidPreviewFrameRate(adjacentFrameRate)
-    ) return null
+    if (adjacentFrameRate == null) return null
 
     val adjacentPositionMs = when (direction) {
-        PreviewFrameStepDirection.PREVIOUS -> resolvePreviewFrameStepTargetMs(
-            currentPositionMs = adjacentDurationMs - 1L,
+        PreviewFrameStepDirection.PREVIOUS -> resolveLastPreviewFrameOffsetMs(
+            sourceStartMs = adjacentSourceStartMs,
             clipDurationMs = adjacentDurationMs,
             frameRate = adjacentFrameRate,
-            direction = PreviewFrameStepDirection.PREVIOUS,
         ) ?: return null
-        PreviewFrameStepDirection.NEXT -> 0L
+        PreviewFrameStepDirection.NEXT -> resolveFirstPreviewFrameOffsetMs(
+            sourceStartMs = adjacentSourceStartMs,
+            clipDurationMs = adjacentDurationMs,
+            frameRate = adjacentFrameRate,
+        ) ?: return null
     }
     return PreviewFrameStepTarget(adjacentClipIndex, adjacentPositionMs)
 }

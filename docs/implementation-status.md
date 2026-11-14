@@ -1,5 +1,12 @@
 # Implementation status
 
+## Current frame-stepping milestone — 15 November 2026
+- Verified baseline fde3fe7bed3a85367b792154bf0b8983a1e2075a passed assembleDebug, testDebugUnitTest, and debug APK upload in [Android build run #386](https://github.com/Konodio-da-da/VyroCut/actions/runs/43647299815).
+- The next improvement calculates preview frame positions against each clip's original source timestamp grid, then converts the selected source frame back to the trimmed Media3 item's local position. This addresses non-frame-aligned source IN points without modifying source media or the edit decision list.
+- Three pure Kotlin regression tests cover non-aligned trim offsets, mixed-rate transitions between trimmed clips, and trims too short to contain a source presentation frame.
+- The new commit's Android build and JVM tests must pass in GitHub Actions before this milestone is considered verified. The ProductOS sandbox has no Java, Gradle, Android SDK, ADB, emulator, or Gradle wrapper launcher; physical-device checks remain outstanding.
+- Nominal frame-rate stepping does not establish correct frame navigation for variable-frame-rate sources. VFR presentation timestamps and actual displayed frames still require a dedicated device/source-metadata validation pass.
+
 ## Last verified build
 - Feature head `9a03acd2ab9226fad34f648b6420b6fa548c76e3` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #366](https://github.com/Konodio-da-da/VyroCut/actions/runs/43615113584). This is the verified baseline before manual-scroll-aware timeline auto-follow.
 - Feature head `3c3b5bf9d1ed0cd9ce79cfd214ec200b7979be0f` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #342](https://github.com/Konodio-da-da/VyroCut/actions/runs/43589993760). This is the verified baseline before adding non-destructive audio-lane ripple delete.

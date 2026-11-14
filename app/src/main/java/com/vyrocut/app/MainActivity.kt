@@ -746,6 +746,7 @@ private fun VyroCutApp() {
             currentClipIndex = clipIndex,
             currentPositionMs = player.currentPosition,
             direction = direction,
+            sourceStartMsByClip = clips.map { it.sourceStartMs },
         ) ?: return
         player.pause()
         seekPreviewToTimelinePosition(

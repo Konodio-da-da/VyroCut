@@ -109,6 +109,102 @@ class TimelineMathTest {
     }
 
     @Test
+    fun frameSteppingUsesOriginalSourceFrameGridForNonAlignedTrimOffsets() {
+        assertEquals(
+            25L,
+            resolvePreviewFrameStepTargetMs(
+                currentPositionMs = 0L,
+                clipDurationMs = 1_000L,
+                frameRate = 24f,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMs = 100L,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepTargetMs(
+                currentPositionMs = 0L,
+                clipDurationMs = 1_000L,
+                frameRate = 24f,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMs = 100L,
+            ),
+        )
+        assertEquals(
+            67L,
+            resolvePreviewFrameStepTargetMs(
+                currentPositionMs = 25L,
+                clipDurationMs = 1_000L,
+                frameRate = 24f,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMs = 100L,
+            ),
+        )
+        assertEquals(
+            25L,
+            resolvePreviewFrameStepTargetMs(
+                currentPositionMs = 67L,
+                clipDurationMs = 1_000L,
+                frameRate = 24f,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMs = 100L,
+            ),
+        )
+    }
+
+    @Test
+    fun frameSteppingAcrossTrimmedClipsUsesEachOriginalSourceOffset() {
+        val durations = listOf(1_000L, 1_000L)
+        val frameRates = listOf(24f, 30f)
+        val sourceStarts = listOf(100L, 210L)
+
+        assertEquals(
+            PreviewFrameStepTarget(1, 23L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = frameRates,
+                currentClipIndex = 0,
+                currentPositionMs = 983L,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMsByClip = sourceStarts,
+            ),
+        )
+        assertEquals(
+            PreviewFrameStepTarget(0, 983L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = frameRates,
+                currentClipIndex = 1,
+                currentPositionMs = 0L,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMsByClip = sourceStarts,
+            ),
+        )
+    }
+
+    @Test
+    fun frameSteppingRejectsTrimRangesWithoutAnySourceFrame() {
+        assertNull(
+            resolvePreviewFrameStepTargetMs(
+                currentPositionMs = 0L,
+                clipDurationMs = 10L,
+                frameRate = 24f,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMs = 101L,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = listOf(10L, 10L),
+                frameRatesByClip = listOf(24f, 24f),
+                currentClipIndex = 0,
+                currentPositionMs = 0L,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMsByClip = listOf(101L, 202L),
+            ),
+        )
+    }
+
+    @Test
     fun frameSteppingStaysInsideClipUntilItsLastFrameAndRejectsUnknownAdjacentRates() {
         val durations = listOf(1_000L, 1_000L)
         assertEquals(

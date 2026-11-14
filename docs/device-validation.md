@@ -73,3 +73,7 @@ Do not mark any of these device-only checks complete from CI results alone.
    - Import adjacent 24 fps and 59.94 fps clips (then reverse their order); step forward from the first clip's last frame and backward from the second clip's first frame. Repeat with 23.976 and 29.97 fps sources.
    - Revoke or relink a source with unavailable frame-rate metadata; confirm the resolver fails closed at that cut rather than guessing, and that other clips remain step-able.
    - Repeat with multiple timeline clips sharing one source URI and verify Music, SFX, and Voiceover remain aligned after crossing the cut.
+   - Repeat frame stepping with non-frame-aligned source IN points (for example 100 ms at 24 fps and 210 ms at 30 fps). Confirm stepping uses original-source presentation timestamps, converts back to clip-relative positions, and never seeks before the trimmed source range.
+   - Test very short trims that contain no source presentation frame; confirm frame stepping fails closed without moving the playhead.
+   - Cross between two trimmed clips with different frame rates in both directions; verify the first/last available source frame is selected rather than assuming clip-relative zero is a frame boundary.
+   - Repeat with variable-frame-rate footage and record actual presentation timestamps separately. Nominal FPS metadata alone is not proof of frame-accurate VFR stepping.
