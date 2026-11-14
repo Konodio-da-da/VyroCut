@@ -799,6 +799,36 @@ private fun VyroCutApp() {
             exportMessage = "Moved " + selected.name + " without changing its source audio."
         }
     }
+    fun splitSelectedAudioTrackAtPlayhead() {
+        val selected = selectedAudioTrack ?: return
+        val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
+        val splitPositionMs = timelinePositionMs.toLong().coerceAtLeast(0L)
+        val splitId = java.util.UUID.randomUUID().toString()
+        val updated = splitAudioTrackClip(
+            clips = audioTrackClips,
+            clipId = selected.id,
+            splitTimelineMs = splitPositionMs,
+            newClipId = splitId,
+            projectDurationMs = projectDurationMs,
+        )
+        if (updated == null) {
+            val offsetMs = splitPositionMs - selected.startMs
+            exportMessage = when {
+                audioTrackClips.size >= MAX_AUDIO_TRACK_CLIPS ->
+                    "Audio clip limit reached. Remove an item before splitting."
+                splitPositionMs <= selected.startMs || splitPositionMs >= selected.endMs ->
+                    "Move the playhead inside the selected audio clip to split it."
+                offsetMs < selected.fadeInMs || offsetMs > selected.durationMs - selected.fadeOutMs ->
+                    "Split outside the existing fade-in and fade-out ramps to preserve the current sound."
+                else -> "Could not split this audio clip without changing its source range."
+            }
+            return
+        }
+        changedAudioTracks(updated)
+        selectedAudioTrackId = splitId
+        exportMessage = "Split ${selected.name} at the playhead. Original source audio remains unchanged."
+    }
+
     fun trimSelectedAudioTrack(sourceStartMs: Long, sourceEndMs: Long) {
         val selected = selectedAudioTrack ?: return
         val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
@@ -2009,6 +2039,13 @@ private fun VyroCutApp() {
                                     onClick = { moveSelectedAudioTrack(timelinePositionMs.toLong()) },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) { Text("Move to playhead", fontSize = 10.sp) }
+                                TextButton(
+                                    onClick = { splitSelectedAudioTrackAtPlayhead() },
+                                    enabled = timelinePositionMs.toLong() > selectedAudioTrack.startMs &&
+                                        timelinePositionMs.toLong() < selectedAudioTrack.endMs &&
+                                        audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
+                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                ) { Text("Split at playhead", fontSize = 10.sp) }
                                 TextButton(
                                     onClick = { trimSelectedAudioTrack(0L, sourceDurationMs) },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
