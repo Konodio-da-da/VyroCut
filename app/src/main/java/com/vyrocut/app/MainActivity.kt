@@ -61,6 +61,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -177,6 +178,7 @@ private fun VyroCutApp() {
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
+    var previewPlaybackSpeed by remember(activeProjectId) { mutableFloatStateOf(1f) }
     var isExporting by remember { mutableStateOf(false) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var exportedUri by remember { mutableStateOf<Uri?>(null) }
@@ -316,6 +318,15 @@ private fun VyroCutApp() {
                 audioPlayer.playWhenReady = false
                 audioPlayer.release()
             }
+        }
+    }
+
+    // Keep every audio lane on the same playback rate and pitch as the video clock.
+    LaunchedEffect(previewPlaybackSpeed, player, audioPlayers) {
+        val parameters = PlaybackParameters(previewPlaybackSpeed, 1f)
+        player.playbackParameters = parameters
+        audioPlayers.values.forEach { audioPlayer ->
+            audioPlayer.playbackParameters = parameters
         }
     }
     var audioTrackSegments by remember {
@@ -1316,6 +1327,13 @@ private fun VyroCutApp() {
                         enabled = clips.isNotEmpty(),
                     ) {
                         Icon(Icons.Default.ArrowForward, contentDescription = "Forward 5 seconds", tint = StudioAccent)
+                    }
+                    TextButton(
+                        onClick = { previewPlaybackSpeed = nextPreviewPlaybackSpeed(previewPlaybackSpeed) },
+                        enabled = selectedClip != null,
+                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
+                    ) {
+                        Text(previewPlaybackSpeedLabel(previewPlaybackSpeed), color = StudioAccent, fontSize = 11.sp)
                     }
                     FilledTonalButton(onClick = {
                         if (player.isPlaying) {
