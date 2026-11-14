@@ -2592,14 +2592,20 @@ private fun VyroCutApp() {
                                             ?: snapshot.projectName
                                         val restoredDurationMs =
                                             calculateTimelineDurationMs(restored.map { it.durationMs })
-                                        val restoredAudioTracks = if (snapshot.projectId == activeProjectId) {
-                                            trimAudioTrackClipsToProjectDuration(audioTrackClips, restoredDurationMs)
+                                        val currentAudioTracks = if (snapshot.projectId == activeProjectId) {
+                                            audioTrackClips
                                         } else {
-                                            trimAudioTrackClipsToProjectDuration(
-                                                loadProjectAudioTracks(preferences, snapshot.projectId, Long.MAX_VALUE),
-                                                restoredDurationMs,
-                                            )
+                                            loadProjectAudioTracks(preferences, snapshot.projectId, Long.MAX_VALUE)
                                         }
+                                        val restoredAudioTracks = audioTracksForProjectRecovery(
+                                            projectSnapshot = snapshot,
+                                            rawAudioRecoveryJournal = preferences.getString(
+                                                "project_${snapshot.projectId}_audio_tracks_recovery",
+                                                null,
+                                            ),
+                                            currentAudioTracks = currentAudioTracks,
+                                            projectDurationMs = restoredDurationMs,
+                                        )
                                         persistProjectState(
                                             preferences,
                                             snapshot.projectId,

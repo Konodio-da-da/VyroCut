@@ -168,4 +168,103 @@ class ProjectPersistenceRulesTest {
         )
     }
 
+
+    @Test
+    fun projectRecoveryRestoresAudioFromTheMatchingCheckpointTimestamp() {
+        val savedAtMs = 1_800_000_000_000L
+        val projectSnapshot = recoveryProjectSnapshot(savedAtMs)
+        val checkpointTracks = listOf(recoveryAudioTrack("checkpoint-music", 500L))
+        val currentTracks = listOf(recoveryAudioTrack("newer-music", 1_500L))
+        val audioJournal = encodeAudioTrackRecoveryJournal(
+            projectId = "project-1",
+            audioTracksJson = encodeAudioTrackClips(checkpointTracks),
+            savedAtMs = savedAtMs,
+        )
+
+        assertEquals(
+            checkpointTracks,
+            audioTracksForProjectRecovery(
+                projectSnapshot,
+                audioJournal,
+                currentTracks,
+                projectDurationMs = 5_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun projectRecoveryDoesNotMixAudioFromADifferentCheckpointTimestamp() {
+        val projectSnapshot = recoveryProjectSnapshot(1_800_000_000_000L)
+        val currentTracks = listOf(recoveryAudioTrack("current-music", 1_000L))
+        val audioJournal = encodeAudioTrackRecoveryJournal(
+            projectId = "project-1",
+            audioTracksJson = encodeAudioTrackClips(
+                listOf(recoveryAudioTrack("later-music", 2_000L)),
+            ),
+            savedAtMs = 1_800_000_000_001L,
+        )
+
+        assertEquals(
+            currentTracks,
+            audioTracksForProjectRecovery(
+                projectSnapshot,
+                audioJournal,
+                currentTracks,
+                projectDurationMs = 5_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun projectRecoveryFallsBackWhenAudioJournalIsCorruptOrBelongsToAnotherProject() {
+        val projectSnapshot = recoveryProjectSnapshot(1_800_000_000_000L)
+        val currentTracks = listOf(recoveryAudioTrack("current-music", 750L))
+        val validForeignJournal = encodeAudioTrackRecoveryJournal(
+            projectId = "project-2",
+            audioTracksJson = encodeAudioTrackClips(
+                listOf(recoveryAudioTrack("foreign-music", 0L)),
+            ),
+            savedAtMs = projectSnapshot.savedAtMs,
+        )
+        val tamperedJournal = encodeAudioTrackRecoveryJournal(
+            projectId = "project-1",
+            audioTracksJson = encodeAudioTrackClips(
+                listOf(recoveryAudioTrack("tampered-music", 0L)),
+            ),
+            savedAtMs = projectSnapshot.savedAtMs,
+        ).let { it.dropLast(1) + if (it.last() == '0') "1" else "0" }
+
+        listOf(tamperedJournal, validForeignJournal).forEach { journal ->
+            assertEquals(
+                currentTracks,
+                audioTracksForProjectRecovery(
+                    projectSnapshot,
+                    journal,
+                    currentTracks,
+                    projectDurationMs = 5_000L,
+                ),
+            )
+        }
+    }
+
+    private fun recoveryProjectSnapshot(savedAtMs: Long): ProjectRecoverySnapshot {
+        val journal = ProjectRecoveryJournal.encode(
+            projectId = "project-1",
+            projectName = "Project",
+            savedAtMs = savedAtMs,
+            projectJson = "[]",
+        )
+        return requireNotNull(ProjectRecoveryJournal.decode(journal, "project-1"))
+    }
+
+    private fun recoveryAudioTrack(id: String, startMs: Long) = AudioTrackClip(
+        id = id,
+        type = AudioTrackType.MUSIC,
+        uri = "content://media/$id",
+        name = id,
+        startMs = startMs,
+        sourceStartMs = 0L,
+        sourceEndMs = 1_000L,
+        sourceDurationMs = 1_000L,
+    )
 }

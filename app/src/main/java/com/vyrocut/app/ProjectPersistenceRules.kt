@@ -118,3 +118,26 @@ internal fun createProjectRecoveryJournalBundle(
         ),
     )
 }
+
+
+/**
+ * Restores audio lanes from the same save instant as a video recovery checkpoint.
+ * If an older or independently updated audio journal cannot be matched safely,
+ * preserve the current audio state and trim it to the recovered video duration.
+ */
+internal fun audioTracksForProjectRecovery(
+    projectSnapshot: ProjectRecoverySnapshot,
+    rawAudioRecoveryJournal: String?,
+    currentAudioTracks: List<AudioTrackClip>,
+    projectDurationMs: Long,
+): List<AudioTrackClip> {
+    val checkpointAudioTracks = ProjectRecoveryJournal
+        .decode(rawAudioRecoveryJournal, projectSnapshot.projectId)
+        ?.takeIf {
+            it.projectName == "Audio tracks" && it.savedAtMs == projectSnapshot.savedAtMs
+        }
+        ?.let { decodeAudioTrackClips(it.projectJson, projectDurationMs) }
+
+    return checkpointAudioTracks
+        ?: trimAudioTrackClipsToProjectDuration(currentAudioTracks, projectDurationMs)
+}
