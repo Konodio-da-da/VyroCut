@@ -2956,7 +2956,9 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     }
     val previewPosition = if (version >= 13) {
         val clipId = root.opt("previewClipId") as? String
-        val sourceTimeMs = (root.opt("previewSourceTimeMs") as? Number)?.toLong()
+        val sourceTimeMs = (root.opt("previewSourceTimeMs") as? Number)
+            ?.toString()
+            ?.toLongOrNull()
         if (clipId != null && sourceTimeMs != null) {
             validateSavedPlaybackPosition(
                 clips.map { ClipPlaybackRange(it.id, it.sourceStartMs, it.sourceEndMs) },

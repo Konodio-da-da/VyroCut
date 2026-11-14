@@ -208,6 +208,9 @@ class ProjectClipAudioPersistenceTest {
         json.put("previewClipId", "video")
         json.put("previewSourceTimeMs", "not-a-time")
         assertNull(decodeProjectBackup(json.toString()).previewPosition)
+
+        json.put("previewSourceTimeMs", 2_500.5)
+        assertNull(decodeProjectBackup(json.toString()).previewPosition)
     }
 
     @Test
