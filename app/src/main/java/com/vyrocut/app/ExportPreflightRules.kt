@@ -12,6 +12,10 @@ internal fun hasAudioTrackMimeType(mimeTypes: Iterable<String?>): Boolean =
         } == true
     }
 
+/** Returns each source URI once, preserving first-use order for deterministic metadata checks. */
+internal fun distinctExportSourceUris(sourceUris: Iterable<String>): List<String> =
+    sourceUris.distinct()
+
 internal data class ExportCanvasSize(
     val widthPx: Int,
     val heightPx: Int,

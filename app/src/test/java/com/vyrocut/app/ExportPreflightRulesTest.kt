@@ -148,6 +148,23 @@ class ExportPreflightRulesTest {
     }
 
     @Test
+    fun exportSourceUrisAreDeduplicatedInFirstUseOrder() {
+        assertEquals(
+            listOf("content://video/a", "content://audio/b", "content://video/c"),
+            distinctExportSourceUris(
+                listOf(
+                    "content://video/a",
+                    "content://audio/b",
+                    "content://video/a",
+                    "content://video/c",
+                    "content://audio/b",
+                ),
+            ),
+        )
+        assertTrue(distinctExportSourceUris(emptyList()).isEmpty())
+    }
+
+    @Test
     fun recognizesRealAudioTrackMimeTypesAndRejectsVideoOnlySources() {
         assertTrue(hasAudioTrackMimeType(listOf("video/avc", "audio/mp4")))
         assertTrue(hasAudioTrackMimeType(listOf(" AUDIO/AAC ")))

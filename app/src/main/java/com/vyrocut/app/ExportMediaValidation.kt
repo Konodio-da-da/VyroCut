@@ -80,7 +80,7 @@ internal fun verifyExportedMp4(
         extractor.release()
     }
 
-    val sourceHasAudio = sourceUris.any { sourceUri ->
+    val sourceHasAudio = distinctExportSourceUris(sourceUris).any { sourceUri ->
         val source = MediaExtractor()
         try {
             source.setDataSource(context, Uri.parse(sourceUri), null)

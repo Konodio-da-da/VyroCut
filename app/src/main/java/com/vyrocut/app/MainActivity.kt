@@ -2204,9 +2204,10 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
                                     val audioSourceDurations = withContext(Dispatchers.IO) {
-                                        exportAudioTracks.associate { clip ->
-                                            clip.uri to readAudioDurationMs(context, Uri.parse(clip.uri))
-                                        }
+                                        distinctExportSourceUris(exportAudioTracks.map { it.uri })
+                                            .associateWith { rawUri ->
+                                                readAudioDurationMs(context, Uri.parse(rawUri))
+                                            }
                                     }
                                     val invalidAudioSource = exportAudioTracks.firstOrNull { clip ->
                                         val sourceDuration = audioSourceDurations[clip.uri]
