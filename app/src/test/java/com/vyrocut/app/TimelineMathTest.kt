@@ -82,6 +82,84 @@ class TimelineMathTest {
     }
 
     @Test
+    fun frameSteppingCrossesClipBoundariesUsingEachClipsOwnFrameRate() {
+        val durations = listOf(1_000L, 1_000L)
+        val frameRates = listOf(24f, 59.94f)
+
+        assertEquals(
+            PreviewFrameStepTarget(1, 0L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = frameRates,
+                currentClipIndex = 0,
+                currentPositionMs = 958L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertEquals(
+            PreviewFrameStepTarget(0, 958L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = frameRates,
+                currentClipIndex = 1,
+                currentPositionMs = 0L,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+            ),
+        )
+    }
+
+    @Test
+    fun frameSteppingStaysInsideClipUntilItsLastFrameAndRejectsUnknownAdjacentRates() {
+        val durations = listOf(1_000L, 1_000L)
+        assertEquals(
+            PreviewFrameStepTarget(0, 83L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f, 59.94f),
+                currentClipIndex = 0,
+                currentPositionMs = 42L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f, null),
+                currentClipIndex = 0,
+                currentPositionMs = 958L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f),
+                currentClipIndex = 0,
+                currentPositionMs = 958L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f, 59.94f),
+                currentClipIndex = 0,
+                currentPositionMs = 0L,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+            ),
+        )
+        assertNull(
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(24f, 59.94f),
+                currentClipIndex = 1,
+                currentPositionMs = 958L,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+    }
+
+    @Test
     fun mapsMedia3ControllerPositionIntoProjectTimeline() {
         assertEquals(
             PlayerTimelinePosition(2, 1_250L, 4_250L),

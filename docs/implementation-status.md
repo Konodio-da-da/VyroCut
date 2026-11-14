@@ -105,8 +105,15 @@ A control is only considered complete when its operation is connected to the pro
 
 
 ## Frame-by-frame preview navigation
-- The preview transport now exposes previous/next-frame actions when Media3 reports a selected video track with a valid frame rate.
-- Frame stepping uses the active track's selected format rather than assuming a project-wide 24/25/30 fps rate. Unknown, unselected, audio-only, non-finite, or implausible frame rates leave the controls disabled.
-- Fractional rates such as 23.976, 29.97, and 59.94 are converted through frame indices, avoiding repeated rounded-duration accumulation. Frame steps stay inside the active clip; they do not guess the adjacent clip's frame rate at a cut.
+- The preview transport exposes previous/next-frame actions when the active Media3 track or cached source metadata provides a valid frame rate.
+- Frame stepping uses the active track's selected format and per-source metadata for adjacent clips rather than assuming a project-wide 24/25/30 fps rate. Unknown, audio-only, non-finite, or implausible rates fail closed at the relevant clip boundary.
+- Fractional rates such as 23.976, 29.97, and 59.94 are converted through frame indices, avoiding repeated rounded-duration accumulation. Frame steps stay inside the active clip when possible and cross an adjacent cut using that source's cached frame rate; missing adjacent metadata fails closed.
 - Frame navigation uses the existing exact-seek path, so video, Music, SFX, and Voiceover remain aligned to the project clock. The action pauses playback before seeking.
-- Pure Kotlin tests cover selected-track filtering, integer/fractional rates, repeated frame-step rounding, invalid metadata, and clip-edge behaviour. Device-only frame presentation and mixed-rate cut behaviour remain pending physical-device validation.
+- Pure Kotlin tests cover selected-track filtering, integer/fractional rates, repeated frame-step rounding, invalid metadata, within-clip stepping, and cross-clip boundaries. Device-only frame presentation and mixed-rate cut behaviour remain pending physical-device validation.
+
+
+## Per-source frame-rate metadata and cross-clip frame stepping (implemented; CI pending)
+- Frame-rate metadata is now inspected once per distinct video source URI on `Dispatchers.IO`. Capture-frame-rate metadata is preferred to retain fractional rates; the selected video track's `MediaFormat.KEY_FRAME_RATE` is the fallback. Media3's selected active-track rate remains authoritative and refreshes the per-URI cache.
+- Previous/next-frame navigation now continues across an adjacent playlist cut instead of stopping at every clip edge. The adjacent clip's own cached frame rate is used, so a 24 fps clip can step into a 59.94 fps clip without applying one clip's rate to the other.
+- Unknown or invalid adjacent frame-rate metadata fails closed at the cut; the resolver never guesses a neighbouring clip's rate. The existing exact-seek and synchronized project-clock path is reused for the resulting target.
+- Pure Kotlin tests cover forward/backward cut crossing with different frame rates, within-clip stepping, missing adjacent metadata, and mismatched input lists. The background metadata reader and actual displayed-frame/audio behaviour still require Android CI and physical-device validation respectively.

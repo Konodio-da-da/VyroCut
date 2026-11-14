@@ -205,6 +205,26 @@ private fun VyroCutApp() {
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
     var previewFrameRate by remember { mutableStateOf<Float?>(null) }
+    var previewFrameRateUri by remember { mutableStateOf<String?>(null) }
+    var previewFrameRatesByUri by remember { mutableStateOf<Map<String, Float?>>(emptyMap()) }
+    LaunchedEffect(clips.map { it.uri }.distinct()) {
+        val sourceUris = clips.map { it.uri }.distinct()
+        val retainedRates = previewFrameRatesByUri.filterKeys { it in sourceUris }
+        val missingUris = sourceUris.filterNot { retainedRates.containsKey(it) }
+        if (missingUris.isNotEmpty()) {
+            val inspectedRates = withContext(Dispatchers.IO) {
+                missingUris.associateWith { rawUri ->
+                    MediaMetadataReader.videoFrameRate(context, Uri.parse(rawUri))
+                }
+            }
+            // Preserve a more authoritative Media3 track rate if onTracksChanged
+            // updated the cache while the background metadata scan was running.
+            val latestTrackRates = previewFrameRatesByUri.filterKeys { it in sourceUris }
+            previewFrameRatesByUri = retainedRates + inspectedRates + latestTrackRates
+        } else if (retainedRates != previewFrameRatesByUri) {
+            previewFrameRatesByUri = retainedRates
+        }
+    }
     var previewPlaybackSpeed by remember(activeProjectId) {
         mutableFloatStateOf(loadPreviewPlaybackSpeed(preferences, activeProjectId))
     }
@@ -379,6 +399,7 @@ private fun VyroCutApp() {
     // Initial load and project switches restore that project's saved preview location.
     LaunchedEffect(clips, activeProjectId) {
         previewFrameRate = null
+        previewFrameRateUri = null
         val sameProject = previousProjectId == activeProjectId
         val currentClipId = if (sameProject) player.currentMediaItem?.mediaId else null
         val currentPositionMs = if (sameProject) player.currentPosition else 0L
@@ -709,17 +730,26 @@ private fun VyroCutApp() {
 
     fun stepPreviewFrame(direction: PreviewFrameStepDirection) {
         val clipIndex = player.currentMediaItemIndex
-        val clip = clips.getOrNull(clipIndex) ?: return
-        val frameRate = previewFrameRate ?: return
-        val targetPositionMs = resolvePreviewFrameStepTargetMs(
+        val currentClip = clips.getOrNull(clipIndex) ?: return
+        val frameRatesByClip = clips.mapIndexed { index, clip ->
+            if (index == clipIndex) {
+                previewFrameRate?.takeIf { previewFrameRateUri == clip.uri }
+                    ?: previewFrameRatesByUri[clip.uri]
+            } else {
+                previewFrameRatesByUri[clip.uri]
+                    ?: previewFrameRate?.takeIf { clip.uri == currentClip.uri }
+            }
+        }
+        val target = resolvePreviewFrameStepAcrossClips(
+            clipDurationsMs = clipDurationsMs,
+            frameRatesByClip = frameRatesByClip,
+            currentClipIndex = clipIndex,
             currentPositionMs = player.currentPosition,
-            clipDurationMs = clip.durationMs,
-            frameRate = frameRate,
             direction = direction,
         ) ?: return
         player.pause()
         seekPreviewToTimelinePosition(
-            calculateTimelinePositionMs(clipDurationsMs, clipIndex, targetPositionMs),
+            calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
         )
     }
 
@@ -750,7 +780,16 @@ private fun VyroCutApp() {
     }
 
     DisposableEffect(player, clips, activeProjectId) {
-        previewFrameRate = resolveSelectedPreviewFrameRate(previewFrameRateCandidates(player.currentTracks))
+        fun updatePreviewFrameRate(tracks: Tracks) {
+            val frameRate = resolveSelectedPreviewFrameRate(previewFrameRateCandidates(tracks))
+            val currentUri = clips.getOrNull(player.currentMediaItemIndex)?.uri
+            previewFrameRate = frameRate
+            previewFrameRateUri = currentUri
+            if (frameRate != null && currentUri != null) {
+                previewFrameRatesByUri = previewFrameRatesByUri + (currentUri to frameRate)
+            }
+        }
+        updatePreviewFrameRate(player.currentTracks)
         val listener = object : Player.Listener {
             // Media3 can report one playlist transition through both callbacks
             // below in the same event batch. Collect their reasons and perform
@@ -768,7 +807,7 @@ private fun VyroCutApp() {
                 }
             }
             override fun onTracksChanged(tracks: Tracks) {
-                previewFrameRate = resolveSelectedPreviewFrameRate(previewFrameRateCandidates(tracks))
+                updatePreviewFrameRate(tracks)
             }
             override fun onPlayerError(error: PlaybackException) {
                 isPlaying = false
@@ -1540,7 +1579,10 @@ private fun VyroCutApp() {
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
-                        enabled = selectedClip != null && previewFrameRate != null,
+                        enabled = selectedClip != null && (
+                            previewFrameRatesByUri[selectedClip.uri] != null ||
+                                (previewFrameRateUri == selectedClip.uri && previewFrameRate != null)
+                        ),
                         modifier = Modifier.size(36.dp),
                     ) {
                         Icon(
@@ -1584,7 +1626,10 @@ private fun VyroCutApp() {
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
-                        enabled = selectedClip != null && previewFrameRate != null,
+                        enabled = selectedClip != null && (
+                            previewFrameRatesByUri[selectedClip.uri] != null ||
+                                (previewFrameRateUri == selectedClip.uri && previewFrameRate != null)
+                        ),
                         modifier = Modifier.size(36.dp),
                     ) {
                         Icon(

@@ -645,17 +645,17 @@ internal data class PreviewTrackFrameRateCandidate(
 )
 
 /** Returns the first usable selected video-track frame rate; unknown or implausible rates are ignored. */
+internal const val MIN_PREVIEW_FRAME_RATE = 1f
+internal const val MAX_PREVIEW_FRAME_RATE = 240f
+
+internal fun isValidPreviewFrameRate(frameRate: Float): Boolean =
+    frameRate.isFinite() && frameRate in MIN_PREVIEW_FRAME_RATE..MAX_PREVIEW_FRAME_RATE
+
 internal fun resolveSelectedPreviewFrameRate(
     candidates: List<PreviewTrackFrameRateCandidate>,
 ): Float? = candidates.firstOrNull { candidate ->
-    candidate.isVideo &&
-        candidate.isSelected &&
-        candidate.frameRate.isFinite() &&
-        candidate.frameRate in MIN_PREVIEW_FRAME_RATE..MAX_PREVIEW_FRAME_RATE
+    candidate.isVideo && candidate.isSelected && isValidPreviewFrameRate(candidate.frameRate)
 }?.frameRate
-
-internal const val MIN_PREVIEW_FRAME_RATE = 1f
-internal const val MAX_PREVIEW_FRAME_RATE = 240f
 
 internal enum class PreviewFrameStepDirection { PREVIOUS, NEXT }
 
@@ -696,6 +696,66 @@ internal fun resolvePreviewFrameStepTargetMs(
 
     val targetMs = (targetFrameIndex * 1_000.0 / frameRate.toDouble()).roundToLong()
     return targetMs.takeIf { it in 0 until clipDurationMs && it != currentMs }
+}
+
+internal data class PreviewFrameStepTarget(
+    val clipIndex: Int,
+    val positionMs: Long,
+)
+
+/**
+ * Steps one decoded-frame position across an ordered playlist. The active clip
+ * is stepped using its Media3-selected frame rate; when that step reaches a
+ * clip edge, the adjacent clip's own source frame rate is used. This avoids
+ * assuming that neighbouring clips share a frame rate.
+ */
+internal fun resolvePreviewFrameStepAcrossClips(
+    clipDurationsMs: List<Long>,
+    frameRatesByClip: List<Float?>,
+    currentClipIndex: Int,
+    currentPositionMs: Long,
+    direction: PreviewFrameStepDirection,
+): PreviewFrameStepTarget? {
+    if (clipDurationsMs.isEmpty() ||
+        frameRatesByClip.size != clipDurationsMs.size ||
+        currentClipIndex !in clipDurationsMs.indices
+    ) return null
+
+    val currentDurationMs = clipDurationsMs[currentClipIndex]
+    val currentFrameRate = frameRatesByClip[currentClipIndex]
+    if (currentDurationMs <= 0L || currentFrameRate == null ||
+        !isValidPreviewFrameRate(currentFrameRate)
+    ) return null
+
+    resolvePreviewFrameStepTargetMs(
+        currentPositionMs = currentPositionMs,
+        clipDurationMs = currentDurationMs,
+        frameRate = currentFrameRate,
+        direction = direction,
+    )?.let { return PreviewFrameStepTarget(currentClipIndex, it) }
+
+    val adjacentClipIndex = currentClipIndex + when (direction) {
+        PreviewFrameStepDirection.PREVIOUS -> -1
+        PreviewFrameStepDirection.NEXT -> 1
+    }
+    if (adjacentClipIndex !in clipDurationsMs.indices) return null
+
+    val adjacentDurationMs = clipDurationsMs[adjacentClipIndex]
+    val adjacentFrameRate = frameRatesByClip[adjacentClipIndex]
+    if (adjacentDurationMs <= 0L || adjacentFrameRate == null ||
+        !isValidPreviewFrameRate(adjacentFrameRate)
+    ) return null
+
+    val adjacentPositionMs = when (direction) {
+        PreviewFrameStepDirection.PREVIOUS -> resolvePreviewFrameStepTargetMs(
+            currentPositionMs = adjacentDurationMs - 1L,
+            clipDurationMs = adjacentDurationMs,
+            frameRate = adjacentFrameRate,
+            direction = PreviewFrameStepDirection.PREVIOUS,
+        ) ?: return null
+        PreviewFrameStepDirection.NEXT -> 0L
+    }
+    return PreviewFrameStepTarget(adjacentClipIndex, adjacentPositionMs)
 }
 
 /** Target cadence for keeping the editor playhead visually aligned with Media3. */

@@ -2,6 +2,8 @@ package com.vyrocut.app
 
 import android.content.ContentResolver
 import android.content.Context
+import android.media.MediaExtractor
+import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -33,6 +35,48 @@ object MediaMetadataReader {
             null
         } finally {
             runCatching { retriever.release() }
+        }
+    }
+
+    /**
+     * Reads the source video's nominal frame rate for cross-clip frame stepping.
+     * Capture metadata is preferred because it can retain fractional rates such
+     * as 23.976/29.97; the extractor track format is a fallback for providers
+     * that do not expose capture-frame-rate metadata. Call from Dispatchers.IO.
+     */
+    fun videoFrameRate(context: Context, uri: Uri): Float? {
+        val retriever = MediaMetadataRetriever()
+        val captureRate = try {
+            retriever.setDataSource(context, uri)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_CAPTURE_FRAMERATE)
+                ?.toFloatOrNull()
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
+        if (captureRate != null && isValidPreviewFrameRate(captureRate)) return captureRate
+
+        val extractor = MediaExtractor()
+        return try {
+            extractor.setDataSource(context, uri, null)
+            var resolvedRate: Float? = null
+            for (index in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(index)
+                if (format.getString(MediaFormat.KEY_MIME)?.startsWith("video/") != true) continue
+                val candidate = runCatching {
+                    format.getInteger(MediaFormat.KEY_FRAME_RATE).toFloat()
+                }.getOrNull()
+                if (candidate != null && isValidPreviewFrameRate(candidate)) {
+                    resolvedRate = candidate
+                    break
+                }
+            }
+            resolvedRate
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { extractor.release() }
         }
     }
 }

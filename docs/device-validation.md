@@ -65,8 +65,11 @@ Do not mark any of these device-only checks complete from CI results alone.
 
 
 3. **Frame-by-frame preview navigation**
-   - Import sources with 24, 23.976, 25, 29.97, 30, and 59.94 fps video tracks. Confirm previous/next-frame controls become available only after a selected video format reports a valid frame rate.
+   - Import sources with 24, 23.976, 25, 29.97, 30, and 59.94 fps video tracks. Confirm previous/next-frame controls become available when the active Media3 track or cached source metadata provides a valid frame rate.
    - Step forward and backward repeatedly while paused; compare the displayed frame against the source frame sequence and verify no cumulative 33/34 ms or 41/42 ms drift.
-   - Step to both ends of a trimmed clip and confirm controls stop at the clip boundary rather than jumping into a neighbouring clip with a different frame rate.
+   - Step to both ends of a trimmed clip and confirm navigation crosses into the adjacent clip using that clip's own frame rate (including 24-to-59.94 and 59.94-to-24 cuts). If adjacent metadata is unavailable, confirm the control fails closed rather than guessing a rate.
    - Repeat with audio-only/unknown-frame-rate sources and confirm frame-step controls remain disabled.
    - Verify frame seeks keep Music, SFX, and Voiceover on the same project timestamp; record seek latency on a lower-powered API 29 device.
+   - Import adjacent 24 fps and 59.94 fps clips (then reverse their order); step forward from the first clip's last frame and backward from the second clip's first frame. Repeat with 23.976 and 29.97 fps sources.
+   - Revoke or relink a source with unavailable frame-rate metadata; confirm the resolver fails closed at that cut rather than guessing, and that other clips remain step-able.
+   - Repeat with multiple timeline clips sharing one source URI and verify Music, SFX, and Voiceover remain aligned after crossing the cut.
