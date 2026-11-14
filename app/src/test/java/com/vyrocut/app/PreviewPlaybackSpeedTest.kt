@@ -38,4 +38,33 @@ class PreviewPlaybackSpeedTest {
         assertEquals(PREVIEW_PLAYBACK_SPEEDS.size, PREVIEW_PLAYBACK_SPEEDS.toSet().size)
         assertEquals(true, PREVIEW_PLAYBACK_SPEEDS.all { it.isFinite() && it > 0f })
     }
+
+    @Test
+    fun persistedRatesRestoreOnlyWhenTheyAreSupported() {
+        PREVIEW_PLAYBACK_SPEEDS.forEach { speed ->
+            assertEquals(speed, normalizePreviewPlaybackSpeed(speed), 0f)
+        }
+        assertEquals(1f, normalizePreviewPlaybackSpeed(null), 0f)
+        assertEquals(1f, normalizePreviewPlaybackSpeed(1.1f), 0f)
+        assertEquals(1f, normalizePreviewPlaybackSpeed(Float.NaN), 0f)
+        assertEquals(1f, normalizePreviewPlaybackSpeed(Float.NEGATIVE_INFINITY), 0f)
+    }
+
+    @Test
+    fun playbackSpeedPreferenceKeyIsProjectScopedAndRejectsBlankIds() {
+        assertEquals(
+            "project_project-1_preview_playback_speed",
+            projectPreviewPlaybackSpeedPreferenceKey("project-1"),
+        )
+        assertEquals(
+            false,
+            runCatching { projectPreviewPlaybackSpeedPreferenceKey(" ") }.isSuccess,
+        )
+    }
+
+    @Test
+    fun invalidSpeedLabelsFallBackToNormalSpeed() {
+        assertEquals("1×", previewPlaybackSpeedLabel(Float.NaN))
+        assertEquals("1×", previewPlaybackSpeedLabel(1.1f))
+    }
 }

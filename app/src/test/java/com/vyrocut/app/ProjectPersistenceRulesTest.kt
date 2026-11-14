@@ -248,7 +248,7 @@ class ProjectPersistenceRulesTest {
     }
 
     @Test
-    fun projectDeletionClearsSavedPreviewPositionAndAllOtherProjectOwnedPreferences() {
+    fun projectDeletionClearsSavedPreviewPositionSpeedAndAllOtherProjectOwnedPreferences() {
         assertEquals(
             listOf(
                 "project_project-1",
@@ -261,6 +261,7 @@ class ProjectPersistenceRulesTest {
                 "project_project-1_canvas_settings",
                 "project_project-1_preview_clip_id",
                 "project_project-1_preview_source_time_ms",
+                "project_project-1_preview_playback_speed",
             ),
             projectPreferenceKeysForDeletion("project-1"),
         )

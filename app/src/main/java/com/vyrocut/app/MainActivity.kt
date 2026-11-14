@@ -178,7 +178,9 @@ private fun VyroCutApp() {
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
-    var previewPlaybackSpeed by remember(activeProjectId) { mutableFloatStateOf(1f) }
+    var previewPlaybackSpeed by remember(activeProjectId) {
+        mutableFloatStateOf(loadPreviewPlaybackSpeed(preferences, activeProjectId))
+    }
     var isExporting by remember { mutableStateOf(false) }
     var exportMessage by remember { mutableStateOf<String?>(null) }
     var exportedUri by remember { mutableStateOf<Uri?>(null) }
@@ -1329,7 +1331,16 @@ private fun VyroCutApp() {
                         Icon(Icons.Default.ArrowForward, contentDescription = "Forward 5 seconds", tint = StudioAccent)
                     }
                     TextButton(
-                        onClick = { previewPlaybackSpeed = nextPreviewPlaybackSpeed(previewPlaybackSpeed) },
+                        onClick = {
+                            val nextSpeed = nextPreviewPlaybackSpeed(previewPlaybackSpeed)
+                            previewPlaybackSpeed = nextSpeed
+                            preferences.edit()
+                                .putFloat(
+                                    projectPreviewPlaybackSpeedPreferenceKey(activeProjectId),
+                                    nextSpeed,
+                                )
+                                .apply()
+                        },
                         enabled = selectedClip != null,
                         contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
                     ) {
@@ -3091,6 +3102,7 @@ internal fun projectPreferenceKeysForDeletion(projectId: String): List<String> {
         "project_${projectId}_canvas_settings",
         "project_${projectId}_preview_clip_id",
         "project_${projectId}_preview_source_time_ms",
+        projectPreviewPlaybackSpeedPreferenceKey(projectId),
     )
 }
 
@@ -3188,6 +3200,16 @@ private fun loadProject(
         ?: (if (projectId == "default") preferences.getString("clips", null) else null)
         ?: return emptyList()
     return decodeProject(raw)
+}
+
+private fun loadPreviewPlaybackSpeed(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+): Float {
+    val storedSpeed = runCatching {
+        preferences.getFloat(projectPreviewPlaybackSpeedPreferenceKey(projectId), 1f)
+    }.getOrNull()
+    return normalizePreviewPlaybackSpeed(storedSpeed)
 }
 
 private fun savePreviewPosition(

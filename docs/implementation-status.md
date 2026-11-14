@@ -1,6 +1,7 @@
 # Implementation status
 
 ## Last verified build
+- Feature head `393b7fb204a67ea9de859a17b66cf4a68cf50136` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #318](https://github.com/Konodio-da-da/VyroCut/actions/runs/43555985260). This includes the six-rate preview playback control and shared Media3 playback parameters; the next change persists that rate per project.
 - The foundation branch remains at `66c1b19decfdb202e79dcfd3817fe65f27b45b2c`; its latest recorded Android CI run [#133](https://github.com/Konodio-da-da/VyroCut/actions/runs/43174174315) passed.
 - Feature branch `fix/capcut-workflow-ui` commit `b9b7bb4113b8ef27af74f2c762de7e1295752e82` passed `assembleDebug` and `testDebugUnitTest` in [Android build run #295](https://github.com/Konodio-da-da/VyroCut/actions/runs/43490355930). This fixed the missing `MediaFormat` import exposed by the earlier failed [run #293](https://github.com/Konodio-da-da/VyroCut/actions/runs/43482479845). The debug APK artifact was uploaded.
 - Current feature head `857be483f6cc447a19bb805876280c1322b331d4` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #300](https://github.com/Konodio-da-da/VyroCut/actions/runs/43500397549). The latest change adds age-based cleanup for abandoned waveform-cache temporary files; it does not affect source media or project data.
@@ -11,7 +12,7 @@
 - CI confirms Android compilation and JVM unit tests only. Physical-device preview, audio synchronization, Compose layout, and end-to-end MP4 playback remain unverified; see [device-validation.md](device-validation.md) for the exact blocker and manual test checklist.
 
 ## Editing workspace milestone (in progress)
-- Preview playback speed cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; the selected Media3 playback parameters are applied to the video player and all Music/SFX/Voiceover players so their clocks advance at the same rate. Pure Kotlin tests cover cycling, wraparound, invalid-state fallback and labels; physical-device audio-sync validation remains pending.
+- Preview playback speed cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; the selected Media3 playback parameters are applied to the video player and all Music/SFX/Voiceover players so their clocks advance at the same rate. The selected rate is now stored under a project-scoped local preference, restored when switching back or reopening, normalized to 1× if corrupt/unsupported, and removed with the project. Pure Kotlin tests cover cycling, normalization, project-key isolation and labels; physical-device audio-sync and persistence checks remain pending.
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.

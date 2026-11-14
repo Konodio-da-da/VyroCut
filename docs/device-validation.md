@@ -34,6 +34,7 @@ Record device model, Android version, source formats, project duration, export d
    - Listen across clip transitions and repeated scrubs for drift, clicks, missing audio, or repeated seek glitches.
    - Test source video with audio, silent video, and all three independent lanes together.
    - Repeat multi-clip preview with playback speed changed mid-clip and across clip boundaries at 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; confirm Music, SFX and Voiceover remain aligned with the video clock.
+   - Set a non-default preview speed, switch to another project and back, then force-stop/reopen; confirm each project restores its own saved preview speed and a deleted project leaves no speed preference.
 
 4. **MP4 export**
    - Export a short multi-clip project with original audio and separate music/SFX/voiceover.
