@@ -35,6 +35,12 @@ class TimelineMathTest {
     }
 
     @Test
+    fun automaticVideoTransitionsDoNotForceAudioLaneReseeks() {
+        assertFalse(shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition = true))
+        assertTrue(shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition = false))
+    }
+
+    @Test
     fun restoredFinalFrameCountsAsProjectEndForPlayRestart() {
         assertTrue(isTimelinePositionAtEnd(999L, 1_000L))
         assertTrue(isTimelinePositionAtEnd(1_000L, 1_000L))

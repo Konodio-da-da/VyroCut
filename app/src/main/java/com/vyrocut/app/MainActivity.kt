@@ -676,11 +676,17 @@ private fun VyroCutApp() {
         }
     }
 
-    fun syncPlayerPosition(clipIndex: Int, clipPositionMs: Long) {
+    fun syncPlayerPosition(
+        clipIndex: Int,
+        clipPositionMs: Long,
+        forceAudioLaneSeek: Boolean = true,
+    ) {
         val position = resolvePlayerTimelinePosition(clipDurationsMs, clipIndex, clipPositionMs) ?: return
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
-        seekAudioPlayersToProjectPosition(position.timelinePositionMs)
+        if (forceAudioLaneSeek) {
+            seekAudioPlayersToProjectPosition(position.timelinePositionMs)
+        }
         clips.getOrNull(position.clipIndex)?.let { clip ->
             player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays))
             player.setVolume(
@@ -715,12 +721,25 @@ private fun VyroCutApp() {
                 newPosition: Player.PositionInfo,
                 reason: Int,
             ) {
-                // Keep the editor scrubber, selected clip and saved project
-                // preview in sync with seeks made inside Media3's own controls.
-                syncPlayerPosition(newPosition.mediaItemIndex, newPosition.positionMs)
+                // A natural video playlist transition does not need to restart
+                // already-running gap-filled audio playlists. Explicit seeks and
+                // playlist edits still force all audio lanes to the same project time.
+                syncPlayerPosition(
+                    newPosition.mediaItemIndex,
+                    newPosition.positionMs,
+                    forceAudioLaneSeek = shouldForceAudioLaneSeekForVideoTransition(
+                        isAutomaticTransition = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+                    ),
+                )
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                syncPlayerPosition(player.currentMediaItemIndex, player.currentPosition)
+                syncPlayerPosition(
+                    player.currentMediaItemIndex,
+                    player.currentPosition,
+                    forceAudioLaneSeek = shouldForceAudioLaneSeekForVideoTransition(
+                        isAutomaticTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+                    ),
+                )
             }
         }
         player.addListener(listener)

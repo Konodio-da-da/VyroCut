@@ -15,6 +15,15 @@ internal data class PlayerTimelinePosition(
     val timelinePositionMs: Long,
 )
 
+/**
+ * Natural video playlist transitions advance the continuous, gap-filled audio
+ * playlists on their own project clock. Re-seeking those players at every video
+ * cut can restart decoders and introduce avoidable clicks or dropouts. Explicit
+ * seeks and playlist edits still need an immediate audio-lane seek.
+ */
+internal fun shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition: Boolean): Boolean =
+    !isAutomaticTransition
+
 /** Normalizes a Media3 position and maps it to the editor's project-wide scrubber. */
 internal fun resolvePlayerTimelinePosition(
     clipDurationsMs: List<Long>,
