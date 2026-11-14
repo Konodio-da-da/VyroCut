@@ -434,7 +434,7 @@ private fun VyroCutApp() {
         previousProjectId = activeProjectId
     }
     LaunchedEffect(player, clips, isPlaying, activeProjectId) {
-        var lastPersistedAtMs = 0L
+        var lastPersistedAtMs: Long? = null
         while (true) {
             if (!isScrubbing && clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
                 val currentIndex = player.currentMediaItemIndex
@@ -445,15 +445,15 @@ private fun VyroCutApp() {
                     currentPositionMs,
                 ).coerceIn(0L, timelineDurationMs).toFloat()
 
-                val nowMs = System.currentTimeMillis()
-                if (player.isPlaying && nowMs - lastPersistedAtMs >= 2_000L) {
+                val nowElapsedMs = SystemClock.elapsedRealtime()
+                if (player.isPlaying && shouldPersistPreviewCheckpoint(nowElapsedMs, lastPersistedAtMs)) {
                     clips.getOrNull(currentIndex)?.let { clip ->
                         savePreviewPosition(preferences, activeProjectId, clip, currentPositionMs)
                     }
-                    lastPersistedAtMs = nowMs
+                    lastPersistedAtMs = nowElapsedMs
                 }
             }
-            delay(200)
+            delay(playbackProgressUpdateIntervalMs(player.isPlaying))
         }
     }
     LaunchedEffect(player, clips) {
