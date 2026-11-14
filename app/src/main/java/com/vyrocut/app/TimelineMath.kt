@@ -588,3 +588,31 @@ internal fun calculateTimelineAutoFollowScrollTargetPx(
         .coerceIn(0, maxScrollPx)
     return target.takeIf { it != current }
 }
+
+/** Target cadence for keeping the editor playhead visually aligned with Media3. */
+internal const val PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS = 33L
+internal const val PLAYBACK_PROGRESS_IDLE_INTERVAL_MS = 100L
+internal const val PREVIEW_CHECKPOINT_INTERVAL_MS = 2_000L
+
+/**
+ * Uses a video-friendly 30 Hz refresh while playing and a lighter 10 Hz refresh
+ * while paused. This controls UI sampling only; Media3 remains the playback clock.
+ */
+internal fun playbackProgressUpdateIntervalMs(isPlaying: Boolean): Long =
+    if (isPlaying) PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS else PLAYBACK_PROGRESS_IDLE_INTERVAL_MS
+
+/**
+ * Throttles preview checkpoint writes using monotonic elapsed realtime rather
+ * than wall-clock time, which can jump when the user or network changes the clock.
+ * A null previous timestamp means the first active sample should be persisted.
+ */
+internal fun shouldPersistPreviewCheckpoint(
+    nowElapsedMs: Long,
+    lastPersistedElapsedMs: Long?,
+    minimumIntervalMs: Long = PREVIEW_CHECKPOINT_INTERVAL_MS,
+): Boolean {
+    if (nowElapsedMs < 0L || minimumIntervalMs <= 0L) return false
+    val lastPersisted = lastPersistedElapsedMs ?: return true
+    if (lastPersisted < 0L || nowElapsedMs < lastPersisted) return false
+    return nowElapsedMs - lastPersisted >= minimumIntervalMs
+}
