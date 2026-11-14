@@ -547,4 +547,63 @@ class AudioTracksTest {
         )
     }
 
+
+    @Test
+    fun synchronizedPreviewSeekMapsVideoAndAllAudioLanesToOneProjectTime() {
+        val videoDurations = listOf(1_000L, 2_000L)
+        val projectDuration = 3_000L
+        val clips = listOf(
+            clip("music", type = AudioTrackType.MUSIC, startMs = 500L, sourceEndMs = 1_000L),
+            clip("sfx", type = AudioTrackType.SFX, startMs = 1_500L, sourceEndMs = 500L),
+            clip("voice", type = AudioTrackType.VOICEOVER, startMs = 2_500L, sourceEndMs = 500L),
+        )
+        val segments = AudioTrackType.values().associateWith { type ->
+            buildAudioTrackTimelineSegments(clips, type, projectDuration)
+        }
+
+        val target = resolveSynchronizedPreviewSeekTarget(
+            clipDurationsMs = videoDurations,
+            audioSegmentsByType = segments,
+            requestedProjectPositionMs = 2_000L,
+        ) ?: error("Expected a synchronized target")
+
+        assertEquals(TimelineSeekTarget(1, 1_000L), target.videoTarget)
+        assertEquals(2_000L, target.projectPositionMs)
+        assertEquals(AudioTrackSeekTarget(2, 500L), target.audioTargets[AudioTrackType.MUSIC])
+        assertEquals(AudioTrackSeekTarget(2, 0L), target.audioTargets[AudioTrackType.SFX])
+        assertEquals(AudioTrackSeekTarget(0, 2_000L), target.audioTargets[AudioTrackType.VOICEOVER])
+    }
+
+    @Test
+    fun synchronizedPreviewSeekUsesTheLastPlayableProjectMillisecondAtEnd() {
+        val videoDurations = listOf(1_000L, 2_000L)
+        val projectDuration = 3_000L
+        val clips = listOf(
+            clip("music", type = AudioTrackType.MUSIC, startMs = 500L, sourceEndMs = 1_000L),
+            clip("sfx", type = AudioTrackType.SFX, startMs = 1_500L, sourceEndMs = 500L),
+            clip("voice", type = AudioTrackType.VOICEOVER, startMs = 2_500L, sourceEndMs = 500L),
+        )
+        val segments = AudioTrackType.values().associateWith { type ->
+            buildAudioTrackTimelineSegments(clips, type, projectDuration)
+        }
+
+        val target = resolveSynchronizedPreviewSeekTarget(
+            clipDurationsMs = videoDurations,
+            audioSegmentsByType = segments,
+            requestedProjectPositionMs = projectDuration,
+        ) ?: error("Expected an end-of-project target")
+
+        assertEquals(TimelineSeekTarget(1, 1_999L), target.videoTarget)
+        assertEquals(2_999L, target.projectPositionMs)
+        assertEquals(AudioTrackSeekTarget(2, 1_499L), target.audioTargets[AudioTrackType.MUSIC])
+        assertEquals(AudioTrackSeekTarget(2, 999L), target.audioTargets[AudioTrackType.SFX])
+        assertEquals(AudioTrackSeekTarget(1, 499L), target.audioTargets[AudioTrackType.VOICEOVER])
+    }
+
+    @Test
+    fun synchronizedPreviewSeekRejectsEmptyVideoAndOmitsEmptyAudioLanes() {
+        assertNull(resolveSynchronizedPreviewSeekTarget(emptyList(), emptyMap(), 0L))
+        assertTrue(resolveAudioTrackSeekTargets(emptyMap(), 500L).isEmpty())
+    }
+
 }

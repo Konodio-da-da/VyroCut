@@ -334,6 +334,7 @@ private fun VyroCutApp() {
     var audioTrackSegments by remember {
         mutableStateOf<Map<AudioTrackType, List<AudioTrackTimelineSegment>>>(emptyMap())
     }
+    var audioTrackSegmentsProjectId by remember { mutableStateOf<String?>(null) }
     DisposableEffect(player, lifecycleOwner, clips, activeProjectId) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) {
@@ -508,6 +509,9 @@ private fun VyroCutApp() {
     }
 
     LaunchedEffect(audioTrackClips, timelineDurationMs, activeProjectId) {
+        // Keep the previous project's lane playlists muted while this project's
+        // gap-filled Media3 sequences are rebuilt.
+        audioTrackSegmentsProjectId = null
         val projectDurationMs = calculateTimelineDurationMs(clipDurationsMs)
         val segmentsByType = AudioTrackType.values().associateWith { type ->
             buildAudioTrackTimelineSegments(audioTrackClips, type, projectDurationMs)
@@ -527,6 +531,7 @@ private fun VyroCutApp() {
 
         if (maximumGapMs > 0L && silenceFile == null) {
             audioTrackSegments = emptyMap()
+            audioTrackSegmentsProjectId = activeProjectId
             audioPlayers.values.forEach { audioPlayer ->
                 audioPlayer.clearMediaItems()
                 audioPlayer.pause()
@@ -572,12 +577,21 @@ private fun VyroCutApp() {
             }
         }
         audioTrackSegments = segmentsByType
+        audioTrackSegmentsProjectId = activeProjectId
     }
 
-    LaunchedEffect(audioTrackSegments, clips, player) {
+    LaunchedEffect(audioTrackSegments, audioTrackSegmentsProjectId, clips, player) {
         val lastAudioResyncAtMs = mutableMapOf<AudioTrackType, Long>()
         val lastAudioResyncSegmentIndex = mutableMapOf<AudioTrackType, Int>()
         while (true) {
+            if (audioTrackSegmentsProjectId != activeProjectId) {
+                audioPlayers.values.forEach { audioPlayer ->
+                    audioPlayer.playWhenReady = false
+                    audioPlayer.volume = 0f
+                }
+                delay(if (player.isPlaying) 16L else 100L)
+                continue
+            }
             val currentIndex = player.currentMediaItemIndex
             val projectPositionMs = if (currentIndex in clips.indices) {
                 calculateTimelinePositionMs(clipDurationsMs, currentIndex, player.currentPosition)
@@ -631,10 +645,41 @@ private fun VyroCutApp() {
         }
     }
 
+    fun seekAudioPlayersToProjectPosition(projectPositionMs: Long) {
+        if (audioTrackSegmentsProjectId != activeProjectId) return
+        resolveAudioTrackSeekTargets(audioTrackSegments, projectPositionMs).forEach { (type, target) ->
+            val audioPlayer = audioPlayers.getValue(type)
+            if (target.segmentIndex in 0 until audioPlayer.mediaItemCount) {
+                audioPlayer.seekTo(target.segmentIndex, target.positionMs)
+            }
+        }
+    }
+
+    /**
+     * Every editor-originated seek uses one project-clock mapping for video,
+     * Music, SFX and Voiceover. The periodic drift guard remains as a fallback
+     * for decoder startup and Media3 controller interactions.
+     */
+    fun seekPreviewToTimelinePosition(requestedPositionMs: Long) {
+        val target = resolveSynchronizedPreviewSeekTarget(
+            clipDurationsMs = clipDurationsMs,
+            audioSegmentsByType = audioTrackSegments,
+            requestedProjectPositionMs = requestedPositionMs,
+        ) ?: return
+        selectedIndex = target.videoTarget.clipIndex
+        player.seekTo(target.videoTarget.clipIndex, target.videoTarget.positionMs)
+        timelinePositionMs = target.projectPositionMs.coerceIn(0L, timelineDurationMs).toFloat()
+        seekAudioPlayersToProjectPosition(target.projectPositionMs)
+        clips.getOrNull(target.videoTarget.clipIndex)?.let { clip ->
+            savePreviewPosition(preferences, activeProjectId, clip, target.videoTarget.positionMs)
+        }
+    }
+
     fun syncPlayerPosition(clipIndex: Int, clipPositionMs: Long) {
         val position = resolvePlayerTimelinePosition(clipDurationsMs, clipIndex, clipPositionMs) ?: return
         selectedIndex = position.clipIndex
         timelinePositionMs = position.timelinePositionMs.coerceIn(0L, timelineDurationMs).toFloat()
+        seekAudioPlayersToProjectPosition(position.timelinePositionMs)
         clips.getOrNull(position.clipIndex)?.let { clip ->
             player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays))
             player.setVolume(
@@ -1361,16 +1406,9 @@ private fun VyroCutApp() {
                                 timelinePositionMs.toLong(),
                                 -5_000L,
                             )?.let { target ->
-                                selectedIndex = target.clipIndex
-                                player.seekTo(target.clipIndex, target.positionMs)
-                                timelinePositionMs = calculateTimelinePositionMs(
-                                    clipDurationsMs,
-                                    target.clipIndex,
-                                    target.positionMs,
-                                ).toFloat()
-                                clips.getOrNull(target.clipIndex)?.let { clip ->
-                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
-                                }
+                                seekPreviewToTimelinePosition(
+                                    calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
+                                )
                             }
                         },
                         enabled = clips.isNotEmpty(),
@@ -1384,16 +1422,9 @@ private fun VyroCutApp() {
                                 timelinePositionMs.toLong(),
                                 5_000L,
                             )?.let { target ->
-                                selectedIndex = target.clipIndex
-                                player.seekTo(target.clipIndex, target.positionMs)
-                                timelinePositionMs = calculateTimelinePositionMs(
-                                    clipDurationsMs,
-                                    target.clipIndex,
-                                    target.positionMs,
-                                ).toFloat()
-                                clips.getOrNull(target.clipIndex)?.let { clip ->
-                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
-                                }
+                                seekPreviewToTimelinePosition(
+                                    calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
+                                )
                             }
                         },
                         enabled = clips.isNotEmpty(),
@@ -1427,10 +1458,7 @@ private fun VyroCutApp() {
                                 player.playbackState == Player.STATE_ENDED ||
                                 isTimelinePositionAtEnd(timelinePositionMs.toLong(), timelineDurationMs)
                             ) {
-                                player.seekTo(0, 0L)
-                                clips.firstOrNull()?.let { clip ->
-                                    savePreviewPosition(preferences, activeProjectId, clip, 0L)
-                                }
+                                seekPreviewToTimelinePosition(0L)
                             }
                             player.play()
                         }
@@ -1447,13 +1475,7 @@ private fun VyroCutApp() {
                             timelinePositionMs = it
                         },
                         onValueChangeFinished = {
-                            resolveTimelineSeekTarget(clipDurationsMs, timelinePositionMs.toLong())?.let { target ->
-                                selectedIndex = target.clipIndex
-                                player.seekTo(target.clipIndex, target.positionMs)
-                                clips.getOrNull(target.clipIndex)?.let { clip ->
-                                    savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
-                                }
-                            }
+                            seekPreviewToTimelinePosition(timelinePositionMs.toLong())
                             isScrubbing = false
                         },
                         enabled = clips.isNotEmpty(),
@@ -1537,27 +1559,12 @@ private fun VyroCutApp() {
                         selectedAudioTrackId = trackClip.id
                         selectedAudioTrackType = trackClip.type
                         activeTool = "Audio"
-                        resolveTimelineSeekTarget(clipDurationsMs, trackClip.startMs)?.let { target ->
-                            selectedIndex = target.clipIndex
-                            player.seekTo(target.clipIndex, target.positionMs)
-                            timelinePositionMs = calculateTimelinePositionMs(
-                                clipDurationsMs,
-                                target.clipIndex,
-                                target.positionMs,
-                            ).coerceIn(0L, timelineDurationMs).toFloat()
-                        }
+                        seekPreviewToTimelinePosition(trackClip.startMs)
                     },
                     onSeek = { target ->
-                        selectedIndex = target.clipIndex
-                        player.seekTo(target.clipIndex, target.positionMs)
-                        timelinePositionMs = calculateTimelinePositionMs(
-                            clipDurationsMs,
-                            target.clipIndex,
-                            target.positionMs,
-                        ).coerceIn(0L, timelineDurationMs).toFloat()
-                        clips.getOrNull(target.clipIndex)?.let { clip ->
-                            savePreviewPosition(preferences, activeProjectId, clip, target.positionMs)
-                        }
+                        seekPreviewToTimelinePosition(
+                            calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
+                        )
                     },
                     onSelectText = { index, layerIndex ->
                         clips.getOrNull(index)?.let { clip ->
@@ -1568,13 +1575,9 @@ private fun VyroCutApp() {
                                 clip.allTextOverlays.getOrNull(layerIndex)?.startMs,
                                 clip.durationMs,
                             )
-                            player.seekTo(index, positionMs)
-                            timelinePositionMs = calculateTimelinePositionMs(
-                                clipDurationsMs,
-                                index,
-                                positionMs,
-                            ).coerceIn(0L, timelineDurationMs).toFloat()
-                            savePreviewPosition(preferences, activeProjectId, clip, positionMs)
+                            seekPreviewToTimelinePosition(
+                                calculateTimelinePositionMs(clipDurationsMs, index, positionMs),
+                            )
                         }
                     }
                 )

@@ -28,6 +28,8 @@ Record device model, Android version, source formats, project duration, export d
 2. **Continuous preview and timeline**
    - Play through at least three clips without touching the controls; verify no freeze, unexpected restart, or black gap at clip boundaries.
    - Seek by tapping and dragging the timeline across clip boundaries and the exact project end.
+   - Use the ±5-second controls, timeline slider, video clip selection, audio clip selection, and text-layer selection; verify the video and Music/SFX/Voiceover players seek to the same project-clock position, including silence gaps and exact clip boundaries.
+   - Switch projects and immediately scrub after opening; confirm no audio from the previous project's lane playlists is heard while the new sequences are rebuilding.
    - Reorder, trim, split, duplicate, and delete clips while the selected clip is playing.
    - Background and resume the app; confirm the saved preview position is coherent.
 

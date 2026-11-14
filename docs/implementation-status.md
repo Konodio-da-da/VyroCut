@@ -15,6 +15,7 @@
 
 ## Editing workspace milestone (in progress)
 - Preview playback speed cycles through 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; the selected Media3 playback parameters are applied to the video player and all Music/SFX/Voiceover players so their clocks advance at the same rate. The selected rate is stored per project and included in v13 JSON backups, restored when switching projects or importing a backup, normalized to 1× if missing/corrupt/unsupported, and removed with the project. Pure Kotlin tests cover cycling, normalization, project-key isolation, labels and backup migration; physical-device audio-sync and persistence checks remain pending.
+- Editor-originated seeks (skip controls, project slider, video/audio/text timeline selection) now resolve one canonical project-clock target and immediately seek the video plus each prepared Music/SFX/Voiceover playlist, including silence-gap segments. Media3 discontinuity/clip-transition callbacks also resync audio lanes immediately; the periodic drift guard remains as a fallback. Audio playlist rebuilds are project-scoped so stale lane sequences are paused while another project's playlists are prepared. Pure Kotlin tests cover synchronized targets across different lane gaps and the final playable project millisecond.
 - Media3 ExoPlayer preview with an ordered playlist of clipped source segments.
 - Sequential multi-clip playback; timeline selection seeks to the selected clip.
 - Continuous playback advances through imported timeline clips; selecting a timeline card seeks to that clip.

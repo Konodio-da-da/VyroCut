@@ -419,6 +419,49 @@ internal fun resolveAudioTrackSeekTarget(
     return AudioTrackSeekTarget(last, (segments[last].durationMs - 1L).coerceAtLeast(0L))
 }
 
+/**
+ * Resolves every audio lane to the same canonical project-clock position.
+ * Empty lanes are omitted; gap-filled lanes return a seek target inside their
+ * silence item so their playlist clock remains aligned with the video.
+ */
+internal fun resolveAudioTrackSeekTargets(
+    segmentsByType: Map<AudioTrackType, List<AudioTrackTimelineSegment>>,
+    projectPositionMs: Long,
+): Map<AudioTrackType, AudioTrackSeekTarget> =
+    AudioTrackType.values().mapNotNull { type ->
+        resolveAudioTrackSeekTarget(segmentsByType[type].orEmpty(), projectPositionMs)
+            ?.let { target -> type to target }
+    }.toMap()
+
+internal data class SynchronizedPreviewSeekTarget(
+    val videoTarget: TimelineSeekTarget,
+    val projectPositionMs: Long,
+    val audioTargets: Map<AudioTrackType, AudioTrackSeekTarget>,
+)
+
+/**
+ * Maps one requested project time to the video playlist and all prepared audio
+ * lane playlists. At the project end, the video's final playable millisecond
+ * becomes the canonical time used by every audio lane as well.
+ */
+internal fun resolveSynchronizedPreviewSeekTarget(
+    clipDurationsMs: List<Long>,
+    audioSegmentsByType: Map<AudioTrackType, List<AudioTrackTimelineSegment>>,
+    requestedProjectPositionMs: Long,
+): SynchronizedPreviewSeekTarget? {
+    val videoTarget = resolveTimelineSeekTarget(clipDurationsMs, requestedProjectPositionMs) ?: return null
+    val projectPositionMs = calculateTimelinePositionMs(
+        clipDurationsMs,
+        videoTarget.clipIndex,
+        videoTarget.positionMs,
+    ).coerceIn(0L, calculateTimelineDurationMs(clipDurationsMs))
+    return SynchronizedPreviewSeekTarget(
+        videoTarget = videoTarget,
+        projectPositionMs = projectPositionMs,
+        audioTargets = resolveAudioTrackSeekTargets(audioSegmentsByType, projectPositionMs),
+    )
+}
+
 /** Reconstructs project time from the active lane playlist item and its local position. */
 internal fun calculateAudioTrackTimelinePositionMs(
     segments: List<AudioTrackTimelineSegment>,
