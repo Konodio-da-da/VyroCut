@@ -190,15 +190,6 @@ internal fun trimAudioTrackClip(
 }
 
 /**
- * Splits one audio edit-decision-list item at an absolute project time.
- *
- * The left item keeps the original ID and fade-in; the right item receives
- * [newClipId] and keeps the original fade-out. Splits inside an active fade
- * ramp are rejected because the current fade model cannot represent a
- * non-zero starting gain on a newly split item without changing the sound.
- * Both items continue to reference the same untouched source URI.
- */
-/**
  * Trims one audio clip and ripples only later clips on the same lane by the
  * resulting duration delta. Shortening pulls later clips earlier; extending
  * pushes them later. Existing gaps and all other lanes remain unchanged.
@@ -244,6 +235,16 @@ internal fun rippleTrimAudioTrackClip(
     return updated.takeIf { validateAudioTrackClips(it, projectDurationMs) }
 }
 
+
+/**
+ * Splits one audio edit-decision-list item at an absolute project time.
+ *
+ * The left item keeps the original ID and fade-in; the right item receives
+ * [newClipId] and keeps the original fade-out. Splits inside an active fade
+ * ramp are rejected because the current fade model cannot represent a
+ * non-zero starting gain on a newly split item without changing the sound.
+ * Both items continue to reference the same untouched source URI.
+ */
 internal fun splitAudioTrackClip(
     clips: List<AudioTrackClip>,
     clipId: String,
