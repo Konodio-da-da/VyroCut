@@ -2106,7 +2106,7 @@ private fun VyroCutApp() {
                                     )
                                 },
                                 onValueChangeFinished = {
-                                    trimSelectedAudioTrack(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
+                                    applySelectedAudioTrackTrim(audioTrackSourceStartDraft.toLong(), audioTrackSourceEndDraft.toLong())
                                 },
                                 valueRange = minimumSourceEndMs.toFloat()..sourceDurationMs.toFloat().coerceAtLeast(minimumSourceEndMs.toFloat() + 1f),
                                 enabled = sourceDurationMs > MIN_AUDIO_TRACK_CLIP_DURATION_MS,
