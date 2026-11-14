@@ -23,6 +23,8 @@ import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -3554,6 +3556,15 @@ private fun TimelineEditorStrip(
     // same origin and offset. Multiple scroll containers sharing one state
     // can fight over viewport measurements on smaller devices.
     val timelineScroll = rememberScrollState()
+    val timelineInteractionSource = remember { MutableInteractionSource() }
+    val isTimelineDragged by timelineInteractionSource.collectIsDraggedAsState()
+    var autoFollowSuppressedByUser by remember { mutableStateOf(false) }
+    LaunchedEffect(isTimelineDragged) {
+        if (isTimelineDragged) autoFollowSuppressedByUser = true
+    }
+    LaunchedEffect(isPlaying) {
+        if (isPlaying) autoFollowSuppressedByUser = false
+    }
     var viewportWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val pixelsPerSecond = 24f
@@ -3574,18 +3585,26 @@ private fun TimelineEditorStrip(
     )
 
     val markerPositionPx = with(density) { markerX.dp.toPx() }
-    LaunchedEffect(isPlaying, markerPositionPx, viewportWidthPx, timelineScroll.maxValue) {
+    LaunchedEffect(
+        isPlaying,
+        markerPositionPx,
+        viewportWidthPx,
+        timelineScroll.maxValue,
+        isTimelineDragged,
+        autoFollowSuppressedByUser,
+    ) {
         val targetScrollPx = calculateTimelineAutoFollowScrollTargetPx(
             currentScrollPx = timelineScroll.value,
             markerPositionPx = markerPositionPx,
             viewportWidthPx = viewportWidthPx,
             maxScrollPx = timelineScroll.maxValue,
             isPlaying = isPlaying,
+            isUserScrollOverride = isTimelineDragged || autoFollowSuppressedByUser,
         )
         if (targetScrollPx != null) {
-            // Jump only when the playhead leaves the safe viewport band. This
-            // avoids a continuous scroll animation fighting the 200 ms player
-            // position updates while keeping every timeline track in sync.
+            // Jump only when the playhead leaves the safe viewport band. Manual
+            // horizontal drags temporarily suspend auto-follow so the user can
+            // inspect another timeline region without being pulled back.
             timelineScroll.scrollTo(targetScrollPx)
         }
     }
@@ -3601,7 +3620,7 @@ private fun TimelineEditorStrip(
     Column(
         Modifier.fillMaxWidth()
             .onSizeChanged { viewportWidthPx = it.width }
-            .horizontalScroll(timelineScroll),
+            .horizontalScroll(timelineScroll, interactionSource = timelineInteractionSource),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
@@ -3662,6 +3681,10 @@ private fun TimelineEditorStrip(
             // timelineScroll.value here would apply the scroll displacement twice.
             // Taps and long-press scrubs share the same content-local pixel map.
             val latestOnSeek by rememberUpdatedState(onSeek)
+            val seekFromTimeline: (TimelineSeekTarget) -> Unit = { target ->
+                autoFollowSuppressedByUser = false
+                latestOnSeek(target)
+            }
             Box(
                 Modifier.fillMaxSize()
                     .pointerInput(timelineClipDurationsMs, clipWidthsPx, gapPx, timelineScroll) {
@@ -3671,7 +3694,7 @@ private fun TimelineEditorStrip(
                                 clipWidthsPx,
                                 position.x,
                                 gapPx,
-                            )?.let(latestOnSeek)
+                            )?.let(seekFromTimeline)
                         }
                     }
                     .pointerInput(timelineClipDurationsMs, clipWidthsPx, gapPx, timelineScroll) {
@@ -3682,7 +3705,7 @@ private fun TimelineEditorStrip(
                                     clipWidthsPx,
                                     position.x,
                                     gapPx,
-                                )?.let(latestOnSeek)
+                                )?.let(seekFromTimeline)
                             },
                             onDrag = { change, _ ->
                                 change.consume()
@@ -3691,7 +3714,7 @@ private fun TimelineEditorStrip(
                                     clipWidthsPx,
                                     change.position.x,
                                     gapPx,
-                                )?.let(latestOnSeek)
+                                )?.let(seekFromTimeline)
                             },
                         )
                     }

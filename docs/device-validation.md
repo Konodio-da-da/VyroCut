@@ -28,6 +28,7 @@ Record device model, Android version, source formats, project duration, export d
 2. **Continuous preview and timeline**
    - Play through at least three clips without touching the controls; verify no freeze, unexpected restart, or black gap at clip boundaries.
    - During uninterrupted playback, confirm the project playhead advances smoothly at roughly 30 updates per second; pause and confirm it settles on the final player position. Check responsiveness and device load on a lower-powered API 29 device.
+   - While playing, manually drag the shared horizontal timeline to inspect another region; confirm auto-follow stays suspended instead of pulling the view back. Tap or scrub to seek and confirm follow resumes; alternatively pause and restart playback to re-enable auto-follow. Verify the ruler, video, Music, SFX, and Voiceover lanes retain one shared horizontal offset.
    - Seek by tapping and dragging the timeline across clip boundaries and the exact project end.
    - Use the ±5-second controls, timeline slider, video clip selection, audio clip selection, and text-layer selection; verify the video and Music/SFX/Voiceover players seek to the same project-clock position, including silence gaps and exact clip boundaries.
    - Switch projects and immediately scrub after opening; confirm no audio from the previous project's lane playlists is heard while the new sequences are rebuilding.

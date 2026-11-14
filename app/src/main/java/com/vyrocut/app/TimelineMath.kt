@@ -564,8 +564,9 @@ internal fun <T> duplicateTimelineItemAfter(
 
 /**
  * Keeps a playing playhead inside a safe horizontal viewport band without
- * taking control away from the user while paused. Returns null when no scroll
- * is needed. The target is expressed in ScrollState pixels.
+ * taking control away from the user while paused or after a manual timeline
+ * drag. Manual scrolling suppresses auto-follow until playback is restarted
+ * or the user seeks directly on the timeline.
  */
 internal fun calculateTimelineAutoFollowScrollTargetPx(
     currentScrollPx: Int,
@@ -573,8 +574,15 @@ internal fun calculateTimelineAutoFollowScrollTargetPx(
     viewportWidthPx: Int,
     maxScrollPx: Int,
     isPlaying: Boolean,
+    isUserScrollOverride: Boolean = false,
 ): Int? {
-    if (!isPlaying || viewportWidthPx <= 0 || maxScrollPx <= 0 || !markerPositionPx.isFinite()) {
+    if (
+        !isPlaying ||
+        isUserScrollOverride ||
+        viewportWidthPx <= 0 ||
+        maxScrollPx <= 0 ||
+        !markerPositionPx.isFinite()
+    ) {
         return null
     }
 

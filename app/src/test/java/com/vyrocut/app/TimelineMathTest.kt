@@ -716,6 +716,20 @@ class TimelineMathTest {
     }
 
     @Test
+    fun timelineAutoFollowYieldsToManualScrollOverrideWhilePlaying() {
+        assertNull(
+            calculateTimelineAutoFollowScrollTargetPx(
+                currentScrollPx = 100,
+                markerPositionPx = 900f,
+                viewportWidthPx = 500,
+                maxScrollPx = 1_200,
+                isPlaying = true,
+                isUserScrollOverride = true,
+            ),
+        )
+    }
+
+    @Test
     fun timelineAutoFollowMovesForwardWhenPlayheadLeavesRightSafeBoundary() {
         assertEquals(
             725,
