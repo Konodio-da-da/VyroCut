@@ -704,6 +704,13 @@ private fun VyroCutApp() {
 
     DisposableEffect(player, clips, activeProjectId) {
         val listener = object : Player.Listener {
+            // Media3 can report one playlist transition through both callbacks
+            // below in the same event batch. Collect their reasons and perform
+            // one project-clock update from onEvents instead of applying visual
+            // effects and writing the preview checkpoint twice.
+            var pendingPositionDiscontinuityAutomatic: Boolean? = null
+            var pendingMediaItemTransitionAutomatic: Boolean? = null
+
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
                 // The built-in PlayerView controller can pause independently of
@@ -721,24 +728,35 @@ private fun VyroCutApp() {
                 newPosition: Player.PositionInfo,
                 reason: Int,
             ) {
-                // A natural video playlist transition does not need to restart
-                // already-running gap-filled audio playlists. Explicit seeks and
-                // playlist edits still force all audio lanes to the same project time.
-                syncPlayerPosition(
-                    newPosition.mediaItemIndex,
-                    newPosition.positionMs,
-                    forceAudioLaneSeek = shouldForceAudioLaneSeekForVideoTransition(
-                        isAutomaticTransition = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
-                    ),
-                )
+                val isAutomatic = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION
+                // If more than one discontinuity is coalesced, any explicit
+                // change requires an audio resync.
+                pendingPositionDiscontinuityAutomatic =
+                    (pendingPositionDiscontinuityAutomatic ?: true) && isAutomatic
             }
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                val isAutomatic = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
+                pendingMediaItemTransitionAutomatic =
+                    (pendingMediaItemTransitionAutomatic ?: true) && isAutomatic
+            }
+            override fun onEvents(player: Player, events: Player.Events) {
+                val hasPositionChange = events.contains(Player.EVENT_POSITION_DISCONTINUITY) ||
+                    events.contains(Player.EVENT_MEDIA_ITEM_TRANSITION)
+                if (!hasPositionChange) return
+
+                val forceAudioLaneSeek = shouldForceAudioLaneSeekForVideoEvents(
+                    positionDiscontinuityIsAutomatic = pendingPositionDiscontinuityAutomatic,
+                    mediaItemTransitionIsAutomatic = pendingMediaItemTransitionAutomatic,
+                ) ?: return
+                pendingPositionDiscontinuityAutomatic = null
+                pendingMediaItemTransitionAutomatic = null
+
+                // onEvents runs after the individual callbacks, so this reads
+                // the final playlist index/position and handles the transition once.
                 syncPlayerPosition(
                     player.currentMediaItemIndex,
                     player.currentPosition,
-                    forceAudioLaneSeek = shouldForceAudioLaneSeekForVideoTransition(
-                        isAutomaticTransition = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
-                    ),
+                    forceAudioLaneSeek = forceAudioLaneSeek,
                 )
             }
         }

@@ -41,6 +41,7 @@ Record device model, Android version, source formats, project duration, export d
    - Split a selected Music, SFX, and Voiceover clip at the playhead; verify source ranges remain contiguous and the original audio is unchanged.
    - Listen across clip transitions and repeated scrubs for drift, clicks, missing audio, or repeated seek glitches.
    - Let a continuous Music/SFX/Voiceover clip span several video cuts; confirm natural video auto-transitions do not cause audible restarts while explicit seeks still realign all lanes.
+   - Rapidly cross a video clip boundary and confirm the preview playhead/effects update once without an audible audio restart; repeat with an explicit seek and confirm all audio lanes realign.
    - Test source video with audio, silent video, and all three independent lanes together.
    - Repeat multi-clip preview with playback speed changed mid-clip and across clip boundaries at 0.5×, 0.75×, 1×, 1.25×, 1.5× and 2×; confirm Music, SFX and Voiceover remain aligned with the video clock.
    - Set a non-default preview speed, switch to another project and back, then force-stop/reopen; confirm each project restores its own saved preview speed and a deleted project leaves no speed preference.

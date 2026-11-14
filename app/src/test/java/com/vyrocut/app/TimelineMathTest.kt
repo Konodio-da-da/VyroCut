@@ -35,9 +35,70 @@ class TimelineMathTest {
     }
 
     @Test
-    fun automaticVideoTransitionsDoNotForceAudioLaneReseeks() {
-        assertFalse(shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition = true))
-        assertTrue(shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition = false))
+    fun batchedAutomaticVideoTransitionCallbacksDoNotForceAudioLaneReseeks() {
+        assertEquals(
+            false,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = true,
+                mediaItemTransitionIsAutomatic = true,
+            ),
+        )
+        assertEquals(
+            false,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = true,
+                mediaItemTransitionIsAutomatic = null,
+            ),
+        )
+        assertEquals(
+            false,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = null,
+                mediaItemTransitionIsAutomatic = true,
+            ),
+        )
+    }
+
+    @Test
+    fun anyExplicitVideoTimelineChangeForcesAudioLaneResynchronization() {
+        assertEquals(
+            true,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = false,
+                mediaItemTransitionIsAutomatic = true,
+            ),
+        )
+        assertEquals(
+            true,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = true,
+                mediaItemTransitionIsAutomatic = false,
+            ),
+        )
+        assertEquals(
+            true,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = false,
+                mediaItemTransitionIsAutomatic = null,
+            ),
+        )
+        assertEquals(
+            true,
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = null,
+                mediaItemTransitionIsAutomatic = false,
+            ),
+        )
+    }
+
+    @Test
+    fun noMedia3TimelineCallbacksProduceNoAudioSyncDecision() {
+        assertNull(
+            shouldForceAudioLaneSeekForVideoEvents(
+                positionDiscontinuityIsAutomatic = null,
+                mediaItemTransitionIsAutomatic = null,
+            ),
+        )
     }
 
     @Test

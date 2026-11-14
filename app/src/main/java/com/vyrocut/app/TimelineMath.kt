@@ -16,13 +16,24 @@ internal data class PlayerTimelinePosition(
 )
 
 /**
- * Natural video playlist transitions advance the continuous, gap-filled audio
- * playlists on their own project clock. Re-seeking those players at every video
- * cut can restart decoders and introduce avoidable clicks or dropouts. Explicit
- * seeks and playlist edits still need an immediate audio-lane seek.
+ * Combines the reasons reported by Media3's position-discontinuity and
+ * media-item-transition callbacks for one onEvents batch.
+ *
+ * A natural video transition can be reported through both callbacks; it should
+ * not restart continuous gap-filled audio playlists. If either callback reports
+ * an explicit seek or playlist edit, all audio lanes must be realigned.
+ * Null means neither callback contributed a timeline change.
  */
-internal fun shouldForceAudioLaneSeekForVideoTransition(isAutomaticTransition: Boolean): Boolean =
-    !isAutomaticTransition
+internal fun shouldForceAudioLaneSeekForVideoEvents(
+    positionDiscontinuityIsAutomatic: Boolean?,
+    mediaItemTransitionIsAutomatic: Boolean?,
+): Boolean? {
+    val reasons = listOfNotNull(
+        positionDiscontinuityIsAutomatic,
+        mediaItemTransitionIsAutomatic,
+    )
+    return reasons.takeIf { it.isNotEmpty() }?.any { isAutomatic -> !isAutomatic }
+}
 
 /** Normalizes a Media3 position and maps it to the editor's project-wide scrubber. */
 internal fun resolvePlayerTimelinePosition(
