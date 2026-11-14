@@ -12,6 +12,33 @@ internal const val AUDIO_WAVEFORM_TEMP_FILE_PREFIX = "waveform-"
 internal const val AUDIO_WAVEFORM_TEMP_FILE_SUFFIX = ".tmp"
 internal const val AUDIO_WAVEFORM_TEMP_FILE_MAX_AGE_MS = 24L * 60L * 60L * 1_000L
 
+/** A disposable cache entry ordered by its most recent successful use. */
+internal data class AudioWaveformCacheEntry(
+    val fileName: String,
+    val lastAccessedMs: Long,
+)
+
+/**
+ * Returns the least-recently-used filenames needed to bring the cache within
+ * [maxFiles]. Filename ordering makes equal-timestamp eviction deterministic.
+ */
+internal fun audioWaveformCacheFilesToEvict(
+    entries: List<AudioWaveformCacheEntry>,
+    maxFiles: Int,
+): List<String> {
+    require(maxFiles >= 0)
+    val excessCount = (entries.size - maxFiles).coerceAtLeast(0)
+    if (excessCount == 0) return emptyList()
+
+    return entries
+        .sortedWith(
+            compareBy<AudioWaveformCacheEntry> { it.lastAccessedMs }
+                .thenBy { it.fileName },
+        )
+        .take(excessCount)
+        .map { it.fileName }
+}
+
 /**
  * Identifies abandoned cache-write temp files without touching active writers,
  * recent files, completed cache entries, or files with future timestamps.

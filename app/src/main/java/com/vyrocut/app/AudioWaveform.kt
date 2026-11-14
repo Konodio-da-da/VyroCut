@@ -324,7 +324,14 @@ private fun cleanupStaleWaveformTemporaryFiles(directory: File) {
 private fun readWaveformCache(file: File, bucketCount: Int): List<Float>? {
     if (!file.isFile || file.length() != 16L + bucketCount * 4L) return null
     val encoded = runCatching { file.readBytes() }.getOrNull() ?: return null
-    return decodeAudioWaveformCache(encoded, bucketCount)
+    val decoded = decodeAudioWaveformCache(encoded, bucketCount) ?: return null
+
+    // Treat a successful cache hit as use: the bounded cache can retain the
+    // waveforms the editor revisits instead of evicting them by creation age.
+    runCatching {
+        file.setLastModified(maxOf(System.currentTimeMillis(), file.lastModified()))
+    }
+    return decoded
 }
 
 private fun writeWaveformCache(directory: File, destination: File, values: List<Float>) {
@@ -360,11 +367,14 @@ private fun writeWaveformCache(directory: File, destination: File, values: List<
         } finally {
             temporary.delete()
         }
-        directory.listFiles()
+        val cacheFiles = directory.listFiles()
             ?.filter { it.isFile && it.extension == "bin" }
-            ?.sortedByDescending { it.lastModified() }
-            ?.drop(MAX_AUDIO_WAVEFORM_CACHE_FILES)
-            ?.forEach { it.delete() }
+            .orEmpty()
+        val evictedNames = audioWaveformCacheFilesToEvict(
+            entries = cacheFiles.map { AudioWaveformCacheEntry(it.name, it.lastModified()) },
+            maxFiles = MAX_AUDIO_WAVEFORM_CACHE_FILES,
+        ).toSet()
+        cacheFiles.filter { it.name in evictedNames }.forEach { it.delete() }
     }
 }
 

@@ -196,4 +196,44 @@ class AudioWaveformTest {
         )
     }
 
+
+    @Test
+    fun cacheEvictionRetainsRecentlyUsedWaveforms() {
+        val entries = listOf(
+            AudioWaveformCacheEntry("old.bin", 100L),
+            AudioWaveformCacheEntry("recent.bin", 300L),
+            AudioWaveformCacheEntry("middle.bin", 200L),
+        )
+
+        assertEquals(
+            listOf("old.bin"),
+            audioWaveformCacheFilesToEvict(entries, maxFiles = 2),
+        )
+    }
+
+    @Test
+    fun cacheEvictionUsesDeterministicTieBreaksAndHonorsTheLimit() {
+        val entries = listOf(
+            AudioWaveformCacheEntry("z.bin", 100L),
+            AudioWaveformCacheEntry("a.bin", 100L),
+            AudioWaveformCacheEntry("b.bin", 200L),
+        )
+
+        assertEquals(listOf("a.bin"), audioWaveformCacheFilesToEvict(entries, maxFiles = 2))
+        assertTrue(audioWaveformCacheFilesToEvict(entries, maxFiles = 3).isEmpty())
+        assertEquals(
+            listOf("a.bin", "z.bin", "b.bin"),
+            audioWaveformCacheFilesToEvict(entries, maxFiles = 0),
+        )
+    }
+
+    @Test
+    fun cacheEvictionRejectsNegativeLimits() {
+        assertTrue(
+            runCatching {
+                audioWaveformCacheFilesToEvict(emptyList(), maxFiles = -1)
+            }.isFailure,
+        )
+    }
+
 }
