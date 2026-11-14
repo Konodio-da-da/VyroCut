@@ -8,6 +8,13 @@ import org.junit.Test
 
 class TimelineMathTest {
     @Test
+    fun userTimelineSeeksUseExactPrecisionWhilePlaylistRebuildsKeepDefault() {
+        assertEquals(PreviewSeekPrecision.EXACT, previewSeekPrecisionFor(PreviewSeekIntent.USER_EDIT))
+        assertEquals(PreviewSeekPrecision.EXACT, previewSeekPrecisionFor(PreviewSeekIntent.AUDIO_RESYNC))
+        assertEquals(PreviewSeekPrecision.DEFAULT, previewSeekPrecisionFor(PreviewSeekIntent.PLAYLIST_REBUILD))
+    }
+
+    @Test
     fun mapsMedia3ControllerPositionIntoProjectTimeline() {
         assertEquals(
             PlayerTimelinePosition(2, 1_250L, 4_250L),

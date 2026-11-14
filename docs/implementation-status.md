@@ -96,3 +96,9 @@ A control is only considered complete when its operation is connected to the pro
 - The observer does not consume pointer changes; the existing horizontal scroll modifier remains the sole owner of timeline scrolling.
 - Vertical gestures and small incidental movements do not suspend auto-follow. Pure Kotlin tests cover horizontal intent, touch-slop boundaries, vertical movement, and invalid measurements.
 - This replaces an unsupported `interactionSource` argument on the pinned Compose `horizontalScroll` API. The previous PR run failed at Kotlin compilation on that argument; the replacement is designed against the project's Compose BOM and must be confirmed by the next Android CI run.
+
+
+## Exact preview seeking for editor actions
+- User-initiated timeline, transport, audio-clip, and text-layer seeks plus audio drift corrections now request Media3 EXACT seek parameters so the preview/audio players decode from the preceding sync sample to the requested timestamp.
+- Playlist reconstruction/restoration retains Media3's default seek policy to avoid forcing exact decode during project reloads.
+- The seek-intent-to-precision decision is pure Kotlin and covered by a JVM regression test. Exact frame presentation, seek latency, mixed-frame-rate behaviour, and audio continuity still require physical-device validation.

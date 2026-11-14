@@ -59,3 +59,6 @@ Record device model, Android version, source formats, project duration, export d
    - Test low-storage and low-memory conditions without losing the saved edit decision list.
 
 Do not mark any of these device-only checks complete from CI results alone.
+
+   - Verify editor-initiated seeks land on the requested preview timestamp rather than the nearest sync sample. Test taps, long-press scrubbing, ±5-second transport, audio-clip selection, and text-layer selection on 23.976, 25, 29.97, and 59.94 fps sources.
+   - Compare seek latency and audio continuity on a lower-powered API 29 device; confirm playlist rebuild/project restoration retains the default seek behaviour.

@@ -67,6 +67,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Presentation
@@ -89,6 +90,12 @@ private val StudioPanel = Color(0xFF1C2221)
 private val StudioAccent = Color(0xFF0FE8B8)
 private val StudioText = Color(0xFFE5EDEA)
 private val StudioMuted = Color(0xFF9BAAA5)
+
+private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
+    when (previewSeekPrecisionFor(intent)) {
+        PreviewSeekPrecision.EXACT -> SeekParameters.EXACT
+        PreviewSeekPrecision.DEFAULT -> SeekParameters.DEFAULT
+    }
 
 private data class ProjectInfo(val id: String, val name: String)
 
@@ -419,6 +426,7 @@ private fun VyroCutApp() {
                     restoredClip.fadeOutMs,
                 ),
             )
+            player.setSeekParameters(media3SeekParametersFor(PreviewSeekIntent.PLAYLIST_REBUILD))
             player.setMediaItems(items, restoreTarget.clipIndex, restoreTarget.positionMs)
             player.prepare()
             player.playWhenReady = wasPlaying
@@ -631,6 +639,7 @@ private fun VyroCutApp() {
                         )
                     ) {
                         expectedTrackTarget?.let { target ->
+                            audioPlayer.setSeekParameters(media3SeekParametersFor(PreviewSeekIntent.AUDIO_RESYNC))
                             audioPlayer.seekTo(target.segmentIndex, target.positionMs)
                             lastAudioResyncAtMs[type] = nowMs
                             lastAudioResyncSegmentIndex[type] = target.segmentIndex
@@ -654,6 +663,7 @@ private fun VyroCutApp() {
         resolveAudioTrackSeekTargets(audioTrackSegments, projectPositionMs).forEach { (type, target) ->
             val audioPlayer = audioPlayers.getValue(type)
             if (target.segmentIndex in 0 until audioPlayer.mediaItemCount) {
+                audioPlayer.setSeekParameters(media3SeekParametersFor(PreviewSeekIntent.USER_EDIT))
                 audioPlayer.seekTo(target.segmentIndex, target.positionMs)
             }
         }
@@ -671,6 +681,7 @@ private fun VyroCutApp() {
             requestedProjectPositionMs = requestedPositionMs,
         ) ?: return
         selectedIndex = target.videoTarget.clipIndex
+        player.setSeekParameters(media3SeekParametersFor(PreviewSeekIntent.USER_EDIT))
         player.seekTo(target.videoTarget.clipIndex, target.videoTarget.positionMs)
         timelinePositionMs = target.projectPositionMs.coerceIn(0L, timelineDurationMs).toFloat()
         seekAudioPlayersToProjectPosition(target.projectPositionMs)

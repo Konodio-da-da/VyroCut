@@ -613,6 +613,25 @@ internal fun calculateTimelineAutoFollowScrollTargetPx(
     return target.takeIf { it != current }
 }
 
+/** Why the editor is seeking the preview playlist. */
+internal enum class PreviewSeekIntent {
+    USER_EDIT,
+    AUDIO_RESYNC,
+    PLAYLIST_REBUILD,
+}
+
+internal enum class PreviewSeekPrecision {
+    EXACT,
+    DEFAULT,
+}
+
+/** User seeks should land on the requested timestamp; playlist reconstruction keeps the default fast seek. */
+internal fun previewSeekPrecisionFor(intent: PreviewSeekIntent): PreviewSeekPrecision =
+    when (intent) {
+        PreviewSeekIntent.USER_EDIT, PreviewSeekIntent.AUDIO_RESYNC -> PreviewSeekPrecision.EXACT
+        PreviewSeekIntent.PLAYLIST_REBUILD -> PreviewSeekPrecision.DEFAULT
+    }
+
 /** Target cadence for keeping the editor playhead visually aligned with Media3. */
 internal const val PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS = 33L
 internal const val PLAYBACK_PROGRESS_IDLE_INTERVAL_MS = 100L
