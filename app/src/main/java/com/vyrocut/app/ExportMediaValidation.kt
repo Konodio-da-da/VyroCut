@@ -16,6 +16,10 @@ internal fun verifyExportedMp4(
     file: File,
     sourceUris: List<String>,
     expectedDurationMs: Long,
+    clipDurationsMs: List<Long>,
+    expectedCanvasSize: ExportCanvasSize? = null,
+    canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
+    expectedBackgroundArgb: Int? = null,
 ) {
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
@@ -58,17 +62,25 @@ internal fun verifyExportedMp4(
             ?.takeIf { it.containsKey(MediaFormat.KEY_DURATION) }
             ?.let { runCatching { it.getLong(MediaFormat.KEY_DURATION) }.getOrNull() }
             ?: 0L
+        val videoWidthPx = videoFormat
+            ?.takeIf { it.containsKey(MediaFormat.KEY_WIDTH) }
+            ?.let { runCatching { it.getInteger(MediaFormat.KEY_WIDTH) }.getOrDefault(0) }
+            ?: 0
+        val videoHeightPx = videoFormat
+            ?.takeIf { it.containsKey(MediaFormat.KEY_HEIGHT) }
+            ?.let { runCatching { it.getInteger(MediaFormat.KEY_HEIGHT) }.getOrDefault(0) }
+            ?: 0
         val measuredDurationMs = if (declaredDurationUs > 0L) {
             declaredDurationUs / 1_000L
         } else {
             (lastVideoSampleTimeUs / 1_000L).coerceAtLeast(0L)
         }
-        ExportTrackSummary(videoSamples, audioSamples, measuredDurationMs)
+        ExportTrackSummary(videoSamples, audioSamples, measuredDurationMs, videoWidthPx, videoHeightPx)
     } finally {
         extractor.release()
     }
 
-    val sourceHasAudio = sourceUris.any { sourceUri ->
+    val sourceHasAudio = distinctExportSourceUris(sourceUris).any { sourceUri ->
         val source = MediaExtractor()
         try {
             source.setDataSource(context, Uri.parse(sourceUri), null)
@@ -80,8 +92,29 @@ internal fun verifyExportedMp4(
         }
     }
 
-    validateExportTrackSummary(summary, expectedDurationMs, sourceHasAudio)?.let { message ->
+    validateExportTrackSummary(summary, expectedDurationMs, sourceHasAudio, expectedCanvasSize)?.let { message ->
         error(message)
+    }
+
+    // Demuxing proves that packets exist; decode real frames and PCM before
+    // publishing so a structurally valid but undecodable MP4 is never exposed.
+    expectedCanvasSize?.let { canvas ->
+        verifyExportedVideoFrames(file, clipDurationsMs, canvas)
+    }
+    if (expectedBackgroundArgb != null) {
+        check(canvasVisualClips.isNotEmpty()) {
+            "Source dimensions are unavailable for canvas background verification"
+        }
+        verifyExportedCanvasBackgroundPixels(
+            file = file,
+            canvasSize = expectedCanvasSize
+                ?: error("Canvas dimensions are required for background verification"),
+            clips = canvasVisualClips,
+            expectedBackgroundArgb = expectedBackgroundArgb,
+        )
+    }
+    if (sourceHasAudio) {
+        verifyExportedAudioSamples(file, expectedDurationMs)
     }
 }
 

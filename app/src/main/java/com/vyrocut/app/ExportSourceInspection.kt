@@ -18,18 +18,37 @@ internal fun inspectExportSources(
         val uri = Uri.parse(rawUri)
         val durationMs = MediaMetadataReader.videoDurationMs(context, uri)
         val extractor = MediaExtractor()
+        var videoWidthPx: Int? = null
+        var videoHeightPx: Int? = null
+        var videoRotationDegrees = 0
         val hasVideoTrack = try {
             extractor.setDataSource(context, uri, null)
-            (0 until extractor.trackCount).any { index ->
-                extractor.getTrackFormat(index)
-                    .getString(MediaFormat.KEY_MIME)
-                    ?.startsWith("video/") == true
+            var foundVideoTrack = false
+            for (index in 0 until extractor.trackCount) {
+                val format = extractor.getTrackFormat(index)
+                if (format.getString(MediaFormat.KEY_MIME)?.startsWith("video/") == true) {
+                    foundVideoTrack = true
+                    if (videoWidthPx == null || videoHeightPx == null) {
+                        videoWidthPx = runCatching { format.getInteger(MediaFormat.KEY_WIDTH) }.getOrNull()
+                        videoHeightPx = runCatching { format.getInteger(MediaFormat.KEY_HEIGHT) }.getOrNull()
+                        videoRotationDegrees = runCatching {
+                            format.getInteger(MediaFormat.KEY_ROTATION)
+                        }.getOrDefault(0)
+                    }
+                }
             }
+            foundVideoTrack
         } catch (_: Exception) {
             false
         } finally {
             runCatching { extractor.release() }
         }
-        ExportSourceMetadata(durationMs = durationMs, hasVideoTrack = hasVideoTrack)
+        ExportSourceMetadata(
+            durationMs = durationMs,
+            hasVideoTrack = hasVideoTrack,
+            videoWidthPx = videoWidthPx,
+            videoHeightPx = videoHeightPx,
+            videoRotationDegrees = videoRotationDegrees,
+        )
     }
 }
