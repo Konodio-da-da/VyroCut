@@ -192,7 +192,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(original.allTextOverlays, restoredProject!!.single().allTextOverlays)
 
         val backup = encodeProjectBackup("Layered project", listOf(original), ProjectCanvasSettings())
-        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(12, org.json.JSONObject(backup).getInt("version"))
         val restoredBackup = decodeProjectBackup(backup)
         assertEquals(original.allTextOverlays, restoredBackup.clips.single().allTextOverlays)
     }
@@ -383,7 +383,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(11, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(12, org.json.JSONObject(backup).getInt("version"))
         assertEquals(tracks, restored.audioTracks)
         assertTrue(validateAudioTrackClips(restored.audioTracks, 12_000L))
     }
