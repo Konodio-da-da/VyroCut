@@ -8,10 +8,10 @@ import org.junit.Test
 
 class TimelineMathTest {
     @Test
-    fun userTimelineSeeksUseExactPrecisionWhilePlaylistRebuildsKeepDefault() {
+    fun userTimelineSeeksUseExactPrecisionWhilePlaylistRebuildsUseClosestSync() {
         assertEquals(PreviewSeekPrecision.EXACT, previewSeekPrecisionFor(PreviewSeekIntent.USER_EDIT))
         assertEquals(PreviewSeekPrecision.EXACT, previewSeekPrecisionFor(PreviewSeekIntent.AUDIO_RESYNC))
-        assertEquals(PreviewSeekPrecision.DEFAULT, previewSeekPrecisionFor(PreviewSeekIntent.PLAYLIST_REBUILD))
+        assertEquals(PreviewSeekPrecision.CLOSEST_SYNC, previewSeekPrecisionFor(PreviewSeekIntent.PLAYLIST_REBUILD))
     }
 
     @Test

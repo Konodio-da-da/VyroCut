@@ -95,7 +95,7 @@ private val StudioMuted = Color(0xFF9BAAA5)
 private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
     when (previewSeekPrecisionFor(intent)) {
         PreviewSeekPrecision.EXACT -> SeekParameters.EXACT
-        PreviewSeekPrecision.DEFAULT -> SeekParameters.DEFAULT
+        PreviewSeekPrecision.CLOSEST_SYNC -> SeekParameters.CLOSEST_SYNC
     }
 
 private data class ProjectInfo(val id: String, val name: String)

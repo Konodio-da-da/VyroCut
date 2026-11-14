@@ -622,14 +622,14 @@ internal enum class PreviewSeekIntent {
 
 internal enum class PreviewSeekPrecision {
     EXACT,
-    DEFAULT,
+    CLOSEST_SYNC,
 }
 
-/** User seeks should land on the requested timestamp; playlist reconstruction keeps the default fast seek. */
+/** User seeks should land on the requested timestamp; playlist reconstruction uses the faster closest-sync policy. */
 internal fun previewSeekPrecisionFor(intent: PreviewSeekIntent): PreviewSeekPrecision =
     when (intent) {
         PreviewSeekIntent.USER_EDIT, PreviewSeekIntent.AUDIO_RESYNC -> PreviewSeekPrecision.EXACT
-        PreviewSeekIntent.PLAYLIST_REBUILD -> PreviewSeekPrecision.DEFAULT
+        PreviewSeekIntent.PLAYLIST_REBUILD -> PreviewSeekPrecision.CLOSEST_SYNC
     }
 
 /** Target cadence for keeping the editor playhead visually aligned with Media3. */

@@ -100,5 +100,5 @@ A control is only considered complete when its operation is connected to the pro
 
 ## Exact preview seeking for editor actions
 - User-initiated timeline, transport, audio-clip, and text-layer seeks plus audio drift corrections now request Media3 EXACT seek parameters so the preview/audio players decode from the preceding sync sample to the requested timestamp.
-- Playlist reconstruction/restoration retains Media3's default seek policy to avoid forcing exact decode during project reloads.
+- Playlist reconstruction/restoration uses Media3 CLOSEST_SYNC seeking to avoid decoding from a preceding keyframe during project reloads.
 - The seek-intent-to-precision decision is pure Kotlin and covered by a JVM regression test. Exact frame presentation, seek latency, mixed-frame-rate behaviour, and audio continuity still require physical-device validation.
