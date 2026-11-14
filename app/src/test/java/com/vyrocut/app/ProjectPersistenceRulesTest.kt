@@ -247,6 +247,36 @@ class ProjectPersistenceRulesTest {
         }
     }
 
+    @Test
+    fun projectDeletionClearsSavedPreviewPositionAndAllOtherProjectOwnedPreferences() {
+        assertEquals(
+            listOf(
+                "project_project-1",
+                "project_project-1_undo",
+                "project_project-1_redo",
+                "project_project-1_recovery",
+                "project_project-1_recovery_dismissed",
+                "project_project-1_audio_tracks",
+                "project_project-1_audio_tracks_recovery",
+                "project_project-1_canvas_settings",
+                "project_project-1_preview_clip_id",
+                "project_project-1_preview_source_time_ms",
+            ),
+            projectPreferenceKeysForDeletion("project-1"),
+        )
+    }
+
+    @Test
+    fun projectDeletionKeyListRejectsBlankIdsAndDoesNotIncludeGlobalPreferences() {
+        assertEquals(
+            false,
+            runCatching { projectPreferenceKeysForDeletion(" ") }.isSuccess,
+        )
+        val keys = projectPreferenceKeysForDeletion("project-1")
+        assertEquals(false, "active_project_id" in keys)
+        assertEquals(false, "project_project-2" in keys)
+    }
+
     private fun recoveryProjectSnapshot(savedAtMs: Long): ProjectRecoverySnapshot {
         val journal = ProjectRecoveryJournal.encode(
             projectId = "project-1",
