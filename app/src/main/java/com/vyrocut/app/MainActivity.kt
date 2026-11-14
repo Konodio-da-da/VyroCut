@@ -40,6 +40,8 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -64,6 +66,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.Tracks
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
@@ -96,6 +99,17 @@ private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
     when (previewSeekPrecisionFor(intent)) {
         PreviewSeekPrecision.EXACT -> SeekParameters.EXACT
         PreviewSeekPrecision.CLOSEST_SYNC -> SeekParameters.CLOSEST_SYNC
+    }
+
+private fun previewFrameRateCandidates(tracks: Tracks): List<PreviewTrackFrameRateCandidate> =
+    tracks.groups.flatMap { group ->
+        (0 until group.length).map { trackIndex ->
+            PreviewTrackFrameRateCandidate(
+                isVideo = group.type == C.TRACK_TYPE_VIDEO,
+                isSelected = group.isTrackSelected(trackIndex),
+                frameRate = group.getTrackFormat(trackIndex).frameRate,
+            )
+        }
     }
 
 private data class ProjectInfo(val id: String, val name: String)
@@ -190,6 +204,7 @@ private fun VyroCutApp() {
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
+    var previewFrameRate by remember { mutableStateOf<Float?>(null) }
     var previewPlaybackSpeed by remember(activeProjectId) {
         mutableFloatStateOf(loadPreviewPlaybackSpeed(preferences, activeProjectId))
     }
@@ -363,6 +378,7 @@ private fun VyroCutApp() {
     // source-time playhead when the same clip still exists (including reorders/trims).
     // Initial load and project switches restore that project's saved preview location.
     LaunchedEffect(clips, activeProjectId) {
+        previewFrameRate = null
         val sameProject = previousProjectId == activeProjectId
         val currentClipId = if (sameProject) player.currentMediaItem?.mediaId else null
         val currentPositionMs = if (sameProject) player.currentPosition else 0L
@@ -691,6 +707,22 @@ private fun VyroCutApp() {
         }
     }
 
+    fun stepPreviewFrame(direction: PreviewFrameStepDirection) {
+        val clipIndex = player.currentMediaItemIndex
+        val clip = clips.getOrNull(clipIndex) ?: return
+        val frameRate = previewFrameRate ?: return
+        val targetPositionMs = resolvePreviewFrameStepTargetMs(
+            currentPositionMs = player.currentPosition,
+            clipDurationMs = clip.durationMs,
+            frameRate = frameRate,
+            direction = direction,
+        ) ?: return
+        player.pause()
+        seekPreviewToTimelinePosition(
+            calculateTimelinePositionMs(clipDurationsMs, clipIndex, targetPositionMs),
+        )
+    }
+
     fun syncPlayerPosition(
         clipIndex: Int,
         clipPositionMs: Long,
@@ -718,6 +750,7 @@ private fun VyroCutApp() {
     }
 
     DisposableEffect(player, clips, activeProjectId) {
+        previewFrameRate = resolveSelectedPreviewFrameRate(previewFrameRateCandidates(player.currentTracks))
         val listener = object : Player.Listener {
             // Media3 can report one playlist transition through both callbacks
             // below in the same event batch. Collect their reasons and perform
@@ -733,6 +766,9 @@ private fun VyroCutApp() {
                 if (!playing) {
                     syncPlayerPosition(player.currentMediaItemIndex, player.currentPosition)
                 }
+            }
+            override fun onTracksChanged(tracks: Tracks) {
+                previewFrameRate = resolveSelectedPreviewFrameRate(previewFrameRateCandidates(tracks))
             }
             override fun onPlayerError(error: PlaybackException) {
                 isPlaying = false
@@ -1503,6 +1539,18 @@ private fun VyroCutApp() {
                         ) { Text(if (isReadingMedia) "Reading…" else "Relink", fontSize = 11.sp) }
                     }
                     IconButton(
+                        onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
+                        enabled = selectedClip != null && previewFrameRate != null,
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.SkipPrevious,
+                            contentDescription = "Previous frame",
+                            tint = StudioAccent,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    IconButton(
                         onClick = {
                             resolveTimelineSeekTargetAfterDelta(
                                 clipDurationsMs,
@@ -1533,6 +1581,18 @@ private fun VyroCutApp() {
                         enabled = clips.isNotEmpty(),
                     ) {
                         Icon(Icons.Default.ArrowForward, contentDescription = "Forward 5 seconds", tint = StudioAccent)
+                    }
+                    IconButton(
+                        onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
+                        enabled = selectedClip != null && previewFrameRate != null,
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            Icons.Default.SkipNext,
+                            contentDescription = "Next frame",
+                            tint = StudioAccent,
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                     TextButton(
                         onClick = {

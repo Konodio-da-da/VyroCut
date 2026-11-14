@@ -102,3 +102,11 @@ A control is only considered complete when its operation is connected to the pro
 - User-initiated timeline, transport, audio-clip, and text-layer seeks plus audio drift corrections now request Media3 EXACT seek parameters so the preview/audio players decode from the preceding sync sample to the requested timestamp.
 - Playlist reconstruction/restoration uses Media3 CLOSEST_SYNC seeking to avoid decoding from a preceding keyframe during project reloads.
 - The seek-intent-to-precision decision is pure Kotlin and covered by a JVM regression test. Exact frame presentation, seek latency, mixed-frame-rate behaviour, and audio continuity still require physical-device validation.
+
+
+## Frame-by-frame preview navigation
+- The preview transport now exposes previous/next-frame actions when Media3 reports a selected video track with a valid frame rate.
+- Frame stepping uses the active track's selected format rather than assuming a project-wide 24/25/30 fps rate. Unknown, unselected, audio-only, non-finite, or implausible frame rates leave the controls disabled.
+- Fractional rates such as 23.976, 29.97, and 59.94 are converted through frame indices, avoiding repeated rounded-duration accumulation. Frame steps stay inside the active clip; they do not guess the adjacent clip's frame rate at a cut.
+- Frame navigation uses the existing exact-seek path, so video, Music, SFX, and Voiceover remain aligned to the project clock. The action pauses playback before seeking.
+- Pure Kotlin tests cover selected-track filtering, integer/fractional rates, repeated frame-step rounding, invalid metadata, and clip-edge behaviour. Device-only frame presentation and mixed-rate cut behaviour remain pending physical-device validation.

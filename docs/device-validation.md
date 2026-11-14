@@ -62,3 +62,11 @@ Do not mark any of these device-only checks complete from CI results alone.
 
    - Verify editor-initiated seeks land on the requested preview timestamp rather than the nearest sync sample. Test taps, long-press scrubbing, ±5-second transport, audio-clip selection, and text-layer selection on 23.976, 25, 29.97, and 59.94 fps sources.
    - Compare seek latency and audio continuity on a lower-powered API 29 device; confirm playlist rebuild/project restoration retains closest-sync seeking.
+
+
+3. **Frame-by-frame preview navigation**
+   - Import sources with 24, 23.976, 25, 29.97, 30, and 59.94 fps video tracks. Confirm previous/next-frame controls become available only after a selected video format reports a valid frame rate.
+   - Step forward and backward repeatedly while paused; compare the displayed frame against the source frame sequence and verify no cumulative 33/34 ms or 41/42 ms drift.
+   - Step to both ends of a trimmed clip and confirm controls stop at the clip boundary rather than jumping into a neighbouring clip with a different frame rate.
+   - Repeat with audio-only/unknown-frame-rate sources and confirm frame-step controls remain disabled.
+   - Verify frame seeks keep Music, SFX, and Voiceover on the same project timestamp; record seek latency on a lower-powered API 29 device.

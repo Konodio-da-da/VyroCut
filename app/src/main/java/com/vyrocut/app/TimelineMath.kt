@@ -1,5 +1,10 @@
 package com.vyrocut.app
 
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToLong
+
 /**
  * A position in the playback window of one clip in the ordered project timeline.
  * [positionMs] is relative to the clip's trimmed start, matching ExoPlayer.seekTo(index, positionMs).
@@ -631,6 +636,67 @@ internal fun previewSeekPrecisionFor(intent: PreviewSeekIntent): PreviewSeekPrec
         PreviewSeekIntent.USER_EDIT, PreviewSeekIntent.AUDIO_RESYNC -> PreviewSeekPrecision.EXACT
         PreviewSeekIntent.PLAYLIST_REBUILD -> PreviewSeekPrecision.CLOSEST_SYNC
     }
+
+/** Metadata from one selected or unselected Media3 track, kept pure for JVM policy tests. */
+internal data class PreviewTrackFrameRateCandidate(
+    val isVideo: Boolean,
+    val isSelected: Boolean,
+    val frameRate: Float,
+)
+
+/** Returns the first usable selected video-track frame rate; unknown or implausible rates are ignored. */
+internal fun resolveSelectedPreviewFrameRate(
+    candidates: List<PreviewTrackFrameRateCandidate>,
+): Float? = candidates.firstOrNull { candidate ->
+    candidate.isVideo &&
+        candidate.isSelected &&
+        candidate.frameRate.isFinite() &&
+        candidate.frameRate in MIN_PREVIEW_FRAME_RATE..MAX_PREVIEW_FRAME_RATE
+}?.frameRate
+
+internal const val MIN_PREVIEW_FRAME_RATE = 1f
+internal const val MAX_PREVIEW_FRAME_RATE = 240f
+
+internal enum class PreviewFrameStepDirection { PREVIOUS, NEXT }
+
+/**
+ * Resolves one adjacent frame inside the active clipped playlist item.
+ *
+ * Media3 reports positions in milliseconds while common frame rates are
+ * fractional (for example 23.976 or 29.97 fps). Frame indices are calculated
+ * from the rate and converted back only once, avoiding cumulative 33/34 ms
+ * or 41/42 ms rounding drift. A step at either clip edge returns null rather
+ * than silently crossing into a clip with a potentially different frame rate.
+ */
+internal fun resolvePreviewFrameStepTargetMs(
+    currentPositionMs: Long,
+    clipDurationMs: Long,
+    frameRate: Float,
+    direction: PreviewFrameStepDirection,
+): Long? {
+    if (clipDurationMs <= 0L || !frameRate.isFinite() ||
+        frameRate !in MIN_PREVIEW_FRAME_RATE..MAX_PREVIEW_FRAME_RATE
+    ) return null
+
+    val currentMs = currentPositionMs.coerceIn(0L, clipDurationMs - 1L)
+    val framePosition = currentMs.toDouble() * frameRate.toDouble() / 1_000.0
+    val nearestFrameIndex = framePosition.roundToLong()
+    val nearestFrameMs = (nearestFrameIndex * 1_000.0 / frameRate.toDouble()).roundToLong()
+    val isOnFrameBoundary = abs(nearestFrameMs - currentMs) <= 1L
+
+    val targetFrameIndex = when (direction) {
+        PreviewFrameStepDirection.PREVIOUS -> {
+            if (isOnFrameBoundary) nearestFrameIndex - 1L else ceil(framePosition).toLong() - 1L
+        }
+        PreviewFrameStepDirection.NEXT -> {
+            if (isOnFrameBoundary) nearestFrameIndex + 1L else floor(framePosition).toLong() + 1L
+        }
+    }
+    if (targetFrameIndex < 0L) return null
+
+    val targetMs = (targetFrameIndex * 1_000.0 / frameRate.toDouble()).roundToLong()
+    return targetMs.takeIf { it in 0 until clipDurationMs && it != currentMs }
+}
 
 /** Target cadence for keeping the editor playhead visually aligned with Media3. */
 internal const val PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS = 33L

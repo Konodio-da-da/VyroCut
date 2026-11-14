@@ -15,6 +15,73 @@ class TimelineMathTest {
     }
 
     @Test
+    fun resolvesFrameRateOnlyFromSelectedVideoTracks() {
+        assertEquals(
+            29.97f,
+            resolveSelectedPreviewFrameRate(
+                listOf(
+                    PreviewTrackFrameRateCandidate(isVideo = false, isSelected = true, frameRate = 48_000f),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = false, frameRate = 30f),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = true, frameRate = -1f),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = true, frameRate = 29.97f),
+                ),
+            ),
+        )
+        assertNull(
+            resolveSelectedPreviewFrameRate(
+                listOf(
+                    PreviewTrackFrameRateCandidate(isVideo = false, isSelected = true, frameRate = 30f),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = false, frameRate = 25f),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = true, frameRate = Float.NaN),
+                    PreviewTrackFrameRateCandidate(isVideo = true, isSelected = true, frameRate = 300f),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun stepsAdjacentFramesAtIntegerAndFractionalFrameRatesWithoutAccumulatedRounding() {
+        assertEquals(
+            42L,
+            resolvePreviewFrameStepTargetMs(0L, 1_000L, 24f, PreviewFrameStepDirection.NEXT),
+        )
+        assertEquals(
+            83L,
+            resolvePreviewFrameStepTargetMs(42L, 1_000L, 24f, PreviewFrameStepDirection.NEXT),
+        )
+        assertEquals(
+            0L,
+            resolvePreviewFrameStepTargetMs(42L, 1_000L, 24f, PreviewFrameStepDirection.PREVIOUS),
+        )
+        assertEquals(
+            67L,
+            resolvePreviewFrameStepTargetMs(33L, 1_000L, 29.97f, PreviewFrameStepDirection.NEXT),
+        )
+        assertEquals(
+            33L,
+            resolvePreviewFrameStepTargetMs(17L, 1_000L, 59.94f, PreviewFrameStepDirection.NEXT),
+        )
+        assertEquals(
+            42L,
+            resolvePreviewFrameStepTargetMs(50L, 1_000L, 24f, PreviewFrameStepDirection.PREVIOUS),
+        )
+        assertEquals(
+            83L,
+            resolvePreviewFrameStepTargetMs(50L, 1_000L, 24f, PreviewFrameStepDirection.NEXT),
+        )
+    }
+
+    @Test
+    fun frameSteppingDoesNotCrossClipEdgesOrAcceptInvalidRates() {
+        assertNull(resolvePreviewFrameStepTargetMs(0L, 1_000L, 24f, PreviewFrameStepDirection.PREVIOUS))
+        assertNull(resolvePreviewFrameStepTargetMs(999L, 1_000L, 24f, PreviewFrameStepDirection.NEXT))
+        assertNull(resolvePreviewFrameStepTargetMs(0L, 0L, 24f, PreviewFrameStepDirection.NEXT))
+        assertNull(resolvePreviewFrameStepTargetMs(0L, 1_000L, 0f, PreviewFrameStepDirection.NEXT))
+        assertNull(resolvePreviewFrameStepTargetMs(0L, 1_000L, Float.NaN, PreviewFrameStepDirection.NEXT))
+        assertNull(resolvePreviewFrameStepTargetMs(0L, 1_000L, 300f, PreviewFrameStepDirection.NEXT))
+    }
+
+    @Test
     fun mapsMedia3ControllerPositionIntoProjectTimeline() {
         assertEquals(
             PlayerTimelinePosition(2, 1_250L, 4_250L),
