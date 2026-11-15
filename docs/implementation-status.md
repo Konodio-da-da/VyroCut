@@ -1,3 +1,9 @@
+## Current audio waveform lifecycle milestone — 15 November 2026
+- Audio waveform extraction is now a cancellable suspend operation. It checks the owning coroutine before opening media, during track inspection, after decoder startup, and on every MediaCodec input/output polling cycle.
+- Coroutine cancellation is rethrown rather than converted into a normal decode failure, so closing the Audio tool, switching the selected lane, changing the selected clips, or disposing a waveform composable can stop obsolete work. MediaCodec and MediaExtractor are still released in `finally`.
+- The decoder's no-progress watchdog is isolated into pure Kotlin policy helpers. JVM tests cover cancellation/finished/timeout loop decisions, progress resets, invalid limits, and overflow-safe idle counting.
+- Both existing call sites run the decoder inside `Dispatchers.IO`; no network access or project/media mutation is introduced. Android CI must verify compilation and unit tests. Actual codec cancellation latency and decoder release still require physical-device testing.
+
 # Implementation status
 
 ## Current frame-stepping milestone — 15 November 2026

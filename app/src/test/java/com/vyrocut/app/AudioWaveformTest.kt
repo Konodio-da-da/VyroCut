@@ -9,6 +9,51 @@ import org.junit.Test
 
 class AudioWaveformTest {
     @Test
+    fun waveformDecodeLoopStopsForCancellationCompletionAndIdleTimeout() {
+        assertTrue(shouldContinueAudioWaveformDecode(true, false, 0))
+        assertTrue(
+            shouldContinueAudioWaveformDecode(
+                isActive = true,
+                outputFinished = false,
+                idlePolls = MAX_AUDIO_WAVEFORM_IDLE_POLLS - 1,
+            ),
+        )
+        assertFalse(shouldContinueAudioWaveformDecode(false, false, 0))
+        assertFalse(shouldContinueAudioWaveformDecode(true, true, 0))
+        assertFalse(
+            shouldContinueAudioWaveformDecode(
+                isActive = true,
+                outputFinished = false,
+                idlePolls = MAX_AUDIO_WAVEFORM_IDLE_POLLS,
+            ),
+        )
+        assertFalse(
+            shouldContinueAudioWaveformDecode(
+                isActive = true,
+                outputFinished = false,
+                idlePolls = 2,
+                maxIdlePolls = 2,
+            ),
+        )
+        assertTrue(runCatching {
+            shouldContinueAudioWaveformDecode(true, false, 0, maxIdlePolls = 0)
+        }.isFailure)
+    }
+
+    @Test
+    fun waveformDecodeIdleWatchdogResetsOnProgressAndDoesNotOverflow() {
+        assertEquals(0, nextAudioWaveformIdlePollCount(17, madeProgress = true))
+        assertEquals(18, nextAudioWaveformIdlePollCount(17, madeProgress = false))
+        assertEquals(
+            Int.MAX_VALUE,
+            nextAudioWaveformIdlePollCount(Int.MAX_VALUE, madeProgress = false),
+        )
+        assertTrue(runCatching {
+            nextAudioWaveformIdlePollCount(-1, madeProgress = false)
+        }.isFailure)
+    }
+
+    @Test
     fun accumulatorNormalizesPeaksIntoSourceTimeBuckets() {
         val waveform = AudioWaveformAccumulator(4, 0L, 4_000_000L)
         waveform.addFrame(0L, 0.25f)

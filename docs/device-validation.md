@@ -98,3 +98,10 @@ Do not mark any of these device-only checks complete from CI results alone.
 3. Confirm recent generated files, unrelated MP4s, directories, symlinks, and published MediaStore videos remain untouched.
 4. Repeat with app-specific external Movies storage unavailable to exercise the `filesDir/Movies/VyroCut` fallback.
 5. Repeat on API 29 and a current Android release; verify that an Activity recreation in the same process does not trigger a second cleanup pass.
+
+## Audio waveform decode cancellation
+1. Open the Audio tool with a long music, SFX, or voiceover source and switch lanes while its waveform is decoding. Confirm the obsolete decode stops and the newly selected lane can decode without waiting for the old request.
+2. Close the Audio tool during waveform extraction, then reopen it. Confirm the cancelled request does not populate stale UI state and a fresh request can complete.
+3. Scroll a video timeline clip with waveform extraction active, then remove the clip or leave the composable. Confirm the decode is cancelled and the MediaCodec/MediaExtractor resources are released.
+4. Repeat while switching projects and while a decoder is slow or unable to produce output. Confirm the no-progress timeout still returns a normal unavailable waveform, while coroutine cancellation propagates to the Compose caller.
+5. CI tests validate the pure decode-loop policy. Cancellation latency, codec release, UI responsiveness, and stale-state behaviour require physical Android-device validation.

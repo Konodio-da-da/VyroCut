@@ -22,12 +22,40 @@ import java.nio.ByteOrder
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
+import java.util.concurrent.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import kotlin.math.abs
 
 internal const val AUDIO_WAVEFORM_BUCKET_COUNT = 96
 internal const val MAX_AUDIO_WAVEFORM_RANGE_MS = 15L * 60L * 1_000L
 
 private const val MAX_AUDIO_WAVEFORM_CACHE_FILES = 64
+
+internal const val MAX_AUDIO_WAVEFORM_IDLE_POLLS = 5_000
+
+/** Pure decode-loop policy so cancellation and decoder timeouts stay testable. */
+internal fun shouldContinueAudioWaveformDecode(
+    isActive: Boolean,
+    outputFinished: Boolean,
+    idlePolls: Int,
+    maxIdlePolls: Int = MAX_AUDIO_WAVEFORM_IDLE_POLLS,
+): Boolean {
+    require(idlePolls >= 0)
+    require(maxIdlePolls > 0)
+    return isActive && !outputFinished && idlePolls < maxIdlePolls
+}
+
+/** Resets the no-progress watchdog after work, otherwise advances it safely. */
+internal fun nextAudioWaveformIdlePollCount(
+    currentIdlePolls: Int,
+    madeProgress: Boolean,
+): Int {
+    require(currentIdlePolls >= 0)
+    if (madeProgress) return 0
+    return if (currentIdlePolls == Int.MAX_VALUE) Int.MAX_VALUE else currentIdlePolls + 1
+}
 
 /** Fixed-size peak accumulator. It never retains decoded PCM samples. */
 internal class AudioWaveformAccumulator(
@@ -94,7 +122,7 @@ internal fun audioWaveformCacheFileName(
  * Decodes only the selected source range with the platform audio decoder.
  * The cache is disposable app-local data; projects and original media are untouched.
  */
-internal fun decodeAudioWaveform(
+internal suspend fun decodeAudioWaveform(
     context: Context,
     uriString: String,
     sourceStartMs: Long,
@@ -102,6 +130,8 @@ internal fun decodeAudioWaveform(
     bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
     maxRangeMs: Long = MAX_AUDIO_WAVEFORM_RANGE_MS,
 ): List<Float>? {
+    val coroutineContext = currentCoroutineContext()
+    coroutineContext.ensureActive()
     val sourceRangeMs = sourceEndMs - sourceStartMs
     if (uriString.isBlank() || sourceStartMs < 0L ||
         sourceRangeMs < MIN_AUDIO_TRACK_CLIP_DURATION_MS ||
@@ -124,9 +154,11 @@ internal fun decodeAudioWaveform(
     var decoderStarted = false
     try {
         extractor.setDataSource(context, Uri.parse(uriString), null)
+        coroutineContext.ensureActive()
         var audioTrackIndex = -1
         var inputFormat: MediaFormat? = null
         for (index in 0 until extractor.trackCount) {
+            coroutineContext.ensureActive()
             val candidate = extractor.getTrackFormat(index)
             if (candidate.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
                 audioTrackIndex = index
@@ -146,6 +178,7 @@ internal fun decodeAudioWaveform(
         decoder.configure(inputFormat, null, null, 0)
         decoder.start()
         decoderStarted = true
+        coroutineContext.ensureActive()
 
         var outputFormat: MediaFormat = inputFormat
         var inputFinished = false
@@ -154,7 +187,14 @@ internal fun decodeAudioWaveform(
         val info = MediaCodec.BufferInfo()
         val accumulator = AudioWaveformAccumulator(bucketCount, startUs, endUs)
 
-        while (!outputFinished && idlePolls < 5_000) {
+        while (
+            shouldContinueAudioWaveformDecode(
+                isActive = coroutineContext.isActive,
+                outputFinished = outputFinished,
+                idlePolls = idlePolls,
+            )
+        ) {
+            coroutineContext.ensureActive()
             var madeProgress = false
 
             if (!inputFinished) {
@@ -218,13 +258,20 @@ internal fun decodeAudioWaveform(
                 outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> madeProgress = true
             }
 
-            idlePolls = if (madeProgress) 0 else idlePolls + 1
+            idlePolls = nextAudioWaveformIdlePollCount(idlePolls, madeProgress)
         }
 
+        coroutineContext.ensureActive()
         if (!outputFinished) return null
         val waveform = accumulator.finish()
+        coroutineContext.ensureActive()
         writeWaveformCache(cacheDirectory, cacheFile, waveform)
+        coroutineContext.ensureActive()
         return waveform
+    } catch (cancelled: CancellationException) {
+        // Compose LaunchedEffect/produceState cancellation must reach the caller;
+        // swallowing it here would leave obsolete decoder work running.
+        throw cancelled
     } catch (_: Exception) {
         return null
     } finally {
