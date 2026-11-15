@@ -3571,12 +3571,19 @@ private fun loadProjectAudioTracks(
 ): List<AudioTrackClip> {
     val primaryRaw = preferences.getString("project_${projectId}_audio_tracks", null)
     val primary = primaryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) }
-    if (primary != null) return primary
-    val recoveryCandidates = listOfNotNull(
-        preferences.getString("project_${projectId}_audio_tracks_recovery", null),
-        ProjectRecoveryFileStore.read(recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO),
+    val preferenceAudioJournal = preferences.getString("project_${projectId}_audio_tracks_recovery", null)
+    val mirroredAudioJournal = ProjectRecoveryFileStore.read(
+        recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO,
     )
-    return recoveryCandidates
+    val preferenceCheckpointAtMs = listOfNotNull(
+        ProjectRecoveryJournal.decode(preferenceAudioJournal, projectId)?.savedAtMs,
+        ProjectRecoveryJournal.decode(
+            preferences.getString("project_${projectId}_recovery", null), projectId,
+        )?.savedAtMs,
+    ).maxOrNull()
+    val mirroredAudioAtMs = ProjectRecoveryJournal.decode(mirroredAudioJournal, projectId)?.savedAtMs
+    val recoveryCandidates = listOfNotNull(preferenceAudioJournal, mirroredAudioJournal)
+    val recoveredTracks = recoveryCandidates
         .mapNotNull { raw ->
             decodeAudioTrackRecoveryJournal(raw, projectId, projectDurationMs)?.let { tracks ->
                 (ProjectRecoveryJournal.decode(raw, projectId)?.savedAtMs ?: 0L) to tracks
@@ -3584,7 +3591,16 @@ private fun loadProjectAudioTracks(
         }
         .maxByOrNull { it.first }
         ?.second
-        ?: emptyList()
+    return if (shouldPreferMirroredAudioRecovery(
+            primaryAudioTracksAvailable = primary != null,
+            preferenceCheckpointAtMs = preferenceCheckpointAtMs,
+            mirroredAudioAtMs = mirroredAudioAtMs,
+        )
+    ) {
+        recoveredTracks ?: primary ?: emptyList()
+    } else {
+        primary ?: recoveredTracks ?: emptyList()
+    }
 }
 
 private fun findProjectRecoveryCandidate(
