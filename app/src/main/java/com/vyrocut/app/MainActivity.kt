@@ -2757,7 +2757,7 @@ private fun VyroCutApp() {
                                                     exportScope.launch exportPublishing@ {
                                                         val publishResult = runCatching {
                                                             withContext(Dispatchers.IO) {
-                                                                verifyExportedMp4(
+                                                                val verifiedFingerprint = verifyExportedMp4(
                                                                     context = context,
                                                                     file = outputFile,
                                                                     sourceUris = sourceUris,
@@ -2767,7 +2767,7 @@ private fun VyroCutApp() {
                                                                     canvasVisualClips = canvasVisualClips,
                                                                     expectedBackgroundArgb = expectedBackgroundForVerification,
                                                                 )
-                                                                publishExportToMovies(context, outputFile)
+                                                                publishExportToMovies(context, outputFile, verifiedFingerprint)
                                                             }
                                                         }
                                                         if (exportSessionId != exportSession) {
@@ -2785,7 +2785,7 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            exportMessage = "Export complete • Video frames verified; " +
+                                                            exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {
                                                                     "canvas background pixels checked where bars exist; "
                                                                 } else {

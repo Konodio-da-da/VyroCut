@@ -20,7 +20,7 @@ internal fun verifyExportedMp4(
     expectedCanvasSize: ExportCanvasSize? = null,
     canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
     expectedBackgroundArgb: Int? = null,
-) {
+): ExportFileFingerprint {
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
     val extractor = MediaExtractor()
@@ -116,10 +116,20 @@ internal fun verifyExportedMp4(
     if (sourceHasAudio) {
         verifyExportedAudioSamples(file, expectedDurationMs)
     }
+
+    // Bind publication to the exact bytes that passed demux and decoder validation.
+    return FileInputStream(file).use(::fingerprintExportStream)
 }
 
-/** Publishes only a fully verified export; a failed copy removes its pending MediaStore row. */
-internal fun publishExportToMovies(context: Context, file: File): Uri {
+/** Publishes only a fully verified export; a failed or altered copy removes its pending MediaStore row. */
+internal fun publishExportToMovies(
+    context: Context,
+    file: File,
+    verifiedFingerprint: ExportFileFingerprint,
+): Uri {
+    check(exportFileFingerprintsMatch(verifiedFingerprint, verifiedFingerprint)) {
+        "The verified MP4 fingerprint is invalid"
+    }
     var destination: Uri? = null
     try {
         val values = ContentValues().apply {
@@ -133,9 +143,20 @@ internal fun publishExportToMovies(context: Context, file: File): Uri {
             values,
         ) ?: error("Could not create a Movies library entry")
 
-        context.contentResolver.openOutputStream(destination!!)?.use { output ->
-            FileInputStream(file).use { input -> input.copyTo(output) }
+        val copiedFingerprint = context.contentResolver.openOutputStream(destination!!)?.use { output ->
+            FileInputStream(file).use { input -> copyAndFingerprintExport(input, output) }
         } ?: error("Could not write the exported video")
+        check(exportFileFingerprintsMatch(verifiedFingerprint, copiedFingerprint)) {
+            "The temporary MP4 changed after verification; the export was not published"
+        }
+
+        // MediaStore owns a separate copy. Read it back while the row is still pending
+        // and verify its bytes before making the video visible to other applications.
+        val storedFingerprint = context.contentResolver.openInputStream(destination!!)?.use(::fingerprintExportStream)
+            ?: error("Could not read back the saved Movies video")
+        check(exportFileFingerprintsMatch(verifiedFingerprint, storedFingerprint)) {
+            "The saved Movies video does not match the verified MP4"
+        }
 
         val publishedRows = context.contentResolver.update(
             destination!!,

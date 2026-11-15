@@ -124,3 +124,9 @@ A control is only considered complete when its operation is connected to the pro
 - Previous/next-frame navigation now continues across an adjacent playlist cut instead of stopping at every clip edge. The adjacent clip's own cached frame rate is used, so a 24 fps clip can step into a 59.94 fps clip without applying one clip's rate to the other.
 - Unknown or invalid adjacent frame-rate metadata fails closed at the cut; the resolver never guesses a neighbouring clip's rate. The existing exact-seek and synchronized project-clock path is reused for the resulting target.
 - Pure Kotlin tests cover forward/backward cut crossing with different frame rates, within-clip stepping, missing adjacent metadata, and mismatched input lists. The background metadata reader and actual displayed-frame/audio behaviour still require Android CI and physical-device validation respectively.
+
+
+## MediaStore export-copy integrity
+- The completed temporary MP4 is fingerprinted only after demux and decoder validation succeeds. Publication is tied to that exact byte count and SHA-256 digest.
+- The MediaStore copy is hashed while streaming from the private temporary file, then read back and hashed again while the row is still pending. The row becomes visible only when both fingerprints match the verified temporary MP4; failed copies are deleted.
+- Stream processing uses a fixed 64 KiB buffer and never loads the full MP4 into memory. Pure JVM tests cover exact copies, same-length corruption, truncation, empty files, and malformed fingerprints. The MediaStore provider read-back path still requires physical-device validation on API 29 and current Android releases.

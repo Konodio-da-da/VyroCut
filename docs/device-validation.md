@@ -85,3 +85,9 @@ Do not mark any of these device-only checks complete from CI results alone.
 - Make several rapid edits, then force-stop after the save UI returns. Verify the newest checkpoint is offered rather than a delayed older file write.
 - Delete a project and verify both recovery journal files are removed and a tombstone prevents a delayed write from recreating them. Confirm no recovery file is created outside the app-private files directory.
 - This mirror does not recover a lost project index, survive app-data clearing/uninstall/device loss, or include media bytes and edits that were never persisted.
+
+
+## MediaStore export-copy verification
+- Export a short and a long MP4, then confirm the UI reports completion only after the Movies/VyroCut copy has been read back and matched to the verified temporary file by byte count and SHA-256.
+- Repeat on Android 10 / API 29 and a current Android release. Confirm the pending MediaStore item is readable by the owning app before its pending flag is cleared, and that a read-back failure removes the pending row rather than exposing an incomplete video.
+- Open and seek the published MP4 in a separate player after publication. CI unit tests validate the streaming fingerprint logic, not provider-specific read-back behaviour.
