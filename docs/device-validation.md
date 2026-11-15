@@ -184,3 +184,11 @@ Do not mark any of these device-only checks complete from CI results alone.
 4. Open a project whose primary preferences are current but whose mirrored audio checkpoint is newer. Confirm only the matching newer audio checkpoint is applied.
 5. Use the Recover action for a project other than the currently open project. Confirm its audio mirror is read on IO and restored only with the selected video's exact checkpoint timestamp.
 6. JVM tests cover pure audio-source selection; startup jank, disk latency, and process-death recovery still require physical Android-device validation.
+
+
+## Recovery journal validation thread affinity
+1. Open a project with large recovery journals and verify file reads, SHA-256 checks, Base64 decoding, and recovered audio JSON selection occur on Dispatchers.IO.
+2. Start recovery for another project, switch the active project while its journal is being decoded, and confirm the recovered project is persisted without replacing the newly active project's UI state.
+3. Edit the active project's audio or video list while its mirror is loading; confirm the late result is discarded.
+4. Repeat with a corrupt primary journal and a valid mirrored journal, then with a valid primary and newer mirrored audio checkpoint.
+5. CI covers the pure recovery-source selection rules. Thread affinity, startup responsiveness, and force-stop recovery require physical Android-device validation.

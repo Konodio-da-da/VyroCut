@@ -218,3 +218,10 @@ A control is only considered complete when its operation is connected to the pro
 - Initial project/audio state still loads immediately from SharedPreferences. The app then applies a newer valid mirror only if the same project, video edit list, and audio-lane state remain active, preventing a late recovery read from overwriting user edits.
 - The explicit Recover action reads its matching audio mirror on IO before rebuilding the shared video/audio checkpoint. The file mirror remains app-private and offline-first.
 - Pure JVM tests cover selection of newer mirrored audio, rejection of stale mirrors, and fallback from foreign/corrupt mirror journals. Actual startup responsiveness and force-stop recovery still require physical-device validation.
+
+
+## Recovery mirror decoding off the UI thread
+- The asynchronous project-open effect now performs mirror reads, journal checksum verification, recovery-candidate validation, and audio-track JSON selection together on Dispatchers.IO.
+- Initial project state uses only the primary audio preference for immediate rendering; the validated preference/file recovery selection is applied asynchronously only while the project, clip list, and audio list remain unchanged.
+- The explicit Recover action now performs mirror reads, matching-checkpoint validation, and audio journal decoding on IO before committing the recovered state on Main.
+- Pure JVM selection tests remain independent of Android storage. Device responsiveness and process-death recovery remain physical-device checks.

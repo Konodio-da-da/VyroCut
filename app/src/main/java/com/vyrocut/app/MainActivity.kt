@@ -180,11 +180,10 @@ private fun VyroCutApp() {
     var clips by remember { mutableStateOf(loadProject(preferences, activeProjectId)) }
     var audioTrackClips by remember(activeProjectId) {
         mutableStateOf(
-            loadProjectAudioTracks(
+            loadPrimaryProjectAudioTracks(
                 preferences,
                 activeProjectId,
                 calculateTimelineDurationMs(clips.map { it.durationMs }),
-                mirroredAudioJournal = null,
             ),
         )
     }
@@ -221,7 +220,7 @@ private fun VyroCutApp() {
     val undoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
     val redoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
     var recoveryCandidate by remember(activeProjectId) {
-        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId, mirroredProjectJournal = null))
+        mutableStateOf<ProjectRecoverySnapshot?>(null)
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -244,25 +243,25 @@ private fun VyroCutApp() {
         val clipsAtStart = clips
         val audioAtStart = audioTrackClips
         val projectDurationAtStart = calculateTimelineDurationMs(clipsAtStart.map { it.durationMs })
-        val (mirroredProjectJournal, mirroredAudioJournal) = withContext(Dispatchers.IO) {
-            ProjectRecoveryFileStore.read(
+        val (candidate, recoveredAudioTracks) = withContext(Dispatchers.IO) {
+            val mirroredProjectJournal = ProjectRecoveryFileStore.read(
                 recoveryDirectory, projectId, ProjectRecoveryFileKind.PROJECT,
-            ) to ProjectRecoveryFileStore.read(
+            )
+            val mirroredAudioJournal = ProjectRecoveryFileStore.read(
                 recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO,
+            )
+            // Journal checksums, Base64 decoding, and audio JSON validation can
+            // be proportional to the recovery payload size; keep all of it off Main.
+            findProjectRecoveryCandidate(
+                preferences, projectId, mirroredProjectJournal,
+            ) to loadProjectAudioTracks(
+                preferences, projectId, projectDurationAtStart, mirroredAudioJournal,
             )
         }
         if (activeProjectId != projectId) return@LaunchedEffect
 
-        recoveryCandidate = findProjectRecoveryCandidate(
-            preferences, projectId, mirroredProjectJournal,
-        )
-        val recoveredAudioTracks = loadProjectAudioTracks(
-            preferences, projectId, projectDurationAtStart, mirroredAudioJournal,
-        )
-        if (activeProjectId == projectId &&
-            clips == clipsAtStart &&
-            audioTrackClips == audioAtStart
-        ) {
+        recoveryCandidate = candidate
+        if (clips == clipsAtStart && audioTrackClips == audioAtStart) {
             audioTrackClips = recoveredAudioTracks
         }
     }
@@ -1131,11 +1130,10 @@ private fun VyroCutApp() {
         canvasAspectRatio = canvasAspectRatioForPreset(canvasSettings.aspectRatioPreset)
         canvasBackground = canvasBackgroundForPreset(canvasSettings.backgroundPreset)
         clips = loadProject(preferences, project.id)
-        audioTrackClips = loadProjectAudioTracks(
+        audioTrackClips = loadPrimaryProjectAudioTracks(
             preferences,
             project.id,
             calculateTimelineDurationMs(clips.map { it.durationMs }),
-            mirroredAudioJournal = null,
         )
         selectedAudioTrackId = null
         selectedIndex = 0
@@ -3190,44 +3188,45 @@ private fun VyroCutApp() {
                                     if (restored != null) {
                                         exportMessage = "Recovering local checkpoint…"
                                         exportScope.launch {
-                                            val mirroredAudioJournal = withContext(Dispatchers.IO) {
-                                                ProjectRecoveryFileStore.read(
-                                                    recoveryDirectory,
-                                                    snapshot.projectId,
-                                                    ProjectRecoveryFileKind.AUDIO,
-                                                )
+                                            val projectId = snapshot.projectId
+                                            val projectWasActiveAtClick = projectId == activeProjectId
+                                            val currentAudioTracksAtClick = if (projectWasActiveAtClick) {
+                                                audioTrackClips
+                                            } else {
+                                                null
                                             }
-                                            val name = projects.firstOrNull { it.id == snapshot.projectId }?.name
+                                            val name = projects.firstOrNull { it.id == projectId }?.name
                                                 ?: snapshot.projectName
                                             val restoredDurationMs =
                                                 calculateTimelineDurationMs(restored.map { it.durationMs })
-                                            val currentAudioTracks = if (snapshot.projectId == activeProjectId) {
-                                                audioTrackClips
-                                            } else {
-                                                loadProjectAudioTracks(
-                                                    preferences,
-                                                    snapshot.projectId,
-                                                    Long.MAX_VALUE,
-                                                    mirroredAudioJournal,
+                                            val restoredAudioTracks = withContext(Dispatchers.IO) {
+                                                val mirroredAudioJournal = ProjectRecoveryFileStore.read(
+                                                    recoveryDirectory,
+                                                    projectId,
+                                                    ProjectRecoveryFileKind.AUDIO,
+                                                )
+                                                val currentAudioTracks = currentAudioTracksAtClick
+                                                    ?: loadProjectAudioTracks(
+                                                        preferences, projectId, Long.MAX_VALUE, mirroredAudioJournal,
+                                                    )
+                                                val matchingAudioJournal = matchingAudioRecoveryJournal(
+                                                    projectId = projectId,
+                                                    savedAtMs = snapshot.savedAtMs,
+                                                    candidates = listOf(
+                                                        preferences.getString("project_${snapshot.projectId}_audio_tracks_recovery", null),
+                                                        mirroredAudioJournal,
+                                                    ),
+                                                )
+                                                audioTracksForProjectRecovery(
+                                                    projectSnapshot = snapshot,
+                                                    rawAudioRecoveryJournal = matchingAudioJournal,
+                                                    currentAudioTracks = currentAudioTracks,
+                                                    projectDurationMs = restoredDurationMs,
                                                 )
                                             }
-                                            val matchingAudioJournal = matchingAudioRecoveryJournal(
-                                                projectId = snapshot.projectId,
-                                                savedAtMs = snapshot.savedAtMs,
-                                                candidates = listOf(
-                                                    preferences.getString("project_${snapshot.projectId}_audio_tracks_recovery", null),
-                                                    mirroredAudioJournal,
-                                                ),
-                                            )
-                                            val restoredAudioTracks = audioTracksForProjectRecovery(
-                                                projectSnapshot = snapshot,
-                                                rawAudioRecoveryJournal = matchingAudioJournal,
-                                                currentAudioTracks = currentAudioTracks,
-                                                projectDurationMs = restoredDurationMs,
-                                            )
                                             val recoveryBundle = persistProjectState(
                                                 preferences,
-                                                snapshot.projectId,
+                                                projectId,
                                                 name,
                                                 restored,
                                                 restoredAudioTracks,
@@ -3812,6 +3811,15 @@ private fun persistProjectAudioTracks(
         .apply()
     return recoveryBundle
 }
+
+private fun loadPrimaryProjectAudioTracks(
+    preferences: android.content.SharedPreferences,
+    projectId: String,
+    projectDurationMs: Long,
+): List<AudioTrackClip> = preferences
+    .getString("project_${projectId}_audio_tracks", null)
+    ?.let { decodeAudioTrackClips(it, projectDurationMs) }
+    ?: emptyList()
 
 private fun loadProjectAudioTracks(
     preferences: android.content.SharedPreferences,
