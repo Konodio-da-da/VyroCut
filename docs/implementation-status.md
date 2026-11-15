@@ -149,3 +149,10 @@ A control is only considered complete when its operation is connected to the pro
 - Different source ranges and resolutions use independent keys and can decode concurrently. The gate reference-counts waiters and removes idle keys, so the process does not retain one mutex per waveform ever requested.
 - Cancelling a waiter while it is queued releases only that waiter's reference; it does not cancel the active decode owner. Cancelling the owner still propagates through the existing decoder cancellation path and releases MediaCodec/MediaExtractor in `finally`.
 - Pure Kotlin tests cover one cache fill for concurrent identical requests, parallel work for different keys, and cancellation of a queued waiter without poisoning subsequent requests. Cache-write failure remains best-effort: a later caller may retry the decode if no valid disk cache was produced.
+
+
+## Audio waveform source-change invalidation
+- Waveform cache keys now include a best-effort source revision built from provider-reported byte size and last-modified time, in addition to URI, source trim, and bucket resolution.
+- Document-provider last-modified values are treated as milliseconds; MediaStore DATE_MODIFIED values are converted from seconds. Metadata is queried on Dispatchers.IO whenever the Audio tool/lane effect runs.
+- If a provider exposes no usable revision metadata, caching falls back to URI/range identity without blocking waveform generation. In-place replacement cannot be detected reliably for providers that hide both size and modification time.
+- Pure Kotlin tests cover changed size/time revisions, stable revisions, partial metadata, and unavailable metadata.

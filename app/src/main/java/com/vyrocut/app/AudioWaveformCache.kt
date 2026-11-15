@@ -12,6 +12,21 @@ internal const val AUDIO_WAVEFORM_TEMP_FILE_PREFIX = "waveform-"
 internal const val AUDIO_WAVEFORM_TEMP_FILE_SUFFIX = ".tmp"
 internal const val AUDIO_WAVEFORM_TEMP_FILE_MAX_AGE_MS = 24L * 60L * 60L * 1_000L
 
+/**
+ * Stable, best-effort source revision for waveform cache invalidation.
+ * Unknown/negative provider metadata is omitted rather than treated as a
+ * meaningful revision. Null means the provider exposed no usable metadata.
+ */
+internal fun audioWaveformSourceRevision(
+    sizeBytes: Long?,
+    lastModifiedMs: Long?,
+): String? {
+    val size = sizeBytes?.takeIf { it >= 0L }
+    val modified = lastModifiedMs?.takeIf { it >= 0L }
+    if (size == null && modified == null) return null
+    return "size=${size ?: "?"};modified=${modified ?: "?"}"
+}
+
 /** A disposable cache entry ordered by its most recent successful use. */
 internal data class AudioWaveformCacheEntry(
     val fileName: String,

@@ -281,4 +281,44 @@ class AudioWaveformTest {
         )
     }
 
+
+    @Test
+    fun cacheKeySeparatesSourceRevisionsForTheSameUriAndTrim() {
+        val uri = "content://media/audio"
+        val firstRevision = "size=1024;modified=2000"
+        val updatedTimestamp = "size=1024;modified=3000"
+        val updatedSize = "size=2048;modified=2000"
+
+        val firstKey = audioWaveformCacheKey(uri, 0L, 5_000L, 96, firstRevision)
+        assertEquals(firstKey, audioWaveformCacheKey(uri, 0L, 5_000L, 96, firstRevision))
+        assertNotEquals(firstKey, audioWaveformCacheKey(uri, 0L, 5_000L, 96, updatedTimestamp))
+        assertNotEquals(firstKey, audioWaveformCacheKey(uri, 0L, 5_000L, 96, updatedSize))
+        assertNotEquals(
+            audioWaveformCacheFileName(uri, 0L, 5_000L, 96, firstRevision),
+            audioWaveformCacheFileName(uri, 0L, 5_000L, 96, updatedTimestamp),
+        )
+    }
+
+    @Test
+    fun sourceRevisionUsesAvailableMetadataAndFailsOpenWhenProviderMetadataIsMissing() {
+        assertEquals(
+            "size=1024;modified=2000",
+            audioWaveformSourceRevision(sizeBytes = 1_024L, lastModifiedMs = 2_000L),
+        )
+        assertEquals(
+            "size=1024;modified=?",
+            audioWaveformSourceRevision(sizeBytes = 1_024L, lastModifiedMs = null),
+        )
+        assertEquals(
+            "size=?;modified=2000",
+            audioWaveformSourceRevision(sizeBytes = null, lastModifiedMs = 2_000L),
+        )
+        assertEquals(
+            "size=0;modified=0",
+            audioWaveformSourceRevision(sizeBytes = 0L, lastModifiedMs = 0L),
+        )
+        assertNull(audioWaveformSourceRevision(sizeBytes = null, lastModifiedMs = null))
+        assertNull(audioWaveformSourceRevision(sizeBytes = -1L, lastModifiedMs = -1L))
+    }
+
 }

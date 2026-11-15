@@ -6,6 +6,8 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.provider.DocumentsContract
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 
 object MediaMetadataReader {
@@ -78,5 +80,41 @@ object MediaMetadataReader {
         } finally {
             runCatching { extractor.release() }
         }
+    }
+    
+    /**
+     * Builds a best-effort revision for disposable audio waveform caching.
+     * Document providers expose last-modified in milliseconds; MediaStore's
+     * DATE_MODIFIED is in seconds. Call from Dispatchers.IO.
+     *
+     * A null result means the provider exposes neither stable size nor modified
+     * time, so callers must fall back to URI/range identity and accept that an
+     * external in-place replacement may not invalidate the cached waveform.
+     */
+    fun audioWaveformSourceRevision(context: Context, uri: Uri): String? {
+        fun queryLong(column: String): Long? = runCatching {
+            context.contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
+                val index = cursor.getColumnIndex(column)
+                if (index < 0 || !cursor.moveToFirst() || cursor.isNull(index)) {
+                    null
+                } else {
+                    cursor.getLong(index)
+                }
+            }
+        }.getOrNull()
+
+        val sizeBytes = queryLong(OpenableColumns.SIZE)?.takeIf { it >= 0L }
+        val documentModifiedMs = queryLong(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+            ?.takeIf { it >= 0L }
+        val mediaModifiedSeconds = queryLong(MediaStore.MediaColumns.DATE_MODIFIED)
+            ?.takeIf { it >= 0L }
+        val mediaModifiedMs = mediaModifiedSeconds
+            ?.takeIf { it <= Long.MAX_VALUE / 1_000L }
+            ?.times(1_000L)
+
+        return audioWaveformSourceRevision(
+            sizeBytes = sizeBytes,
+            lastModifiedMs = documentModifiedMs ?: mediaModifiedMs,
+        )
     }
 }

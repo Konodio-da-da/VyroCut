@@ -554,12 +554,21 @@ private fun VyroCutApp() {
         activeProjectId,
         activeTool,
         selectedAudioTrackType,
-        audioTrackClips.map(::audioWaveformCacheKey),
+        audioTrackClips.map { audioWaveformCacheKey(it) },
     ) {
         if (activeTool != "Audio") return@LaunchedEffect
+        val selectedLaneClips = audioTrackClips.filter { it.type == selectedAudioTrackType }
+        // Re-read provider metadata whenever the Audio tool/lane is opened. A
+        // stable content URI can point at media replaced in place by another app.
+        val sourceRevisionsByUri = withContext(Dispatchers.IO) {
+            selectedLaneClips.map { it.uri }.distinct().associateWith { rawUri ->
+                MediaMetadataReader.audioWaveformSourceRevision(context, Uri.parse(rawUri))
+            }
+        }
         var loadedWaveforms = audioWaveforms
-        for (trackClip in audioTrackClips.filter { it.type == selectedAudioTrackType }) {
-            val key = audioWaveformCacheKey(trackClip)
+        for (trackClip in selectedLaneClips) {
+            val sourceRevision = sourceRevisionsByUri[trackClip.uri]
+            val key = audioWaveformCacheKey(trackClip, sourceRevision)
             if (key !in loadedWaveforms) {
                 val waveform = withContext(Dispatchers.IO) {
                     decodeAudioWaveform(
@@ -567,6 +576,7 @@ private fun VyroCutApp() {
                         trackClip.uri,
                         trackClip.sourceStartMs,
                         trackClip.sourceEndMs,
+                        sourceRevision = sourceRevision,
                     )
                 }
                 if (waveform != null) {

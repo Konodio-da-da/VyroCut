@@ -92,22 +92,27 @@ internal class AudioWaveformAccumulator(
     }
 }
 
-internal fun audioWaveformCacheKey(clip: AudioTrackClip): String =
-    audioWaveformCacheKey(
-        clip.uri,
-        clip.sourceStartMs,
-        clip.sourceEndMs,
-        AUDIO_WAVEFORM_BUCKET_COUNT,
-    )
+internal fun audioWaveformCacheKey(
+    clip: AudioTrackClip,
+    sourceRevision: String? = null,
+): String = audioWaveformCacheKey(
+    clip.uri,
+    clip.sourceStartMs,
+    clip.sourceEndMs,
+    AUDIO_WAVEFORM_BUCKET_COUNT,
+    sourceRevision,
+)
 
 internal fun audioWaveformCacheKey(
     uri: String,
     sourceStartMs: Long,
     sourceEndMs: Long,
     bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
+    sourceRevision: String? = null,
 ): String {
     require(bucketCount in 1..MAX_AUDIO_WAVEFORM_BUCKETS)
-    val input = "waveform-v2|$uri|$sourceStartMs|$sourceEndMs|$bucketCount"
+    val revision = sourceRevision?.takeIf { it.isNotBlank() } ?: "unversioned"
+    val input = "waveform-v3|$uri|$sourceStartMs|$sourceEndMs|$bucketCount|$revision"
     return MessageDigest.getInstance("SHA-256")
         .digest(input.toByteArray(Charsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) }
@@ -118,7 +123,8 @@ internal fun audioWaveformCacheFileName(
     sourceStartMs: Long,
     sourceEndMs: Long,
     bucketCount: Int,
-): String = "${audioWaveformCacheKey(uri, sourceStartMs, sourceEndMs, bucketCount)}.bin"
+    sourceRevision: String? = null,
+): String = "${audioWaveformCacheKey(uri, sourceStartMs, sourceEndMs, bucketCount, sourceRevision)}.bin"
 
 /**
  * Decodes only the selected source range with the platform audio decoder.
@@ -131,6 +137,7 @@ internal suspend fun decodeAudioWaveform(
     sourceEndMs: Long,
     bucketCount: Int = AUDIO_WAVEFORM_BUCKET_COUNT,
     maxRangeMs: Long = MAX_AUDIO_WAVEFORM_RANGE_MS,
+    sourceRevision: String? = null,
 ): List<Float>? {
     val coroutineContext = currentCoroutineContext()
     coroutineContext.ensureActive()
@@ -146,9 +153,9 @@ internal suspend fun decodeAudioWaveform(
     val cacheDirectory = File(context.cacheDir, "audio-waveforms")
     val cacheFile = File(
         cacheDirectory,
-        audioWaveformCacheFileName(uriString, sourceStartMs, sourceEndMs, bucketCount),
+        audioWaveformCacheFileName(uriString, sourceStartMs, sourceEndMs, bucketCount, sourceRevision),
     )
-    val requestKey = audioWaveformCacheKey(uriString, sourceStartMs, sourceEndMs, bucketCount)
+    val requestKey = audioWaveformCacheKey(uriString, sourceStartMs, sourceEndMs, bucketCount, sourceRevision)
 
     // Re-check the disk cache after acquiring the per-key gate. Concurrent
     // consumers of the same source range then share the first completed decode

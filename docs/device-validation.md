@@ -114,3 +114,12 @@ Do not mark any of these device-only checks complete from CI results alone.
 4. Request two different source ranges at the same time. Confirm the per-key gate does not serialize unrelated decodes globally.
 5. Repeat while switching lanes, closing the Audio tool, removing a clip, and switching projects. Confirm obsolete Compose callers remain cancellable and decoder resources are released by the active owner.
 6. CI tests validate request coordination and cancellation. Actual decoder-session counts, codec latency, and UI responsiveness require physical Android-device validation.
+
+
+## Audio waveform cache source-change invalidation
+1. Open a Music, SFX, or Voiceover waveform, then replace/update the same provider item while retaining its content URI. Close and reopen the Audio tool; verify changed size or last-modified metadata produces a new cache key and waveform decode.
+2. Repeat with the same byte size but a changed last-modified timestamp. Confirm the old waveform is not reused.
+3. Repeat with a provider that exposes size but not modified time, then with one that exposes only modified time. Confirm each available field participates in the revision.
+4. Repeat with a provider exposing neither field. Confirm waveform generation still works using URI/range identity and does not fail because metadata is unavailable; stale-cache detection is not guaranteed in this fallback case.
+5. Repeat after switching projects and lanes. Confirm the source revision is queried on IO and identical clips still share the same revision-aware request gate/cache key.
+6. CI tests validate revision-string/key logic. Actual provider metadata behaviour and same-URI replacement require physical-device testing with document and MediaStore providers.
