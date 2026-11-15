@@ -125,6 +125,14 @@ Do not mark any of these device-only checks complete from CI results alone.
 6. CI tests validate revision-string/key logic. Actual provider metadata behaviour and same-URI replacement require physical-device testing with document and MediaStore providers.
 
 
+## Variable-frame-rate source-change cache invalidation
+1. Build a VFR timestamp index for a source URI, then replace the underlying document/media item while retaining the same URI.
+2. Change the file size and verify the next frame-step request queries provider metadata and builds a new timestamp index rather than reusing the old one.
+3. Repeat with unchanged size but a changed last-modified timestamp.
+4. Repeat with size-only metadata, modified-time-only metadata, and providers exposing neither field. The last case must retain URI/range fallback behaviour and must not fail frame stepping solely because revision metadata is unavailable.
+5. Confirm two adjacent clips referencing the same URI share one provider revision query during a single frame-step request.
+6. CI tests cover revision identity and cache-key separation. Actual document-provider/MediaStore metadata and same-URI replacement require physical-device validation.
+
 ## Variable-frame-rate preview frame stepping
 1. Import a VFR source with visibly irregular frame intervals and use Previous/Next Frame at several points. Confirm the target follows actual sample presentation timestamps rather than a constant nominal cadence.
 2. Trim the source at a timestamp between frames. Confirm the first seek displays the first available frame at/after trim IN, Next advances once, and Previous does not step outside the trim.

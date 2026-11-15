@@ -789,6 +789,7 @@ internal data class VideoFrameTimestampCacheKey(
     val uri: String,
     val sourceStartMs: Long,
     val sourceEndMs: Long,
+    val sourceRevision: String? = null,
 )
 
 /** Rejects partial, empty, oversized, negative, duplicate, or out-of-order PTS indexes. */

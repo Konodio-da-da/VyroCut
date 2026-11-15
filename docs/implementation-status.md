@@ -1,3 +1,10 @@
+## Current VFR source-change cache milestone — 15 November 2026
+- VFR presentation-timestamp indexes now include a best-effort source revision (provider-reported byte size and last-modified time) in addition to URI and source trim bounds.
+- The revision is queried on Dispatchers.IO for the active and adjacent clips before index lookup. Two adjacent clips referencing the same URI share one metadata query for that frame-step request.
+- Provider metadata uses OpenableColumns.SIZE, document last-modified time, and MediaStore DATE_MODIFIED fallback. If no usable metadata is available, the cache safely retains URI/range identity; same-URI in-place replacement cannot be detected in that fallback.
+- Pure Kotlin tests cover partial/missing metadata normalization and revision-aware VFR cache-key separation. Actual provider metadata and replacement behaviour require physical-device testing.
+- Verified baseline: VFR frame-stepping head `8e2038e603d5f37cd9d9549f97e3ceae39aa67d6` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #429](https://github.com/Konodio-da-da/VyroCut/actions/runs/43689578289).
+
 ## Current audio waveform lifecycle milestone — 15 November 2026
 - Audio waveform extraction is now a cancellable suspend operation. It checks the owning coroutine before opening media, during track inspection, after decoder startup, and on every MediaCodec input/output polling cycle.
 - Coroutine cancellation is rethrown rather than converted into a normal decode failure, so closing the Audio tool, switching the selected lane, changing the selected clips, or disposing a waveform composable can stop obsolete work. MediaCodec and MediaExtractor are still released in `finally`.

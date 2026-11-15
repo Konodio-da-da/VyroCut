@@ -776,12 +776,21 @@ private fun VyroCutApp() {
         isResolvingFrameStep = true
         previewScope.launch {
             try {
+                val sourceRevisionsByUri = withContext(Dispatchers.IO) {
+                    clipsToIndex.map { it.uri }.distinct().associateWith { rawUri ->
+                        MediaMetadataReader.videoFrameTimestampSourceRevision(
+                            context = context,
+                            uri = Uri.parse(rawUri),
+                        )
+                    }
+                }
                 var timestampCache = previewFrameTimestampIndexes
                 for (clip in clipsToIndex) {
                     val key = VideoFrameTimestampCacheKey(
                         uri = clip.uri,
                         sourceStartMs = clip.sourceStartMs,
                         sourceEndMs = clip.sourceEndMs,
+                        sourceRevision = sourceRevisionsByUri[clip.uri],
                     )
                     if (!timestampCache.containsKey(key)) {
                         val timestamps = withContext(Dispatchers.IO) {
@@ -824,6 +833,7 @@ private fun VyroCutApp() {
                         uri = clip.uri,
                         sourceStartMs = clip.sourceStartMs,
                         sourceEndMs = clip.sourceEndMs,
+                        sourceRevision = sourceRevisionsByUri[clip.uri],
                     )]
                 }
                 val target = resolvePreviewFrameStepAcrossClips(

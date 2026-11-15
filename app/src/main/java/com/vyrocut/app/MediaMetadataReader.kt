@@ -148,15 +148,20 @@ object MediaMetadataReader {
     }
 
     /**
-     * Builds a best-effort revision for disposable audio waveform caching.
+     * Reads a best-effort revision for disposable media-derived caches.
      * Document providers expose last-modified in milliseconds; MediaStore's
      * DATE_MODIFIED is in seconds. Call from Dispatchers.IO.
      *
-     * A null result means the provider exposes neither stable size nor modified
-     * time, so callers must fall back to URI/range identity and accept that an
-     * external in-place replacement may not invalidate the cached waveform.
+     * Null means neither a stable size nor modification time was available.
      */
-    fun audioWaveformSourceRevision(context: Context, uri: Uri): String? {
+    fun videoFrameTimestampSourceRevision(context: Context, uri: Uri): String? =
+        mediaSourceRevisionFor(context, uri)
+
+    /** Kept as the audio-specific entry point; both caches share provider metadata. */
+    fun audioWaveformSourceRevision(context: Context, uri: Uri): String? =
+        mediaSourceRevisionFor(context, uri)
+
+    private fun mediaSourceRevisionFor(context: Context, uri: Uri): String? {
         fun queryLong(column: String): Long? = runCatching {
             context.contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
                 val index = cursor.getColumnIndex(column)
@@ -177,7 +182,7 @@ object MediaMetadataReader {
             ?.takeIf { it <= Long.MAX_VALUE / 1_000L }
             ?.times(1_000L)
 
-        return audioWaveformSourceRevision(
+        return mediaSourceRevision(
             sizeBytes = sizeBytes,
             lastModifiedMs = documentModifiedMs ?: mediaModifiedMs,
         )

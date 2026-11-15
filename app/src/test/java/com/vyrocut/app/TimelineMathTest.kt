@@ -1302,4 +1302,24 @@ class TimelineMathTest {
         assertFalse(cache.containsKey(second))
     }
 
+    @Test
+    fun presentationTimestampCacheKeySeparatesRevisionsForTheSameSourceRange() {
+        val original = VideoFrameTimestampCacheKey(
+            uri = "content://media/video/1",
+            sourceStartMs = 1_000L,
+            sourceEndMs = 6_000L,
+            sourceRevision = "size=1024;modified=2000",
+        )
+        val unchanged = original.copy()
+        val replacedBySize = original.copy(sourceRevision = "size=2048;modified=2000")
+        val replacedByTimestamp = original.copy(sourceRevision = "size=1024;modified=3000")
+        val unavailableRevision = original.copy(sourceRevision = null)
+
+        assertEquals(original, unchanged)
+        assertTrue(original != replacedBySize)
+        assertTrue(original != replacedByTimestamp)
+        assertTrue(original != unavailableRevision)
+    }
+
+
 }

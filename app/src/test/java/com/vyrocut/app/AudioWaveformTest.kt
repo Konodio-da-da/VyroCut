@@ -319,6 +319,10 @@ class AudioWaveformTest {
         )
         assertNull(audioWaveformSourceRevision(sizeBytes = null, lastModifiedMs = null))
         assertNull(audioWaveformSourceRevision(sizeBytes = -1L, lastModifiedMs = -1L))
+        assertEquals("size=1024;modified=2000", mediaSourceRevision(1_024L, 2_000L))
+        assertEquals("size=1024;modified=?", mediaSourceRevision(1_024L, null))
+        assertEquals("size=?;modified=2000", mediaSourceRevision(null, 2_000L))
+        assertNull(mediaSourceRevision(null, null))
     }
 
 }
