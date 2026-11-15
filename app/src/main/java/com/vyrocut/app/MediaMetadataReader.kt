@@ -86,12 +86,18 @@ object MediaMetadataReader {
     }
     
     /**
-     * Reads presentation timestamps only inside one clip's original source trim.
-     * Seeking to the preceding sync sample avoids indexing the entire source file.
-     * Call from Dispatchers.IO; the bounded loop checks coroutine cancellation.
+     * Reads presentation timestamps inside one clip's original source trim.
+     * MediaExtractor enumerates compressed samples in decode order, which can
+     * produce non-monotonic PTS around B-frames. The returned index is normalized
+     * into presentation order before frame navigation uses it.
      *
-     * Null means the provider/codec did not expose a complete monotonic index,
-     * the trim contained no video samples, or the range exceeded the safety cap.
+     * The scan seeks to the preceding sync sample and continues through two
+     * sync samples at/after trim OUT so leading B-frames in the following GOP
+     * are not lost. Work is bounded by the per-clip sample cap and checks
+     * coroutine cancellation on every sample. Call from Dispatchers.IO.
+     *
+     * Null means the provider/codec did not expose a complete bounded index,
+     * the trim contained no video samples, or the scan exceeded the safety cap.
      */
     suspend fun videoPresentationTimestampsUs(
         context: Context,
@@ -121,23 +127,31 @@ object MediaMetadataReader {
 
             val timestamps = LongArray(MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP)
             var count = 0
-            var previousTimestampUs = -1L
+            var scannedSampleCount = 0
+            var endSyncSampleCount = 0
             while (true) {
                 currentCoroutineContext().ensureActive()
                 val sampleTimeUs = extractor.sampleTime
-                if (sampleTimeUs < 0L || sampleTimeUs >= endUs) break
-                if (sampleTimeUs >= startUs) {
-                    if (sampleTimeUs < previousTimestampUs) return null
-                    if (sampleTimeUs > previousTimestampUs) {
-                        if (count >= MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP) return null
-                        timestamps[count++] = sampleTimeUs
-                        previousTimestampUs = sampleTimeUs
-                    }
+                if (sampleTimeUs < 0L) break
+                if (scannedSampleCount >= MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP) return null
+                scannedSampleCount++
+
+                val isSyncSample = extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0
+                if (sampleTimeUs >= startUs && sampleTimeUs < endUs) {
+                    if (count >= MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP) return null
+                    timestamps[count++] = sampleTimeUs
                 }
+
+                endSyncSampleCount = nextVideoPtsEndSyncSampleCount(
+                    currentCount = endSyncSampleCount,
+                    sampleTimeUs = sampleTimeUs,
+                    endUs = endUs,
+                    isSyncSample = isSyncSample,
+                )
+                if (endSyncSampleCount >= VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT) break
                 if (!extractor.advance()) break
             }
-            if (count == 0) null else timestamps.copyOf(count)
-                .takeIf(::isValidVideoPresentationTimestampsUs)
+            if (count == 0) null else normalizeVideoPresentationTimestampsUs(timestamps.copyOf(count))
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (_: Exception) {

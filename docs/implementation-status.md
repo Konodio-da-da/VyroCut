@@ -1,3 +1,11 @@
+## Current VFR decode-order normalization milestone — 15 November 2026
+- MediaExtractor timestamp collection no longer assumes that sample presentation timestamps are monotonically increasing in compressed-sample iteration order. B-frame streams can carry composition timestamps that move backwards while samples remain in decode order.
+- The bounded scanner now collects source-range samples through two sync samples at/after trim OUT, so a leading B-frame after the first post-trim sync sample is not discarded by an early PTS cutoff. The scan is capped at 120,000 visited samples and returns no index rather than publishing a partial one when the cap is reached.
+- A pure Kotlin normalizer sorts the collected PTS values into presentation order, removes duplicate timestamps, and rejects missing, negative, or oversized input. The existing strict timestamp-index validator and three-entry LRU continue to receive only sorted, unique arrays.
+- Regression tests cover decode-order normalization, duplicate removal, defensive ownership, invalid/oversized inputs, and the two-sync lookahead counter.
+- Last verified baseline: `ba74f476fed9c68146c9365ed69c6329f0ea9a3a` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build #435](https://github.com/Konodio-da-da/VyroCut/actions/runs/43703543570). This commit requires its own Actions result.
+- The two-sync boundary is a bounded open-GOP lookahead, not proof for every codec/container reordering pattern. Long-GOP and device-specific sample ordering remain on the physical-device checklist; the 120,000-sample cap fails closed to nominal-FPS fallback.
+
 ## Current VFR timestamp-index ownership milestone — 15 November 2026
 - The bounded three-entry VFR timestamp LRU now stores a defensive copy of every valid decoder-produced `LongArray`. Later reuse or mutation of a decoder output buffer cannot silently corrupt a cached presentation-timestamp index.
 - Unsupported-source `null` entries and existing LRU recency semantics are unchanged; invalid indexes are still rejected before storage.

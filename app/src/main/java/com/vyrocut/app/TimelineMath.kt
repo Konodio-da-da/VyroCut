@@ -806,6 +806,43 @@ internal fun isValidVideoPresentationTimestampsUs(timestampsUs: LongArray?): Boo
 }
 
 /**
+ * Converts extractor sample-order timestamps into a unique presentation-order index.
+ *
+ * Compressed samples may be enumerated in decode order, so B-frame PTS values can move
+ * backwards even though the final display timeline is strictly increasing.
+ */
+internal fun normalizeVideoPresentationTimestampsUs(sampleTimestampsUs: LongArray?): LongArray? {
+    if (sampleTimestampsUs == null || sampleTimestampsUs.isEmpty() ||
+        sampleTimestampsUs.size > MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP ||
+        sampleTimestampsUs.any { it < 0L }
+    ) return null
+
+    val sorted = sampleTimestampsUs.copyOf()
+    sorted.sort()
+    var uniqueCount = 0
+    for (timestampUs in sorted) {
+        if (uniqueCount == 0 || sorted[uniqueCount - 1] != timestampUs) {
+            sorted[uniqueCount++] = timestampUs
+        }
+    }
+    return sorted.copyOf(uniqueCount)
+        .takeIf(::isValidVideoPresentationTimestampsUs)
+}
+
+/** Two sync samples beyond trim OUT include one following GOP's leading B-frame reorder window. */
+internal const val VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT = 2
+
+internal fun nextVideoPtsEndSyncSampleCount(
+    currentCount: Int,
+    sampleTimeUs: Long,
+    endUs: Long,
+    isSyncSample: Boolean,
+): Int {
+    require(currentCount >= 0)
+    return if (sampleTimeUs >= endUs && isSyncSample) currentCount + 1 else currentCount
+}
+
+/**
  * Small insertion-ordered LRU for decoded clip PTS indexes; null values cache unsupported sources.
  *
  * The cache stores its own snapshot of a valid [LongArray]. Kotlin arrays are mutable, so retaining

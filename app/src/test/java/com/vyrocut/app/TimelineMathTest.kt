@@ -1,5 +1,6 @@
 package com.vyrocut.app
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -1280,6 +1281,55 @@ class TimelineMathTest {
                 LongArray(MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP + 1) { it.toLong() },
             ),
         )
+    }
+
+    @Test
+    fun presentationTimestampSamplesNormalizeDecodeOrderIntoUniquePresentationOrder() {
+        val decodeOrderSamples = longArrayOf(
+            0L, 100_000L, 33_333L, 66_667L, 133_333L, 100_000L, 166_667L,
+        )
+        val normalized = normalizeVideoPresentationTimestampsUs(decodeOrderSamples)
+
+        assertArrayEquals(
+            longArrayOf(0L, 33_333L, 66_667L, 100_000L, 133_333L, 166_667L),
+            normalized,
+        )
+        assertTrue(isValidVideoPresentationTimestampsUs(normalized))
+
+        // Normalization owns its result; later extractor-buffer reuse cannot mutate the index.
+        decodeOrderSamples[0] = -1L
+        assertArrayEquals(
+            longArrayOf(0L, 33_333L, 66_667L, 100_000L, 133_333L, 166_667L),
+            normalized,
+        )
+    }
+
+    @Test
+    fun presentationTimestampNormalizationRejectsMissingNegativeAndOversizedSamples() {
+        assertNull(normalizeVideoPresentationTimestampsUs(null))
+        assertNull(normalizeVideoPresentationTimestampsUs(longArrayOf()))
+        assertNull(normalizeVideoPresentationTimestampsUs(longArrayOf(0L, -1L, 33_333L)))
+        assertNull(
+            normalizeVideoPresentationTimestampsUs(
+                LongArray(MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP + 1) { it.toLong() },
+            ),
+        )
+    }
+
+    @Test
+    fun presentationTimestampScanLooksPastFirstOutOfRangeSampleUntilTwoSyncSamples() {
+        var syncCount = 0
+        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 120_000L, 100_000L, false)
+        assertEquals(0, syncCount)
+        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 90_000L, 100_000L, true)
+        assertEquals(0, syncCount)
+        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 110_000L, 100_000L, true)
+        assertEquals(1, syncCount)
+        // A reordered B-frame may still carry a PTS inside the selected trim.
+        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 95_000L, 100_000L, false)
+        assertEquals(1, syncCount)
+        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 140_000L, 100_000L, true)
+        assertEquals(VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT, syncCount)
     }
 
     @Test

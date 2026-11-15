@@ -1,3 +1,11 @@
+## VFR decode-order timestamp normalization
+1. Use an H.264/HEVC source with B-frames and verify the extracted PTS sequence is sorted into unique presentation order even when compressed samples arrive in decode order.
+2. Trim near a GOP boundary and confirm samples with PTS inside trim OUT that occur after the first out-of-range sample are still included.
+3. Confirm the scan stops after two sync samples at/after trim OUT, or fails closed at the 120,000-sample work cap when no bounded boundary is found.
+4. Step forward/backward around the trim boundary and compare the displayed frame to source presentation timestamps.
+5. Repeat with a source ending before a second post-trim sync sample and with a long-GOP source; verify safe fallback rather than using a partial index.
+6. JVM tests validate sorting, de-duplication, input bounds, and sync-lookahead counting. Actual MediaExtractor sample order, codec-specific GOP behaviour, displayed frames, seek latency, and audio continuity require physical Android-device validation.
+
 # Physical-device validation status
 
 ## Current status
