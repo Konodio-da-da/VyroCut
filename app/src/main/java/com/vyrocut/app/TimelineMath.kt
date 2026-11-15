@@ -991,6 +991,50 @@ internal fun resolveLastPreviewFrameOffsetFromTimestampsMs(
 }
 
 /**
+ * Maps Media3's clip-relative playback clock to the start of the frame whose PTS
+ * is currently at or immediately before that clock position.
+ *
+ * This is a presentation-timeline approximation for the editor playhead, not a
+ * decoded-frame callback. Media3 remains the playback clock; audio synchronization
+ * and persisted preview checkpoints continue to use the unquantized player position.
+ */
+internal fun resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+    currentPositionMs: Long,
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    timestampsUs: LongArray,
+): Long? {
+    if (currentPositionMs < 0L || sourceStartMs < 0L || clipDurationMs <= 0L ||
+        sourceStartMs > Long.MAX_VALUE - clipDurationMs
+    ) return null
+
+    val range = resolveVideoFrameTimestampRange(timestampsUs, sourceStartMs, clipDurationMs)
+        ?: return null
+    val boundedPositionMs = currentPositionMs.coerceIn(0L, clipDurationMs - 1L)
+    val sourcePositionMs = sourceStartMs + boundedPositionMs
+    if (sourcePositionMs > Long.MAX_VALUE / 1_000L) return null
+
+    val targetUs = sourcePositionMs * 1_000L
+    val insertionIndex = lowerBoundVideoFrameTimestampUs(
+        timestampsUs,
+        targetUs,
+        range.firstIndex,
+        range.endExclusiveIndex,
+    )
+    val presentedIndex = when {
+        insertionIndex < range.endExclusiveIndex &&
+            timestampsUs[insertionIndex] == targetUs -> insertionIndex
+        insertionIndex > range.firstIndex -> insertionIndex - 1
+        else -> range.firstIndex
+    }
+    return videoFrameTimestampOffsetMs(
+        timestampsUs[presentedIndex],
+        sourceStartMs,
+        clipDurationMs,
+    )
+}
+
+/**
  * Steps through actual MediaExtractor presentation timestamps. The input index
  * is scoped to the clip's original source range; Media3 seek positions remain
  * clip-relative milliseconds, so timestamps are rounded only at the final step.
@@ -1155,15 +1199,23 @@ internal fun resolvePreviewFrameStepAcrossClips(
 
 /** Target cadence for keeping the editor playhead visually aligned with Media3. */
 internal const val PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS = 33L
+internal const val PLAYBACK_PROGRESS_FRAME_ALIGNED_INTERVAL_MS = 16L
 internal const val PLAYBACK_PROGRESS_IDLE_INTERVAL_MS = 100L
 internal const val PREVIEW_CHECKPOINT_INTERVAL_MS = 2_000L
 
 /**
- * Uses a video-friendly 30 Hz refresh while playing and a lighter 10 Hz refresh
- * while paused. This controls UI sampling only; Media3 remains the playback clock.
+ * Uses 30 Hz for ordinary playback and up to 60 Hz when an actual source PTS
+ * index is available to frame-quantize the playhead. Paused sampling remains
+ * lightweight. This controls UI sampling only; Media3 remains the playback clock.
  */
-internal fun playbackProgressUpdateIntervalMs(isPlaying: Boolean): Long =
-    if (isPlaying) PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS else PLAYBACK_PROGRESS_IDLE_INTERVAL_MS
+internal fun playbackProgressUpdateIntervalMs(
+    isPlaying: Boolean,
+    hasPresentationTimestampIndex: Boolean = false,
+): Long = when {
+    !isPlaying -> PLAYBACK_PROGRESS_IDLE_INTERVAL_MS
+    hasPresentationTimestampIndex -> PLAYBACK_PROGRESS_FRAME_ALIGNED_INTERVAL_MS
+    else -> PLAYBACK_PROGRESS_ACTIVE_INTERVAL_MS
+}
 
 /**
  * Throttles preview checkpoint writes using monotonic elapsed realtime rather

@@ -193,3 +193,11 @@ A control is only considered complete when its operation is connected to the pro
 - Each per-trim index is bounded to 120,000 timestamps. The in-memory LRU retains at most three URI/source-IN/source-OUT indexes; unsupported, oversized, or malformed indexes fall back to the existing nominal frame-rate resolver.
 - Pure Kotlin tests cover irregular VFR intervals, non-frame-aligned trim boundaries, first/last available frames, VFR cut crossing, decode-order normalization, bounded post-sync lookahead, invalid timestamp sequences, and LRU eviction.
 - Media3 still accepts millisecond seek positions, so source PTS values are rounded only when constructing the final seek target. Actual frame presentation, MediaExtractor timestamp ordering across devices, seek latency, and audio continuity remain subject to physical-device validation.
+
+
+## Continuous VFR-aware timeline playhead (implemented; Android CI pending)
+- While preview playback runs, the editor asynchronously warms the active clip and immediately following clip's bounded MediaExtractor PTS indexes on Dispatchers.IO. Existing source-revision keys and the three-entry LRU cache are reused; duplicate URI/revision/trim requests within the warm-up batch are deduplicated.
+- The timeline marker is quantized to the latest in-trim presentation timestamp not after Media3's current clip position. When an index is available, the UI sampler uses a 16 ms interval; otherwise it retains the 33 ms playback cadence and nominal clock mapping.
+- Audio drift correction, editor seeks, and persisted preview checkpoints continue to use Media3's unquantized project clock. The frame-aligned marker is a UI approximation, not a decoded-frame callback or a claim of verified display timing.
+- Starting a manual frame step pauses playback first, cancelling continuous prefetch so the exact frame-step path owns the extractor work. Stale warm-up results are discarded if the project or active playlist index changes.
+- Pure Kotlin tests cover floor-to-PTS sampling, non-frame-aligned trims, invalid positions/indexes, and the 16/33/100 ms cadence decisions. Continuous playback, frame display, mixed-rate transitions, and audio sync still require physical Android-device validation.

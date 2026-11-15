@@ -1124,9 +1124,11 @@ class TimelineMathTest {
 
 
     @Test
-    fun playbackProgressUsesVideoFriendlyActiveCadenceAndLighterIdleCadence() {
+    fun playbackProgressUsesFrameAlignedCadenceWhenPtsIndexIsAvailable() {
         assertEquals(33L, playbackProgressUpdateIntervalMs(isPlaying = true))
+        assertEquals(16L, playbackProgressUpdateIntervalMs(isPlaying = true, hasPresentationTimestampIndex = true))
         assertEquals(100L, playbackProgressUpdateIntervalMs(isPlaying = false))
+        assertEquals(100L, playbackProgressUpdateIntervalMs(isPlaying = false, hasPresentationTimestampIndex = true))
     }
 
     @Test
@@ -1185,6 +1187,91 @@ class TimelineMathTest {
                 clipDurationMs = 200L,
                 timestampsUs = timestampsUs,
                 direction = PreviewFrameStepDirection.PREVIOUS,
+            ),
+        )
+    }
+
+    @Test
+    fun continuousPlayheadUsesLatestPresentationTimestampNotAfterPlayerClock() {
+        val timestampsUs = longArrayOf(
+            1_000_000L, 1_033_333L, 1_066_667L, 1_100_000L, 1_166_667L,
+        )
+        assertEquals(
+            0L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 0L,
+                sourceStartMs = 1_000L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        assertEquals(
+            33L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 34L,
+                sourceStartMs = 1_000L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        assertEquals(
+            67L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 80L,
+                sourceStartMs = 1_000L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        // Past the last in-trim PTS, keep the marker on the last playable frame.
+        assertEquals(
+            167L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 199L,
+                sourceStartMs = 1_000L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+    }
+
+    @Test
+    fun continuousPlayheadHonoursNonAlignedTrimAndRejectsInvalidPositions() {
+        val timestampsUs = longArrayOf(
+            1_000_000L, 1_033_333L, 1_066_667L, 1_100_000L, 1_166_667L, 1_200_000L,
+        )
+        assertEquals(
+            17L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 0L,
+                sourceStartMs = 1_050L,
+                clipDurationMs = 120L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        assertEquals(
+            50L,
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 50L,
+                sourceStartMs = 1_050L,
+                clipDurationMs = 120L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        assertNull(
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = -1L,
+                sourceStartMs = 1_050L,
+                clipDurationMs = 120L,
+                timestampsUs = timestampsUs,
+            ),
+        )
+        assertNull(
+            resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                currentPositionMs = 0L,
+                sourceStartMs = 1_050L,
+                clipDurationMs = 120L,
+                timestampsUs = longArrayOf(10L, 10L),
             ),
         )
     }

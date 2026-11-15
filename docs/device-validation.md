@@ -151,3 +151,11 @@ Do not mark any of these device-only checks complete from CI results alone.
 5. Switch projects, trim a clip, reorder clips, and repeat. Confirm timestamp indexes are keyed by URI plus source IN/OUT and the in-memory cache remains bounded to three entries.
 6. Use open-GOP or B-frame-heavy footage and verify samples whose PTS falls inside trim OUT are not omitted merely because they appear after a qualifying sync sample in decode order. The scanner reads up to 64 samples after the most recent qualifying boundary sync, subject to the 120,000-sample total cap.
 7. JVM tests validate irregular timestamp resolution, trim boundaries, cross-clip mapping, invalid-index rejection, LRU eviction, and the bounded post-sync lookahead policy. Actual MediaExtractor sample ordering, codec-specific reorder depth, seek presentation, VFR frame display, decoder latency, and audio continuity require physical Android-device validation.
+
+
+## Continuous VFR playhead sampling
+1. Start playback on a VFR clip and confirm the active clip's timestamp index is loaded on Dispatchers.IO; the immediately following clip should be warmed before the natural transition when the scan completes in time.
+2. Confirm the timeline marker advances on source presentation-frame boundaries using the latest PTS not after Media3's current position. The project clock used for audio drift correction and persisted checkpoints must remain the unquantized Media3 position.
+3. Cross from VFR to CFR and mixed-rate clips. Confirm the marker switches to the destination clip's own source trim/index and never carries the previous clip's timestamps across the cut.
+4. Switch projects, trim or reorder clips during prefetch, and press previous/next-frame while playback is active. Confirm stale scans are cancelled or ignored and the frame-step request owns its decoder work.
+5. Check 30/60 Hz displays and long clips for UI responsiveness, battery/CPU impact, and marker jitter. This PTS-based marker is a presentation-timeline approximation, not proof of the exact frame currently displayed by the decoder; only physical-device playback can establish that.

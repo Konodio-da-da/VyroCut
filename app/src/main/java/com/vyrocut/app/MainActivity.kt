@@ -231,6 +231,9 @@ private fun VyroCutApp() {
         mutableStateOf<Map<VideoFrameTimestampCacheKey, LongArray?>>(emptyMap())
     }
     var isResolvingFrameStep by remember(activeProjectId) { mutableStateOf(false) }
+    // The playback sampler is a long-lived coroutine; keep its cache view current
+    // without restarting the loop (and resetting its checkpoint throttle) on each fill.
+    val latestPreviewFrameTimestampIndexes by rememberUpdatedState(previewFrameTimestampIndexes)
     LaunchedEffect(clips.map { it.uri }.distinct()) {
         val sourceUris = clips.map { it.uri }.distinct()
         val retainedRates = previewFrameRatesByUri.filterKeys { it in sourceUris }
@@ -506,16 +509,95 @@ private fun VyroCutApp() {
         previousClipEdits = clips.toList()
         previousProjectId = activeProjectId
     }
+    // Warm the active and immediately following clip's source PTS indexes while
+    // playback runs. The next clip is ready before a natural playlist transition,
+    // so the timeline can switch to its own VFR frame boundaries without waiting
+    // for a user to press the frame-step controls.
+    LaunchedEffect(player, activeProjectId, isPlaying, selectedIndex, clips) {
+        if (!isPlaying || clips.isEmpty()) return@LaunchedEffect
+        val projectIdAtRequest = activeProjectId
+        val activeClipIndex = player.currentMediaItemIndex
+        val activeClip = clips.getOrNull(activeClipIndex) ?: return@LaunchedEffect
+        val activeClipId = activeClip.id
+        if (player.currentMediaItem?.mediaId != activeClipId) return@LaunchedEffect
+        val clipsToWarm = listOfNotNull(
+            activeClip,
+            clips.getOrNull(activeClipIndex + 1),
+        )
+
+        val sourceRevisionsByUri = withContext(Dispatchers.IO) {
+            clipsToWarm.map { it.uri }.distinct().associateWith { rawUri ->
+                MediaMetadataReader.videoFrameTimestampSourceRevision(
+                    context = context,
+                    uri = Uri.parse(rawUri),
+                )
+            }
+        }
+        var timestampCache = previewFrameTimestampIndexes
+        val keyedClips = clipsToWarm.map { clip ->
+            clip to VideoFrameTimestampCacheKey(
+                uri = clip.uri,
+                sourceStartMs = clip.sourceStartMs,
+                sourceEndMs = clip.sourceEndMs,
+                sourceRevision = sourceRevisionsByUri[clip.uri],
+            )
+        }.distinctBy { it.second }
+
+        for ((clip, key) in keyedClips) {
+            if (activeProjectId != projectIdAtRequest ||
+                player.currentMediaItemIndex != activeClipIndex ||
+                player.currentMediaItem?.mediaId != activeClipId
+            ) return@LaunchedEffect
+
+            if (timestampCache.containsKey(key)) {
+                timestampCache = touchVideoFrameTimestampIndex(timestampCache, key)
+            } else {
+                val timestamps = withContext(Dispatchers.IO) {
+                    MediaMetadataReader.videoPresentationTimestampsUs(
+                        context = context,
+                        uri = Uri.parse(clip.uri),
+                        sourceStartMs = clip.sourceStartMs,
+                        sourceEndMs = clip.sourceEndMs,
+                    )
+                }
+                timestampCache = cacheVideoFrameTimestampIndex(timestampCache, key, timestamps)
+            }
+
+            if (activeProjectId != projectIdAtRequest ||
+                player.currentMediaItemIndex != activeClipIndex ||
+                player.currentMediaItem?.mediaId != activeClipId
+            ) return@LaunchedEffect
+            previewFrameTimestampIndexes = timestampCache
+        }
+    }
+
     LaunchedEffect(player, clips, isPlaying, activeProjectId) {
         var lastPersistedAtMs: Long? = null
         while (true) {
+            var hasPresentationTimestampIndex = false
             if (!isScrubbing && clips.isNotEmpty() && player.currentMediaItemIndex in clips.indices) {
                 val currentIndex = player.currentMediaItemIndex
                 val currentPositionMs = player.currentPosition
+                val currentClip = clips[currentIndex]
+                val timestampsUs = latestPreviewFrameTimestampIndexes.entries
+                    .lastOrNull { (key, _) ->
+                        key.uri == currentClip.uri &&
+                            key.sourceStartMs == currentClip.sourceStartMs &&
+                            key.sourceEndMs == currentClip.sourceEndMs
+                    }?.value
+                hasPresentationTimestampIndex = timestampsUs != null
+                val displayedClipPositionMs = timestampsUs?.let { index ->
+                    resolvePresentedPreviewFrameOffsetFromTimestampsMs(
+                        currentPositionMs = currentPositionMs,
+                        sourceStartMs = currentClip.sourceStartMs,
+                        clipDurationMs = currentClip.durationMs,
+                        timestampsUs = index,
+                    )
+                } ?: currentPositionMs
                 timelinePositionMs = calculateTimelinePositionMs(
                     clipDurationsMs,
                     currentIndex,
-                    currentPositionMs,
+                    displayedClipPositionMs,
                 ).coerceIn(0L, timelineDurationMs).toFloat()
 
                 val nowElapsedMs = SystemClock.elapsedRealtime()
@@ -526,7 +608,7 @@ private fun VyroCutApp() {
                     lastPersistedAtMs = nowElapsedMs
                 }
             }
-            delay(playbackProgressUpdateIntervalMs(player.isPlaying))
+            delay(playbackProgressUpdateIntervalMs(player.isPlaying, hasPresentationTimestampIndex))
         }
     }
     LaunchedEffect(player, clips) {
@@ -764,6 +846,9 @@ private fun VyroCutApp() {
 
     fun stepPreviewFrame(direction: PreviewFrameStepDirection) {
         if (isResolvingFrameStep) return
+        // Stop continuous PTS prefetch before starting the user-requested exact
+        // frame scan; the frame-step path owns the decoder work from this point.
+        player.pause()
         val clipIndex = player.currentMediaItemIndex
         val requestedClips = clips
         val currentClip = requestedClips.getOrNull(clipIndex) ?: return
