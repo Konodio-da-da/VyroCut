@@ -779,6 +779,172 @@ internal fun resolvePreviewFrameStepTargetMs(
     return targetMs.takeIf { it != currentMs }
 }
 
+
+internal const val MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP = 120_000
+internal const val MAX_CACHED_VIDEO_FRAME_TIMESTAMP_INDEXES = 3
+private const val PREVIEW_FRAME_TIMESTAMP_MATCH_TOLERANCE_US = 1_000L
+
+/** A frame timestamp index belongs to one exact non-destructive source trim. */
+internal data class VideoFrameTimestampCacheKey(
+    val uri: String,
+    val sourceStartMs: Long,
+    val sourceEndMs: Long,
+)
+
+/** Rejects partial, empty, oversized, negative, duplicate, or out-of-order PTS indexes. */
+internal fun isValidVideoPresentationTimestampsUs(timestampsUs: LongArray?): Boolean {
+    if (timestampsUs == null || timestampsUs.isEmpty() ||
+        timestampsUs.size > MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP
+    ) return false
+    var previousUs = -1L
+    for (timestampUs in timestampsUs) {
+        if (timestampUs < 0L || timestampUs <= previousUs) return false
+        previousUs = timestampUs
+    }
+    return true
+}
+
+/** Small insertion-ordered LRU for decoded clip PTS indexes; null values cache unsupported sources. */
+internal fun cacheVideoFrameTimestampIndex(
+    cache: Map<VideoFrameTimestampCacheKey, LongArray?>,
+    key: VideoFrameTimestampCacheKey,
+    timestampsUs: LongArray?,
+    maxEntries: Int = MAX_CACHED_VIDEO_FRAME_TIMESTAMP_INDEXES,
+): Map<VideoFrameTimestampCacheKey, LongArray?> {
+    require(maxEntries > 0)
+    val updated = LinkedHashMap(cache)
+    updated.remove(key)
+    updated[key] = timestampsUs?.takeIf(::isValidVideoPresentationTimestampsUs)
+    while (updated.size > maxEntries) {
+        updated.remove(updated.keys.first())
+    }
+    return updated
+}
+
+private data class VideoFrameTimestampRange(
+    val firstIndex: Int,
+    val endExclusiveIndex: Int,
+)
+
+private fun lowerBoundVideoFrameTimestampUs(
+    timestampsUs: LongArray,
+    targetUs: Long,
+    fromIndex: Int = 0,
+    endExclusiveIndex: Int = timestampsUs.size,
+): Int {
+    var low = fromIndex
+    var high = endExclusiveIndex
+    while (low < high) {
+        val middle = (low + high) ushr 1
+        if (timestampsUs[middle] < targetUs) low = middle + 1 else high = middle
+    }
+    return low
+}
+
+private fun resolveVideoFrameTimestampRange(
+    timestampsUs: LongArray,
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+): VideoFrameTimestampRange? {
+    if (!isValidVideoPresentationTimestampsUs(timestampsUs) ||
+        sourceStartMs < 0L || clipDurationMs <= 0L ||
+        sourceStartMs > Long.MAX_VALUE - clipDurationMs
+    ) return null
+    val sourceEndMs = sourceStartMs + clipDurationMs
+    if (sourceEndMs > Long.MAX_VALUE / 1_000L) return null
+    val firstIndex = lowerBoundVideoFrameTimestampUs(timestampsUs, sourceStartMs * 1_000L)
+    val endExclusiveIndex = lowerBoundVideoFrameTimestampUs(timestampsUs, sourceEndMs * 1_000L)
+    return VideoFrameTimestampRange(firstIndex, endExclusiveIndex)
+        .takeIf { it.firstIndex < it.endExclusiveIndex }
+}
+
+private fun videoFrameTimestampOffsetMs(
+    timestampUs: Long,
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+): Long {
+    val roundedSourceMs = (timestampUs.toDouble() / 1_000.0).roundToLong()
+    return (roundedSourceMs - sourceStartMs).coerceIn(0L, clipDurationMs - 1L)
+}
+
+internal fun resolveFirstPreviewFrameOffsetFromTimestampsMs(
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    timestampsUs: LongArray,
+): Long? {
+    val range = resolveVideoFrameTimestampRange(timestampsUs, sourceStartMs, clipDurationMs) ?: return null
+    return videoFrameTimestampOffsetMs(timestampsUs[range.firstIndex], sourceStartMs, clipDurationMs)
+}
+
+internal fun resolveLastPreviewFrameOffsetFromTimestampsMs(
+    sourceStartMs: Long,
+    clipDurationMs: Long,
+    timestampsUs: LongArray,
+): Long? {
+    val range = resolveVideoFrameTimestampRange(timestampsUs, sourceStartMs, clipDurationMs) ?: return null
+    return videoFrameTimestampOffsetMs(timestampsUs[range.endExclusiveIndex - 1], sourceStartMs, clipDurationMs)
+}
+
+/**
+ * Steps through actual MediaExtractor presentation timestamps. The input index
+ * is scoped to the clip's original source range; Media3 seek positions remain
+ * clip-relative milliseconds, so timestamps are rounded only at the final step.
+ */
+internal fun resolvePreviewFrameStepTargetFromTimestampsMs(
+    currentPositionMs: Long,
+    clipDurationMs: Long,
+    timestampsUs: LongArray,
+    direction: PreviewFrameStepDirection,
+    sourceStartMs: Long = 0L,
+): Long? {
+    val range = resolveVideoFrameTimestampRange(timestampsUs, sourceStartMs, clipDurationMs) ?: return null
+    val currentMs = currentPositionMs.coerceIn(0L, clipDurationMs - 1L)
+    val firstFrameOffsetMs = videoFrameTimestampOffsetMs(
+        timestampsUs[range.firstIndex],
+        sourceStartMs,
+        clipDurationMs,
+    )
+
+    // Seeking to clip-local zero presents the first source frame at/after trim IN.
+    // Treat it as current so NEXT does not show that same frame a second time.
+    if (currentMs < firstFrameOffsetMs) {
+        if (direction == PreviewFrameStepDirection.PREVIOUS) return null
+        val nextIndex = range.firstIndex + 1
+        if (nextIndex >= range.endExclusiveIndex) return null
+        return videoFrameTimestampOffsetMs(timestampsUs[nextIndex], sourceStartMs, clipDurationMs)
+    }
+
+    if (sourceStartMs > Long.MAX_VALUE - currentMs ||
+        sourceStartMs + currentMs > Long.MAX_VALUE / 1_000L
+    ) return null
+    val currentSourceUs = (sourceStartMs + currentMs) * 1_000L
+    val insertionIndex = lowerBoundVideoFrameTimestampUs(
+        timestampsUs,
+        currentSourceUs,
+        range.firstIndex,
+        range.endExclusiveIndex,
+    )
+    val onFrameIndex = when {
+        insertionIndex < range.endExclusiveIndex &&
+            kotlin.math.abs(timestampsUs[insertionIndex] - currentSourceUs) <= PREVIEW_FRAME_TIMESTAMP_MATCH_TOLERANCE_US ->
+            insertionIndex
+        insertionIndex > range.firstIndex &&
+            kotlin.math.abs(timestampsUs[insertionIndex - 1] - currentSourceUs) <= PREVIEW_FRAME_TIMESTAMP_MATCH_TOLERANCE_US ->
+            insertionIndex - 1
+        else -> -1
+    }
+    val targetIndex = when (direction) {
+        PreviewFrameStepDirection.PREVIOUS -> if (onFrameIndex >= 0) onFrameIndex - 1 else insertionIndex - 1
+        PreviewFrameStepDirection.NEXT -> if (onFrameIndex >= 0) onFrameIndex + 1 else insertionIndex
+    }
+    if (targetIndex !in range.firstIndex until range.endExclusiveIndex) return null
+    return videoFrameTimestampOffsetMs(
+        timestampsUs[targetIndex],
+        sourceStartMs,
+        clipDurationMs,
+    ).takeIf { it != currentMs }
+}
+
 internal data class PreviewFrameStepTarget(
     val clipIndex: Int,
     val positionMs: Long,
@@ -798,28 +964,46 @@ internal fun resolvePreviewFrameStepAcrossClips(
     currentPositionMs: Long,
     direction: PreviewFrameStepDirection,
     sourceStartMsByClip: List<Long> = emptyList(),
+    presentationTimestampsUsByClip: List<LongArray?> = emptyList(),
 ): PreviewFrameStepTarget? {
     if (clipDurationsMs.isEmpty() ||
         frameRatesByClip.size != clipDurationsMs.size ||
         currentClipIndex !in clipDurationsMs.indices ||
-        (sourceStartMsByClip.isNotEmpty() && sourceStartMsByClip.size != clipDurationsMs.size)
+        (sourceStartMsByClip.isNotEmpty() && sourceStartMsByClip.size != clipDurationsMs.size) ||
+        (presentationTimestampsUsByClip.isNotEmpty() &&
+            presentationTimestampsUsByClip.size != clipDurationsMs.size)
     ) return null
 
     val sourceStarts = sourceStartMsByClip.ifEmpty { List(clipDurationsMs.size) { 0L } }
+    val timestampIndexes = presentationTimestampsUsByClip.ifEmpty { List(clipDurationsMs.size) { null } }
     val currentDurationMs = clipDurationsMs[currentClipIndex]
     val currentSourceStartMs = sourceStarts[currentClipIndex]
     val currentFrameRate = frameRatesByClip[currentClipIndex]
-    if (currentFrameRate == null ||
-        resolvePreviewFrameIndexRange(currentSourceStartMs, currentDurationMs, currentFrameRate) == null
-    ) return null
+    val currentTimestamps = timestampIndexes[currentClipIndex]
+        ?.takeIf(::isValidVideoPresentationTimestampsUs)
 
-    resolvePreviewFrameStepTargetMs(
-        currentPositionMs = currentPositionMs,
-        clipDurationMs = currentDurationMs,
-        frameRate = currentFrameRate,
-        direction = direction,
-        sourceStartMs = currentSourceStartMs,
-    )?.let { return PreviewFrameStepTarget(currentClipIndex, it) }
+    val currentTargetMs = currentTimestamps?.let { timestamps ->
+        resolvePreviewFrameStepTargetFromTimestampsMs(
+            currentPositionMs = currentPositionMs,
+            clipDurationMs = currentDurationMs,
+            timestampsUs = timestamps,
+            direction = direction,
+            sourceStartMs = currentSourceStartMs,
+        )
+    } ?: currentFrameRate?.let { frameRate ->
+        resolvePreviewFrameStepTargetMs(
+            currentPositionMs = currentPositionMs,
+            clipDurationMs = currentDurationMs,
+            frameRate = frameRate,
+            direction = direction,
+            sourceStartMs = currentSourceStartMs,
+        )
+    }
+    if (currentTargetMs != null) return PreviewFrameStepTarget(currentClipIndex, currentTargetMs)
+    if (currentTimestamps == null &&
+        (currentFrameRate == null ||
+            resolvePreviewFrameIndexRange(currentSourceStartMs, currentDurationMs, currentFrameRate) == null)
+    ) return null
 
     val adjacentClipIndex = currentClipIndex + when (direction) {
         PreviewFrameStepDirection.PREVIOUS -> -1
@@ -830,19 +1014,36 @@ internal fun resolvePreviewFrameStepAcrossClips(
     val adjacentDurationMs = clipDurationsMs[adjacentClipIndex]
     val adjacentSourceStartMs = sourceStarts[adjacentClipIndex]
     val adjacentFrameRate = frameRatesByClip[adjacentClipIndex]
-    if (adjacentFrameRate == null) return null
+    val adjacentTimestamps = timestampIndexes[adjacentClipIndex]
+        ?.takeIf(::isValidVideoPresentationTimestampsUs)
 
     val adjacentPositionMs = when (direction) {
-        PreviewFrameStepDirection.PREVIOUS -> resolveLastPreviewFrameOffsetMs(
-            sourceStartMs = adjacentSourceStartMs,
-            clipDurationMs = adjacentDurationMs,
-            frameRate = adjacentFrameRate,
-        ) ?: return null
-        PreviewFrameStepDirection.NEXT -> resolveFirstPreviewFrameOffsetMs(
-            sourceStartMs = adjacentSourceStartMs,
-            clipDurationMs = adjacentDurationMs,
-            frameRate = adjacentFrameRate,
-        ) ?: return null
+        PreviewFrameStepDirection.PREVIOUS -> adjacentTimestamps?.let { timestamps ->
+            resolveLastPreviewFrameOffsetFromTimestampsMs(
+                sourceStartMs = adjacentSourceStartMs,
+                clipDurationMs = adjacentDurationMs,
+                timestampsUs = timestamps,
+            )
+        } ?: adjacentFrameRate?.let { frameRate ->
+            resolveLastPreviewFrameOffsetMs(
+                sourceStartMs = adjacentSourceStartMs,
+                clipDurationMs = adjacentDurationMs,
+                frameRate = frameRate,
+            )
+        } ?: return null
+        PreviewFrameStepDirection.NEXT -> adjacentTimestamps?.let { timestamps ->
+            resolveFirstPreviewFrameOffsetFromTimestampsMs(
+                sourceStartMs = adjacentSourceStartMs,
+                clipDurationMs = adjacentDurationMs,
+                timestampsUs = timestamps,
+            )
+        } ?: adjacentFrameRate?.let { frameRate ->
+            resolveFirstPreviewFrameOffsetMs(
+                sourceStartMs = adjacentSourceStartMs,
+                clipDurationMs = adjacentDurationMs,
+                frameRate = frameRate,
+            )
+        } ?: return null
     }
     return PreviewFrameStepTarget(adjacentClipIndex, adjacentPositionMs)
 }
