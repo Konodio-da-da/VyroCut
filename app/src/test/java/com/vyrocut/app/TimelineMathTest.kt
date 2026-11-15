@@ -1317,19 +1317,48 @@ class TimelineMathTest {
     }
 
     @Test
-    fun presentationTimestampScanLooksPastFirstOutOfRangeSampleUntilTwoSyncSamples() {
-        var syncCount = 0
-        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 120_000L, 100_000L, false)
-        assertEquals(0, syncCount)
-        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 90_000L, 100_000L, true)
-        assertEquals(0, syncCount)
-        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 110_000L, 100_000L, true)
-        assertEquals(1, syncCount)
-        // A reordered B-frame may still carry a PTS inside the selected trim.
-        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 95_000L, 100_000L, false)
-        assertEquals(1, syncCount)
-        syncCount = nextVideoPtsEndSyncSampleCount(syncCount, 140_000L, 100_000L, true)
-        assertEquals(VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT, syncCount)
+    fun presentationTimestampScanWaitsForTwoBoundarySyncsAndDecodeOrderTail() {
+        var state = VideoPtsScanLookaheadState()
+        state = nextVideoPtsScanLookaheadState(state, 120_000L, 100_000L, false)
+        assertEquals(VideoPtsScanLookaheadState(), state)
+        state = nextVideoPtsScanLookaheadState(state, 90_000L, 100_000L, true)
+        assertEquals(0, state.endSyncSampleCount)
+        state = nextVideoPtsScanLookaheadState(state, 110_000L, 100_000L, true)
+        assertEquals(1, state.endSyncSampleCount)
+
+        // A reordered B-frame can still carry an in-trim PTS after the first boundary sync.
+        state = nextVideoPtsScanLookaheadState(state, 95_000L, 100_000L, false)
+        assertEquals(0, state.samplesAfterLastEndSync)
+
+        state = nextVideoPtsScanLookaheadState(state, 140_000L, 100_000L, true)
+        assertEquals(VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT, state.endSyncSampleCount)
+        assertFalse(shouldStopVideoPtsScan(state))
+
+        repeat(VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES - 1) {
+            state = nextVideoPtsScanLookaheadState(state, 96_000L, 100_000L, false)
+        }
+        assertEquals(VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES - 1, state.samplesAfterLastEndSync)
+        assertFalse(shouldStopVideoPtsScan(state))
+
+        state = nextVideoPtsScanLookaheadState(state, 97_000L, 100_000L, false)
+        assertTrue(shouldStopVideoPtsScan(state))
+    }
+
+    @Test
+    fun laterBoundarySyncRestartsTheBoundedDecodeOrderTail() {
+        var state = VideoPtsScanLookaheadState(
+            endSyncSampleCount = VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT,
+            samplesAfterLastEndSync = 12,
+        )
+        state = nextVideoPtsScanLookaheadState(state, 160_000L, 100_000L, true)
+        assertEquals(VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT, state.endSyncSampleCount)
+        assertEquals(0, state.samplesAfterLastEndSync)
+        assertFalse(shouldStopVideoPtsScan(state))
+
+        repeat(VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES) {
+            state = nextVideoPtsScanLookaheadState(state, 99_000L, 100_000L, false)
+        }
+        assertTrue(shouldStopVideoPtsScan(state))
     }
 
     @Test

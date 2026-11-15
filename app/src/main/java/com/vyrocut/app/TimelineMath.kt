@@ -829,18 +829,59 @@ internal fun normalizeVideoPresentationTimestampsUs(sampleTimestampsUs: LongArra
         .takeIf(::isValidVideoPresentationTimestampsUs)
 }
 
-/** Two sync samples beyond trim OUT include one following GOP's leading B-frame reorder window. */
+/**
+ * A sync sample is a decode-order boundary, not proof that every earlier-presented
+ * B-frame has already been emitted. After the second sync sample at/after trim OUT,
+ * keep reading a bounded tail so reordered samples that follow that sync sample
+ * can still enter the presentation index. A later qualifying sync sample restarts
+ * the tail. The total extractor sample cap remains the final fail-closed bound.
+ *
+ * This is a conservative codec-independent heuristic, not a guarantee for every
+ * open-GOP or unusually deep-reordering stream; those still need device validation.
+ */
 internal const val VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT = 2
+internal const val VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES = 64
 
-internal fun nextVideoPtsEndSyncSampleCount(
-    currentCount: Int,
+internal data class VideoPtsScanLookaheadState(
+    val endSyncSampleCount: Int = 0,
+    val samplesAfterLastEndSync: Int = 0,
+)
+
+internal fun nextVideoPtsScanLookaheadState(
+    currentState: VideoPtsScanLookaheadState,
     sampleTimeUs: Long,
     endUs: Long,
     isSyncSample: Boolean,
-): Int {
-    require(currentCount >= 0)
-    return if (sampleTimeUs >= endUs && isSyncSample) currentCount + 1 else currentCount
+): VideoPtsScanLookaheadState {
+    require(currentState.endSyncSampleCount >= 0)
+    require(currentState.samplesAfterLastEndSync >= 0)
+
+    if (sampleTimeUs >= endUs && isSyncSample) {
+        val nextSyncCount = if (
+            currentState.endSyncSampleCount >= VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT
+        ) {
+            VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT
+        } else {
+            currentState.endSyncSampleCount + 1
+        }
+        return VideoPtsScanLookaheadState(
+            endSyncSampleCount = nextSyncCount,
+            samplesAfterLastEndSync = 0,
+        )
+    }
+
+    if (currentState.endSyncSampleCount < VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT ||
+        currentState.samplesAfterLastEndSync >= VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES
+    ) return currentState
+
+    return currentState.copy(
+        samplesAfterLastEndSync = currentState.samplesAfterLastEndSync + 1,
+    )
 }
+
+internal fun shouldStopVideoPtsScan(state: VideoPtsScanLookaheadState): Boolean =
+    state.endSyncSampleCount >= VIDEO_PTS_END_SYNC_LOOKAHEAD_COUNT &&
+        state.samplesAfterLastEndSync >= VIDEO_PTS_POST_SYNC_DECODE_ORDER_LOOKAHEAD_SAMPLES
 
 /**
  * Small insertion-ordered LRU for decoded clip PTS indexes; null values cache unsupported sources.
