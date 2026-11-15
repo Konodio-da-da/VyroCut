@@ -151,6 +151,7 @@ class MainActivity : ComponentActivity() {
 private fun VyroCutApp() {
     val context = LocalContext.current
     val exportScope = rememberCoroutineScope()
+    val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
     val lifecycleOwner = LocalLifecycleOwner.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
     val projects = remember { mutableStateListOf<ProjectInfo>().apply { addAll(loadProjectIndex(preferences)) } }
@@ -164,6 +165,7 @@ private fun VyroCutApp() {
                 preferences,
                 activeProjectId,
                 calculateTimelineDurationMs(clips.map { it.durationMs }),
+                recoveryDirectory,
             ),
         )
     }
@@ -200,7 +202,7 @@ private fun VyroCutApp() {
     val undoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
     val redoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
     var recoveryCandidate by remember(activeProjectId) {
-        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId))
+        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId, recoveryDirectory))
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -855,9 +857,18 @@ private fun VyroCutApp() {
         onDispose { player.removeListener(listener) }
     }
 
+    fun mirrorRecoveryJournals(projectId: String, bundle: ProjectRecoveryJournalBundle) {
+        // File I/O stays off the Compose thread. The serialized store rejects stale
+        // writes, so rapid successive edits cannot replace a newer checkpoint.
+        exportScope.launch(Dispatchers.IO) {
+            ProjectRecoveryFileStore.write(recoveryDirectory, projectId, ProjectRecoveryFileKind.PROJECT, bundle.projectJournal)
+            ProjectRecoveryFileStore.write(recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO, bundle.audioTracksJournal)
+        }
+    }
     fun saveProject(items: List<EditClip>) {
         val projectName = projects.firstOrNull { it.id == activeProjectId }?.name ?: "Untitled project"
-        persistProjectState(preferences, activeProjectId, projectName, items, audioTrackClips)
+        val bundle = persistProjectState(preferences, activeProjectId, projectName, items, audioTrackClips)
+        mirrorRecoveryJournals(activeProjectId, bundle)
         preferences.edit().putString("active_project_id", activeProjectId).apply()
     }
     fun persistCanvasSettings(aspectRatio: Float, background: Color) {
@@ -884,6 +895,7 @@ private fun VyroCutApp() {
             preferences,
             project.id,
             calculateTimelineDurationMs(clips.map { it.durationMs }),
+            recoveryDirectory,
         )
         selectedAudioTrackId = null
         selectedIndex = 0
@@ -897,7 +909,8 @@ private fun VyroCutApp() {
         val project = ProjectInfo(java.util.UUID.randomUUID().toString(), name)
         projects.add(project)
         saveProjectIndex(preferences, projects)
-        persistProjectState(preferences, project.id, project.name, emptyList(), emptyList())
+        val recoveryBundle = persistProjectState(preferences, project.id, project.name, emptyList(), emptyList())
+        mirrorRecoveryJournals(project.id, recoveryBundle)
         newProjectName = ""
         showProjects = false
         switchProject(project)
@@ -924,6 +937,9 @@ private fun VyroCutApp() {
             deletionEditor.remove(key)
         }
         deletionEditor.apply()
+        exportScope.launch(Dispatchers.IO) {
+            ProjectRecoveryFileStore.deleteProject(recoveryDirectory, project.id)
+        }
         saveProjectIndex(preferences, projects)
         projectToDelete = null
         exportMessage = "Deleted ${project.name}"
@@ -960,7 +976,12 @@ private fun VyroCutApp() {
         selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> items.any { it.id == id } }
             ?: items.lastOrNull()?.id
         saveProjectHistory(preferences, activeProjectId, undoStack, redoStack)
-        persistProjectAudioTracks(preferences, activeProjectId, items, projectDurationMs)
+        val projectIdAtSave = activeProjectId
+        val projectNameAtSave = projects.firstOrNull { it.id == projectIdAtSave }?.name ?: "Untitled project"
+        val recoveryBundle = persistProjectAudioTracks(
+            preferences, projectIdAtSave, projectNameAtSave, clips, items, projectDurationMs,
+        )
+        mirrorRecoveryJournals(projectIdAtSave, recoveryBundle)
     }
     fun moveSelectedAudioTrack(requestedStartMs: Long) {
         val selected = selectedAudioTrack ?: return
@@ -1282,13 +1303,14 @@ private fun VyroCutApp() {
                 val imported = ProjectInfo(java.util.UUID.randomUUID().toString(), backup.name)
                 projects.add(imported)
                 saveProjectIndex(preferences, projects)
-                persistProjectState(
+                val recoveryBundle = persistProjectState(
                     preferences,
                     imported.id,
                     imported.name,
                     backup.clips,
                     backup.audioTracks,
                 )
+                mirrorRecoveryJournals(imported.id, recoveryBundle)
                 val importedSettings = preferences.edit()
                     .putString(
                         "project_" + imported.id + "_canvas_settings",
@@ -2938,24 +2960,33 @@ private fun VyroCutApp() {
                                         val currentAudioTracks = if (snapshot.projectId == activeProjectId) {
                                             audioTrackClips
                                         } else {
-                                            loadProjectAudioTracks(preferences, snapshot.projectId, Long.MAX_VALUE)
+                                            loadProjectAudioTracks(
+                                                preferences, snapshot.projectId, Long.MAX_VALUE, recoveryDirectory,
+                                            )
                                         }
+                                        val matchingAudioJournal = matchingAudioRecoveryJournal(
+                                            projectId = snapshot.projectId,
+                                            savedAtMs = snapshot.savedAtMs,
+                                            candidates = listOf(
+                                                preferences.getString("project_${snapshot.projectId}_audio_tracks_recovery", null),
+                                                ProjectRecoveryFileStore.read(recoveryDirectory, snapshot.projectId, ProjectRecoveryFileKind.AUDIO),
+                                            ),
+                                        )
                                         val restoredAudioTracks = audioTracksForProjectRecovery(
                                             projectSnapshot = snapshot,
-                                            rawAudioRecoveryJournal = preferences.getString(
-                                                "project_${snapshot.projectId}_audio_tracks_recovery",
-                                                null,
-                                            ),
+                                            rawAudioRecoveryJournal = matchingAudioJournal,
                                             currentAudioTracks = currentAudioTracks,
                                             projectDurationMs = restoredDurationMs,
                                         )
-                                        persistProjectState(
+                                        val recoveryBundle = persistProjectState(
                                             preferences,
                                             snapshot.projectId,
                                             name,
                                             restored,
                                             restoredAudioTracks,
+                                            previousSavedAtMsOverride = snapshot.savedAtMs,
                                         )
+                                        mirrorRecoveryJournals(snapshot.projectId, recoveryBundle)
                                         if (snapshot.projectId == activeProjectId) {
                                             clips = restored
                                             audioTrackClips = restoredAudioTracks
@@ -3466,19 +3497,25 @@ private fun persistProjectState(
     projectName: String,
     clips: List<EditClip>,
     audioTracks: List<AudioTrackClip>,
-) {
+    previousSavedAtMsOverride: Long? = null,
+): ProjectRecoveryJournalBundle {
     val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
     require(validateAudioTrackClips(audioTracks, projectDurationMs)) {
         "Audio tracks must fit inside the saved video project"
     }
     val projectJson = encodeProject(clips)
     val audioTracksJson = encodeAudioTrackClips(audioTracks)
+    val previousSavedAtMs = listOfNotNull(
+        ProjectRecoveryJournal.decode(preferences.getString("project_${projectId}_recovery", null), projectId)?.savedAtMs,
+        ProjectRecoveryJournal.decode(preferences.getString("project_${projectId}_audio_tracks_recovery", null), projectId)?.savedAtMs,
+        previousSavedAtMsOverride,
+    ).maxOrNull()
     val recoveryJournals = createProjectRecoveryJournalBundle(
         projectId = projectId,
         projectName = projectName,
         projectJson = projectJson,
         audioTracksJson = audioTracksJson,
-        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
+        savedAtMs = nextProjectRecoveryTimestampMs(System.currentTimeMillis(), previousSavedAtMs),
     )
     // Video edits, audio lanes, and both recovery journals share one
     // preference transaction instead of four separately scheduled writes.
@@ -3489,52 +3526,78 @@ private fun persistProjectState(
         .putString("project_${projectId}_audio_tracks_recovery", recoveryJournals.audioTracksJournal)
         .remove("project_${projectId}_recovery_dismissed")
         .apply()
+    return recoveryJournals
 }
 
 private fun persistProjectAudioTracks(
     preferences: android.content.SharedPreferences,
     projectId: String,
+    projectName: String,
+    videoClips: List<EditClip>,
     clips: List<AudioTrackClip>,
     projectDurationMs: Long,
-) {
+): ProjectRecoveryJournalBundle {
     require(validateAudioTrackClips(clips, projectDurationMs)) {
         "Audio track clips must fit inside the project and cannot overlap on one lane"
     }
+    val projectJson = encodeProject(videoClips)
     val encoded = encodeAudioTrackClips(clips)
-    val recoveryJournal = encodeAudioTrackRecoveryJournal(
+    val previousSavedAtMs = listOfNotNull(
+        ProjectRecoveryJournal.decode(preferences.getString("project_${projectId}_recovery", null), projectId)?.savedAtMs,
+        ProjectRecoveryJournal.decode(preferences.getString("project_${projectId}_audio_tracks_recovery", null), projectId)?.savedAtMs,
+    ).maxOrNull()
+    val recoveryBundle = createProjectRecoveryJournalBundle(
         projectId = projectId,
+        projectName = projectName,
+        projectJson = projectJson,
         audioTracksJson = encoded,
-        savedAtMs = System.currentTimeMillis().coerceAtLeast(1L),
+        savedAtMs = nextProjectRecoveryTimestampMs(System.currentTimeMillis(), previousSavedAtMs),
     )
     preferences.edit()
+        .putString("project_${projectId}", projectJson)
+        .putString("project_${projectId}_recovery", recoveryBundle.projectJournal)
         .putString("project_${projectId}_audio_tracks", encoded)
-        .putString("project_${projectId}_audio_tracks_recovery", recoveryJournal)
+        .putString("project_${projectId}_audio_tracks_recovery", recoveryBundle.audioTracksJournal)
+        .remove("project_${projectId}_recovery_dismissed")
         .apply()
+    return recoveryBundle
 }
 
 private fun loadProjectAudioTracks(
     preferences: android.content.SharedPreferences,
     projectId: String,
     projectDurationMs: Long,
+    recoveryDirectory: File,
 ): List<AudioTrackClip> {
     val primaryRaw = preferences.getString("project_${projectId}_audio_tracks", null)
     val primary = primaryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) }
     if (primary != null) return primary
-    val recoveryRaw = preferences.getString("project_${projectId}_audio_tracks_recovery", null)
-    return decodeAudioTrackRecoveryJournal(
-        raw = recoveryRaw,
-        projectId = projectId,
-        projectDurationMs = projectDurationMs,
-    ) ?: emptyList()
+    val recoveryCandidates = listOfNotNull(
+        preferences.getString("project_${projectId}_audio_tracks_recovery", null),
+        ProjectRecoveryFileStore.read(recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO),
+    )
+    return recoveryCandidates
+        .mapNotNull { raw ->
+            decodeAudioTrackRecoveryJournal(raw, projectId, projectDurationMs)?.let { tracks ->
+                (ProjectRecoveryJournal.decode(raw, projectId)?.savedAtMs ?: 0L) to tracks
+            }
+        }
+        .maxByOrNull { it.first }
+        ?.second
+        ?: emptyList()
 }
 
 private fun findProjectRecoveryCandidate(
     preferences: android.content.SharedPreferences,
     projectId: String,
+    recoveryDirectory: File,
 ): ProjectRecoverySnapshot? {
-    val snapshot = ProjectRecoveryJournal.decode(
-        preferences.getString("project_${projectId}_recovery", null),
+    val snapshot = newestProjectRecoverySnapshot(
         projectId,
+        listOf(
+            preferences.getString("project_${projectId}_recovery", null),
+            ProjectRecoveryFileStore.read(recoveryDirectory, projectId, ProjectRecoveryFileKind.PROJECT),
+        ),
     ) ?: return null
     if (preferences.getString("project_${projectId}_recovery_dismissed", null) == snapshot.checksum) {
         return null
