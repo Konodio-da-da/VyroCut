@@ -802,10 +802,14 @@ private fun VyroCutApp() {
                             )
                         }
                         timestampCache = cacheVideoFrameTimestampIndex(timestampCache, key, timestamps)
-                        if (activeProjectId == projectIdAtRequest) {
-                            previewFrameTimestampIndexes = timestampCache
-                        }
+                    } else {
+                        // A cache hit is a successful use: keep frequently stepped clips
+                        // resident and let colder indexes become the next eviction targets.
+                        timestampCache = touchVideoFrameTimestampIndex(timestampCache, key)
                     }
+                }
+                if (activeProjectId == projectIdAtRequest) {
+                    previewFrameTimestampIndexes = timestampCache
                 }
 
                 // Do not apply a seek computed for a project/clip that changed while

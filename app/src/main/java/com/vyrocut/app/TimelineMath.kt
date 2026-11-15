@@ -822,6 +822,24 @@ internal fun cacheVideoFrameTimestampIndex(
     return updated
 }
 
+/**
+ * Refreshes an existing timestamp index after a successful lookup.
+ *
+ * Null values are meaningful negative-cache entries for unsupported sources,
+ * so they receive the same recency update as a decoded index. A missing key
+ * is never inserted by an access operation.
+ */
+internal fun touchVideoFrameTimestampIndex(
+    cache: Map<VideoFrameTimestampCacheKey, LongArray?>,
+    key: VideoFrameTimestampCacheKey,
+): Map<VideoFrameTimestampCacheKey, LongArray?> {
+    if (!cache.containsKey(key) || cache.keys.lastOrNull() == key) return cache
+    val updated = LinkedHashMap(cache)
+    val value = updated.remove(key)
+    updated[key] = value
+    return updated
+}
+
 private data class VideoFrameTimestampRange(
     val firstIndex: Int,
     val endExclusiveIndex: Int,

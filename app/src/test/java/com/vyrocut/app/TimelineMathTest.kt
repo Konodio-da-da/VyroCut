@@ -1293,13 +1293,35 @@ class TimelineMathTest {
         cache = cacheVideoFrameTimestampIndex(cache, first, longArrayOf(0L, 40_000L), maxEntries = 3)
         cache = cacheVideoFrameTimestampIndex(cache, second, null, maxEntries = 3)
         cache = cacheVideoFrameTimestampIndex(cache, third, longArrayOf(0L, 33_333L), maxEntries = 3)
-        cache = cacheVideoFrameTimestampIndex(cache, first, longArrayOf(0L, 41_000L), maxEntries = 3)
+        cache = touchVideoFrameTimestampIndex(cache, first)
         cache = cacheVideoFrameTimestampIndex(cache, fourth, null, maxEntries = 3)
 
         assertEquals(listOf(third, first, fourth), cache.keys.toList())
         assertTrue(cache.containsKey(fourth))
         assertEquals(null, cache[fourth])
         assertFalse(cache.containsKey(second))
+    }
+
+    @Test
+    fun touchingUnsupportedTimestampIndexRefreshesRecencyWithoutAddingMissingKeys() {
+        val first = VideoFrameTimestampCacheKey("content://video/1", 0L, 1_000L)
+        val unsupported = VideoFrameTimestampCacheKey("content://video/2", 0L, 1_000L)
+        val third = VideoFrameTimestampCacheKey("content://video/3", 0L, 1_000L)
+        val missing = VideoFrameTimestampCacheKey("content://video/missing", 0L, 1_000L)
+        var cache = emptyMap<VideoFrameTimestampCacheKey, LongArray?>()
+
+        cache = cacheVideoFrameTimestampIndex(cache, first, longArrayOf(0L, 40_000L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, unsupported, null, maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, third, longArrayOf(0L, 33_333L), maxEntries = 3)
+
+        val touched = touchVideoFrameTimestampIndex(cache, unsupported)
+        assertEquals(listOf(first, third, unsupported), touched.keys.toList())
+        assertTrue(touched.containsKey(unsupported))
+        assertNull(touched[unsupported])
+
+        val unchanged = touchVideoFrameTimestampIndex(touched, missing)
+        assertTrue(unchanged === touched)
+        assertEquals(touched.keys.toList(), unchanged.keys.toList())
     }
 
     @Test

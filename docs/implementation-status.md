@@ -1,9 +1,16 @@
+## Current VFR timestamp-index LRU milestone — 15 November 2026
+- Successful timestamp-index cache hits now refresh insertion order, so the three-entry cache behaves as a true least-recently-used cache rather than evicting by original insertion order.
+- Both decoded indexes and cached unsupported-source results participate in recency updates. A lookup for a missing key does not insert an entry.
+- The frame-step request updates the Compose cache state after all active/adjacent lookups, retaining the most recently used indexes across requests.
+- Pure Kotlin regression tests cover hot-entry retention, unsupported-source recency, bounded eviction, and missing-key no-op behaviour.
+- Verified baseline: source-revision-aware VFR frame stepping at `fc36396798a74924fa60f8d5731faf78d15f8c66` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #431](https://github.com/Konodio-da-da/VyroCut/actions/runs/43693767169).
+
 ## Current VFR source-change cache milestone — 15 November 2026
 - VFR presentation-timestamp indexes now include a best-effort source revision (provider-reported byte size and last-modified time) in addition to URI and source trim bounds.
 - The revision is queried on Dispatchers.IO for the active and adjacent clips before index lookup. Two adjacent clips referencing the same URI share one metadata query for that frame-step request.
 - Provider metadata uses OpenableColumns.SIZE, document last-modified time, and MediaStore DATE_MODIFIED fallback. If no usable metadata is available, the cache safely retains URI/range identity; same-URI in-place replacement cannot be detected in that fallback.
 - Pure Kotlin tests cover partial/missing metadata normalization and revision-aware VFR cache-key separation. Actual provider metadata and replacement behaviour require physical-device testing.
-- Verified baseline: VFR frame-stepping head `8e2038e603d5f37cd9d9549f97e3ceae39aa67d6` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #429](https://github.com/Konodio-da-da/VyroCut/actions/runs/43689578289).
+- Verified source-revision-aware VFR baseline: commit `fc36396798a74924fa60f8d5731faf78d15f8c66` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build run #431](https://github.com/Konodio-da-da/VyroCut/actions/runs/43693767169).
 
 ## Current audio waveform lifecycle milestone — 15 November 2026
 - Audio waveform extraction is now a cancellable suspend operation. It checks the owning coroutine before opening media, during track inspection, after decoder startup, and on every MediaCodec input/output polling cycle.
@@ -165,7 +172,7 @@ A control is only considered complete when its operation is connected to the pro
 - Pure Kotlin tests cover changed size/time revisions, stable revisions, partial metadata, and unavailable metadata.
 
 
-## Variable-frame-rate preview frame stepping (implemented; Android CI pending)
+## Variable-frame-rate preview frame stepping (implemented; Android build and JVM unit-test workflow passed)
 - Frame navigation can use actual MediaExtractor presentation timestamps for the active clip and its adjacent clip instead of assuming one constant frame rate.
 - Timestamp extraction seeks to the preceding sync sample and scans only the clip's original source IN/OUT range on Dispatchers.IO. The scan checks coroutine cancellation on each sample and rejects out-of-order timestamps rather than using a partial index.
 - Each per-trim index is bounded to 120,000 timestamps. The in-memory LRU retains at most three URI/source-IN/source-OUT indexes; unsupported, oversized, or malformed indexes fall back to the existing nominal frame-rate resolver.

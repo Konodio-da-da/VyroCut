@@ -132,6 +132,7 @@ Do not mark any of these device-only checks complete from CI results alone.
 4. Repeat with size-only metadata, modified-time-only metadata, and providers exposing neither field. The last case must retain URI/range fallback behaviour and must not fail frame stepping solely because revision metadata is unavailable.
 5. Confirm two adjacent clips referencing the same URI share one provider revision query during a single frame-step request.
 6. CI tests cover revision identity and cache-key separation. Actual document-provider/MediaStore metadata and same-URI replacement require physical-device validation.
+7. Step repeatedly between three recently used clips, then index a fourth; revisit the first three and record whether hot indexes remain responsive while the least-recently-used index is the one that needs rebuilding. JVM tests verify the cache recency order.
 
 ## Variable-frame-rate preview frame stepping
 1. Import a VFR source with visibly irregular frame intervals and use Previous/Next Frame at several points. Confirm the target follows actual sample presentation timestamps rather than a constant nominal cadence.
