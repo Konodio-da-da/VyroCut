@@ -98,3 +98,20 @@ internal fun nextProjectRecoveryTimestampMs(nowMs: Long, previousSavedAtMs: Long
     val previous = previousSavedAtMs?.takeIf { it > 0L } ?: 0L
     return if (previous >= now && previous < Long.MAX_VALUE) previous + 1L else maxOf(now, previous)
 }
+
+
+/**
+ * The audio-only primary preference can remain valid but stale if the app stops
+ * after the independently fsynced mirror completes and before SharedPreferences
+ * reaches disk. Prefer the mirror only when its matched bundle is newer.
+ */
+internal fun shouldPreferMirroredAudioRecovery(
+    primaryAudioTracksAvailable: Boolean,
+    preferenceCheckpointAtMs: Long?,
+    mirroredAudioAtMs: Long?,
+): Boolean {
+    if (!primaryAudioTracksAvailable) return true
+    val mirrorTimestamp = mirroredAudioAtMs?.takeIf { it > 0L } ?: return false
+    val preferenceTimestamp = preferenceCheckpointAtMs?.takeIf { it > 0L } ?: 0L
+    return mirrorTimestamp > preferenceTimestamp
+}
