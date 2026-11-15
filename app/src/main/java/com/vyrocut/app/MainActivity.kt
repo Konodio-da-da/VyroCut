@@ -11,6 +11,7 @@ import android.graphics.BitmapFactory
 import android.os.Environment
 import android.os.SystemClock
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import java.security.MessageDigest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -61,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -139,9 +141,24 @@ internal data class EditClip(
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
 
+private val startupExportCleanupStarted = AtomicBoolean(false)
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (startupExportCleanupStarted.compareAndSet(false, true)) {
+            val cleanupJob = lifecycleScope.launch(Dispatchers.IO) {
+                val directory = resolveExportTemporaryDirectory(
+                    externalMoviesDirectory = getExternalFilesDir(Environment.DIRECTORY_MOVIES),
+                    internalFilesDirectory = filesDir,
+                )
+                cleanupStaleExportTemporaryFiles(directory)
+            }
+            // A cancelled/failed Activity-scoped attempt may be retried by the next Activity.
+            cleanupJob.invokeOnCompletion { cause ->
+                if (cause != null) startupExportCleanupStarted.set(false)
+            }
+        }
         setContent { VyroCutApp() }
     }
 }
@@ -2609,9 +2626,10 @@ private fun VyroCutApp() {
                                         else -> null
                                     }
 
-                                    val outputRoot = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-                                        ?: File(context.filesDir, "Movies")
-                                    val outputDirectory = File(outputRoot, "VyroCut")
+                                    val outputDirectory = resolveExportTemporaryDirectory(
+                                        externalMoviesDirectory = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES),
+                                        internalFilesDirectory = context.filesDir,
+                                    )
                                     if (!outputDirectory.isDirectory && !outputDirectory.mkdirs()) {
                                         isExporting = false
                                         exportSessionId = null

@@ -130,3 +130,9 @@ A control is only considered complete when its operation is connected to the pro
 - The completed temporary MP4 is fingerprinted only after demux and decoder validation succeeds. Publication is tied to that exact byte count and SHA-256 digest.
 - The MediaStore copy is hashed while streaming from the private temporary file, then read back and hashed again while the row is still pending. The row becomes visible only when both fingerprints match the verified temporary MP4; failed copies are deleted.
 - Stream processing uses a fixed 64 KiB buffer and never loads the full MP4 into memory. Pure JVM tests cover exact copies, same-length corruption, truncation, empty files, and malformed fingerprints. The MediaStore provider read-back path still requires physical-device validation on API 29 and current Android releases.
+
+## Startup cleanup for abandoned Transformer output
+- The app now scans its app-private `Movies/VyroCut` temporary directory once per process at Activity startup, on `Dispatchers.IO`, instead of waiting until another export completes.
+- Startup cleanup and new export rendering share one pure path resolver: app-specific external Movies storage is preferred, with `filesDir/Movies/VyroCut` as the fallback.
+- The existing 24-hour retention, strict generated-name filter, direct-child restriction, symlink rejection, and fail-closed timestamp handling remain unchanged. The publishing-time cleanup still protects the current verified export.
+- JVM tests cover both directory-resolution paths. Physical-device validation must still confirm cleanup across process restarts and storage-volume availability on API 29 and a current Android release.

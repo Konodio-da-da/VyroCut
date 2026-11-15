@@ -5,6 +5,12 @@ import java.nio.file.Files
 
 internal const val DEFAULT_STALE_EXPORT_RETENTION_MS = 24L * 60L * 60L * 1_000L
 
+/** Resolves the same app-private temporary directory for startup cleanup and export rendering. */
+internal fun resolveExportTemporaryDirectory(
+    externalMoviesDirectory: File?,
+    internalFilesDirectory: File,
+): File = File(externalMoviesDirectory ?: File(internalFilesDirectory, "Movies"), "VyroCut")
+
 private val VYROCUT_TEMP_EXPORT_NAME = Regex("VyroCut_[0-9]{10,17}\\.mp4")
 
 internal data class ExportTemporaryCleanupResult(

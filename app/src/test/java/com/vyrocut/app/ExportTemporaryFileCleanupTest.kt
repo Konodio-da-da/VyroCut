@@ -12,6 +12,21 @@ class ExportTemporaryFileCleanupTest {
     private val retentionMs = DEFAULT_STALE_EXPORT_RETENTION_MS
 
     @Test
+    fun temporaryDirectoryUsesExternalMoviesLocationAndInternalFallback() {
+        val internalFiles = File("/data/user/0/com.vyrocut.app/files")
+        val externalMovies = File("/storage/emulated/0/Android/data/com.vyrocut.app/files/Movies")
+
+        assertEquals(
+            File(externalMovies, "VyroCut"),
+            resolveExportTemporaryDirectory(externalMovies, internalFiles),
+        )
+        assertEquals(
+            File(File(internalFiles, "Movies"), "VyroCut"),
+            resolveExportTemporaryDirectory(null, internalFiles),
+        )
+    }
+
+    @Test
     fun staleRuleRequiresGeneratedNameKnownTimestampAndFullRetentionPeriod() {
         val generatedName = "VyroCut_1999999999999.mp4"
         assertTrue(

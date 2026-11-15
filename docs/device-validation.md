@@ -91,3 +91,10 @@ Do not mark any of these device-only checks complete from CI results alone.
 - Export a short and a long MP4, then confirm the UI reports completion only after the Movies/VyroCut copy has been read back and matched to the verified temporary file by byte count and SHA-256.
 - Repeat on Android 10 / API 29 and a current Android release. Confirm the pending MediaStore item is readable by the owning app before its pending flag is cleared, and that a read-back failure removes the pending row rather than exposing an incomplete video.
 - Open and seek the published MP4 in a separate player after publication. CI unit tests validate the streaming fingerprint logic, not provider-specific read-back behaviour.
+
+### Abandoned export cleanup at startup
+1. Create a stale app-private `Movies/VyroCut/VyroCut_<timestamp>.mp4` file with a last-modified time older than 24 hours, then force-stop and relaunch VyroCut.
+2. Confirm the stale generated file is removed without starting a new export and that startup remains responsive while cleanup runs on IO.
+3. Confirm recent generated files, unrelated MP4s, directories, symlinks, and published MediaStore videos remain untouched.
+4. Repeat with app-specific external Movies storage unavailable to exercise the `filesDir/Movies/VyroCut` fallback.
+5. Repeat on API 29 and a current Android release; verify that an Activity recreation in the same process does not trigger a second cleanup pass.
