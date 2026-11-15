@@ -1469,6 +1469,56 @@ class TimelineMathTest {
     }
 
     @Test
+    fun cachingNewSourceRevisionReplacesOnlyTheSameTrim() {
+        val oldRevision = VideoFrameTimestampCacheKey(
+            "content://video/shared", 0L, 1_000L, sourceRevision = "size:100:modified:1",
+        )
+        val otherTrim = VideoFrameTimestampCacheKey(
+            "content://video/shared", 1_000L, 2_000L, sourceRevision = "size:100:modified:1",
+        )
+        val otherSource = VideoFrameTimestampCacheKey(
+            "content://video/other", 0L, 1_000L, sourceRevision = "size:100:modified:1",
+        )
+        val newRevision = oldRevision.copy(sourceRevision = "size:120:modified:2")
+        var cache = emptyMap<VideoFrameTimestampCacheKey, LongArray?>()
+
+        cache = cacheVideoFrameTimestampIndex(cache, oldRevision, longArrayOf(0L, 33_333L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, otherTrim, longArrayOf(1_000_000L, 1_033_333L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, otherSource, longArrayOf(0L, 40_000L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, newRevision, longArrayOf(0L, 34_000L), maxEntries = 3)
+
+        assertFalse(cache.containsKey(oldRevision))
+        assertTrue(cache.containsKey(newRevision))
+        assertTrue(cache.containsKey(otherTrim))
+        assertTrue(cache.containsKey(otherSource))
+        assertEquals(listOf(otherTrim, otherSource, newRevision), cache.keys.toList())
+    }
+
+    @Test
+    fun touchingCachedSourceRevisionPrunesSupersededEntriesAndMissingTouchIsNoOp() {
+        val oldRevision = VideoFrameTimestampCacheKey(
+            "content://video/shared", 0L, 1_000L, sourceRevision = "revision-old",
+        )
+        val otherSource = VideoFrameTimestampCacheKey("content://video/other", 0L, 1_000L)
+        val currentRevision = oldRevision.copy(sourceRevision = "revision-current")
+        val missingRevision = oldRevision.copy(sourceRevision = "revision-missing")
+        var cache = emptyMap<VideoFrameTimestampCacheKey, LongArray?>()
+
+        cache = cacheVideoFrameTimestampIndex(cache, oldRevision, longArrayOf(0L, 33_333L))
+        cache = cacheVideoFrameTimestampIndex(cache, otherSource, longArrayOf(0L, 40_000L))
+        cache = cacheVideoFrameTimestampIndex(cache, currentRevision, null)
+
+        val touched = touchVideoFrameTimestampIndex(cache, currentRevision)
+        assertFalse(touched.containsKey(oldRevision))
+        assertTrue(touched.containsKey(currentRevision))
+        assertNull(touched[currentRevision])
+        assertEquals(listOf(otherSource, currentRevision), touched.keys.toList())
+
+        val unchanged = touchVideoFrameTimestampIndex(touched, missingRevision)
+        assertTrue(unchanged === touched)
+    }
+
+    @Test
     fun presentationTimestampCacheOwnsSnapshotOfMutableDecoderArray() {
         val key = VideoFrameTimestampCacheKey("content://video/mutable", 0L, 1_000L)
         val decoderOutput = longArrayOf(0L, 33_333L, 66_667L)

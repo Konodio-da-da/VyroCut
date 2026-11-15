@@ -159,3 +159,10 @@ Do not mark any of these device-only checks complete from CI results alone.
 3. Cross from VFR to CFR and mixed-rate clips. Confirm the marker switches to the destination clip's own source trim/index and never carries the previous clip's timestamps across the cut.
 4. Switch projects, trim or reorder clips during prefetch, and press previous/next-frame while playback is active. Confirm stale scans are cancelled or ignored and the frame-step request owns its decoder work.
 5. Check 30/60 Hz displays and long clips for UI responsiveness, battery/CPU impact, and marker jitter. This PTS-based marker is a presentation-timeline approximation, not proof of the exact frame currently displayed by the decoder; only physical-device playback can establish that.
+
+## VFR timestamp cache revision replacement
+1. Build a VFR timestamp index, then update the underlying source while retaining the same content URI and source IN/OUT range.
+2. Resume playback or request a frame step so the source revision is re-read. Confirm the refreshed index replaces the previous revision for that exact URI/trim instead of leaving two competing indexes.
+3. Repeat with a second trim of the same URI and with another clip source. Confirm unrelated trim/source entries remain cached and the three-entry LRU bound is preserved.
+4. Repeat with providers exposing size only, modified time only, and neither field. Confirm the fallback revision remains usable and never throws.
+5. JVM tests validate superseded-revision pruning on cache insertion and successful cache access. Same-URI provider replacement and visible playback behaviour require physical Android-device validation.

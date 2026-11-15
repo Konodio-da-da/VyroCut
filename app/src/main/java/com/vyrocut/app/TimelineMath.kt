@@ -889,6 +889,30 @@ internal fun shouldStopVideoPtsScan(state: VideoPtsScanLookaheadState): Boolean 
  * The cache stores its own snapshot of a valid [LongArray]. Kotlin arrays are mutable, so retaining
  * the caller's instance would let a later decoder/test mutation silently corrupt a cached index.
  */
+private fun VideoFrameTimestampCacheKey.hasSameSourceRangeAs(
+    other: VideoFrameTimestampCacheKey,
+): Boolean =
+    uri == other.uri &&
+        sourceStartMs == other.sourceStartMs &&
+        sourceEndMs == other.sourceEndMs
+
+/**
+ * Keeps only the requested source revision for one exact URI/trim tuple.
+ *
+ * The continuous playhead resolves cached indexes by URI and trim. Retaining
+ * multiple revisions for that tuple would make the selected index depend on
+ * insertion order, so successful writes/accesses prune superseded revisions.
+ */
+private fun LinkedHashMap<VideoFrameTimestampCacheKey, LongArray?>.removeSupersededVideoFrameTimestampIndexes(
+    key: VideoFrameTimestampCacheKey,
+) {
+    val supersededKeys = keys.filter { candidate ->
+        candidate.hasSameSourceRangeAs(key) && candidate.sourceRevision != key.sourceRevision
+    }
+    supersededKeys.forEach { remove(it) }
+}
+
+/** Inserts an independent snapshot of a valid source PTS index. */
 internal fun cacheVideoFrameTimestampIndex(
     cache: Map<VideoFrameTimestampCacheKey, LongArray?>,
     key: VideoFrameTimestampCacheKey,
@@ -897,6 +921,7 @@ internal fun cacheVideoFrameTimestampIndex(
 ): Map<VideoFrameTimestampCacheKey, LongArray?> {
     require(maxEntries > 0)
     val updated = LinkedHashMap(cache)
+    updated.removeSupersededVideoFrameTimestampIndexes(key)
     updated.remove(key)
     val validSnapshot = timestampsUs
         ?.takeIf(::isValidVideoPresentationTimestampsUs)
@@ -909,18 +934,22 @@ internal fun cacheVideoFrameTimestampIndex(
 }
 
 /**
- * Refreshes an existing timestamp index after a successful lookup.
- *
- * Null values are meaningful negative-cache entries for unsupported sources,
- * so they receive the same recency update as a decoded index. A missing key
- * is never inserted by an access operation.
+ * Refreshes a cached index after a successful lookup. Null values are valid
+ * negative-cache entries. A hit also removes older revisions for the same
+ * URI/trim; a missing key remains a strict no-op.
  */
 internal fun touchVideoFrameTimestampIndex(
     cache: Map<VideoFrameTimestampCacheKey, LongArray?>,
     key: VideoFrameTimestampCacheKey,
 ): Map<VideoFrameTimestampCacheKey, LongArray?> {
-    if (!cache.containsKey(key) || cache.keys.lastOrNull() == key) return cache
+    if (!cache.containsKey(key)) return cache
+    val hasSupersededRevision = cache.keys.any { candidate ->
+        candidate.hasSameSourceRangeAs(key) && candidate.sourceRevision != key.sourceRevision
+    }
+    if (!hasSupersededRevision && cache.keys.lastOrNull() == key) return cache
+
     val updated = LinkedHashMap(cache)
+    updated.removeSupersededVideoFrameTimestampIndexes(key)
     val value = updated.remove(key)
     updated[key] = value
     return updated

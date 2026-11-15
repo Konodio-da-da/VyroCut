@@ -201,3 +201,5 @@ A control is only considered complete when its operation is connected to the pro
 - Audio drift correction, editor seeks, and persisted preview checkpoints continue to use Media3's unquantized project clock. The frame-aligned marker is a UI approximation, not a decoded-frame callback or a claim of verified display timing.
 - Starting a manual frame step pauses playback first, cancelling continuous prefetch so the exact frame-step path owns the extractor work. Stale warm-up results are discarded if the project or active playlist index changes.
 - Pure Kotlin tests cover floor-to-PTS sampling, non-frame-aligned trims, invalid positions/indexes, and the 16/33/100 ms cadence decisions. Continuous playback, frame display, mixed-rate transitions, and audio sync still require physical Android-device validation.
+
+- VFR timestamp cache writes and successful hits prune superseded revisions for the same URI/source-IN/source-OUT tuple. This keeps the range-based continuous-playhead lookup from selecting an older cached index after a source has been re-read.
