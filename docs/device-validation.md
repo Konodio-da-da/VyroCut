@@ -175,3 +175,12 @@ Do not mark any of these device-only checks complete from CI results alone.
 4. Use a source/codec that produces no usable PTS index. Confirm the null result is negative-cached for that exact revision so concurrent waiters do not repeatedly scan it.
 5. Switch projects or reorder/trim clips while a request waits on the gate. Confirm stale requests do not publish results into the new project state, and a cancelled waiter does not cancel the active owner.
 6. JVM tests cover request-key separation, same-key null-result reuse, unrelated-key concurrency, and cancellation-safe reference cleanup. Actual MediaExtractor counts, playback responsiveness, and displayed-frame behaviour still require physical Android-device validation.
+
+
+## Recovery mirror IO and late-result protection
+1. Open a project with large video and audio recovery journals while monitoring startup responsiveness; the Compose thread must not perform file reads or SHA-256 journal validation.
+2. Switch projects while recovery mirror reads are in flight. Confirm a result from the previous project is discarded.
+3. Edit a video clip or audio lane before a mirror read completes. Confirm the late mirror result does not overwrite the in-memory edit.
+4. Open a project whose primary preferences are current but whose mirrored audio checkpoint is newer. Confirm only the matching newer audio checkpoint is applied.
+5. Use the Recover action for a project other than the currently open project. Confirm its audio mirror is read on IO and restored only with the selected video's exact checkpoint timestamp.
+6. JVM tests cover pure audio-source selection; startup jank, disk latency, and process-death recovery still require physical Android-device validation.

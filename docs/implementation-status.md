@@ -211,3 +211,10 @@ A control is only considered complete when its operation is connected to the pro
 - Unsupported/null PTS indexes are negative-cached for the exact request key. Different trims or source revisions retain independent gates and can run concurrently.
 - Project/clip relevance is checked before waiting, after acquiring the gate, and before publishing scan results. Cancellation releases only the waiting request's reference; an active owner is not cancelled by another caller.
 - Pure JVM tests cover length-prefixed request-key separation and reuse of a cached null result; the shared keyed gate's existing tests cover unrelated-key concurrency and cancelled waiters. Physical MediaExtractor counts, VFR display timing, and audio synchronization remain device-only checks.
+
+
+## Recovery mirror reads off the Compose thread
+- Project and audio recovery mirror files are now read and checksummed on Dispatchers.IO rather than during initial Compose state construction or a recovery-button callback.
+- Initial project/audio state still loads immediately from SharedPreferences. The app then applies a newer valid mirror only if the same project, video edit list, and audio-lane state remain active, preventing a late recovery read from overwriting user edits.
+- The explicit Recover action reads its matching audio mirror on IO before rebuilding the shared video/audio checkpoint. The file mirror remains app-private and offline-first.
+- Pure JVM tests cover selection of newer mirrored audio, rejection of stale mirrors, and fallback from foreign/corrupt mirror journals. Actual startup responsiveness and force-stop recovery still require physical-device validation.

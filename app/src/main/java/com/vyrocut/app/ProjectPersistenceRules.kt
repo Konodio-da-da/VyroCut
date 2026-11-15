@@ -86,6 +86,48 @@ internal fun decodeAudioTrackRecoveryJournal(
 }
 
 /**
+ * Selects audio lanes from primary preferences and independently persisted
+ * recovery journals. The caller supplies the already-read file mirror so disk
+ * access and checksum work can stay on Dispatchers.IO.
+ */
+internal fun selectProjectAudioTracks(
+    projectId: String,
+    projectDurationMs: Long,
+    primaryAudioTracksJson: String?,
+    preferenceAudioJournal: String?,
+    preferenceProjectJournal: String?,
+    mirroredAudioJournal: String?,
+): List<AudioTrackClip> {
+    if (projectId.isBlank()) return emptyList()
+
+    val primary = primaryAudioTracksJson?.let { decodeAudioTrackClips(it, projectDurationMs) }
+    val preferenceCheckpointAtMs = listOfNotNull(
+        ProjectRecoveryJournal.decode(preferenceAudioJournal, projectId)?.savedAtMs,
+        ProjectRecoveryJournal.decode(preferenceProjectJournal, projectId)?.savedAtMs,
+    ).maxOrNull()
+    val mirroredAudioAtMs = ProjectRecoveryJournal.decode(mirroredAudioJournal, projectId)?.savedAtMs
+    val recoveredTracks = listOfNotNull(preferenceAudioJournal, mirroredAudioJournal)
+        .mapNotNull { raw ->
+            decodeAudioTrackRecoveryJournal(raw, projectId, projectDurationMs)?.let { tracks ->
+                (ProjectRecoveryJournal.decode(raw, projectId)?.savedAtMs ?: 0L) to tracks
+            }
+        }
+        .maxByOrNull { it.first }
+        ?.second
+
+    return if (shouldPreferMirroredAudioRecovery(
+            primaryAudioTracksAvailable = primary != null,
+            preferenceCheckpointAtMs = preferenceCheckpointAtMs,
+            mirroredAudioAtMs = mirroredAudioAtMs,
+        )
+    ) {
+        recoveredTracks ?: primary ?: emptyList()
+    } else {
+        primary ?: recoveredTracks ?: emptyList()
+    }
+}
+
+/**
  * Recovery checkpoints for the video edit list and its independent audio lanes.
  * Both journals share one timestamp so callers can persist the complete project
  * state in a single SharedPreferences editor transaction.

@@ -184,7 +184,7 @@ private fun VyroCutApp() {
                 preferences,
                 activeProjectId,
                 calculateTimelineDurationMs(clips.map { it.durationMs }),
-                recoveryDirectory,
+                mirroredAudioJournal = null,
             ),
         )
     }
@@ -221,7 +221,7 @@ private fun VyroCutApp() {
     val undoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "undo")) } }
     val redoStack = remember(activeProjectId) { mutableStateListOf<ProjectEditSnapshot>().apply { addAll(loadProjectHistory(preferences, activeProjectId, "redo")) } }
     var recoveryCandidate by remember(activeProjectId) {
-        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId, recoveryDirectory))
+        mutableStateOf(findProjectRecoveryCandidate(preferences, activeProjectId, mirroredProjectJournal = null))
     }
     var selectedIndex by remember { mutableIntStateOf(0) }
     var isPlaying by remember { mutableStateOf(false) }
@@ -235,6 +235,37 @@ private fun VyroCutApp() {
     // The playback sampler is a long-lived coroutine; keep its cache view current
     // without restarting the loop (and resetting its checkpoint throttle) on each fill.
     val latestPreviewFrameTimestampIndexes by rememberUpdatedState(previewFrameTimestampIndexes)
+
+    // App-private recovery mirrors can be up to 16 MiB. Never read or checksum
+    // them during composition or a click callback; load both copies on IO and
+    // publish only if the same project/edit state is still active afterwards.
+    LaunchedEffect(activeProjectId) {
+        val projectId = activeProjectId
+        val clipsAtStart = clips
+        val audioAtStart = audioTrackClips
+        val projectDurationAtStart = calculateTimelineDurationMs(clipsAtStart.map { it.durationMs })
+        val (mirroredProjectJournal, mirroredAudioJournal) = withContext(Dispatchers.IO) {
+            ProjectRecoveryFileStore.read(
+                recoveryDirectory, projectId, ProjectRecoveryFileKind.PROJECT,
+            ) to ProjectRecoveryFileStore.read(
+                recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO,
+            )
+        }
+        if (activeProjectId != projectId) return@LaunchedEffect
+
+        recoveryCandidate = findProjectRecoveryCandidate(
+            preferences, projectId, mirroredProjectJournal,
+        )
+        val recoveredAudioTracks = loadProjectAudioTracks(
+            preferences, projectId, projectDurationAtStart, mirroredAudioJournal,
+        )
+        if (activeProjectId == projectId &&
+            clips == clipsAtStart &&
+            audioTrackClips == audioAtStart
+        ) {
+            audioTrackClips = recoveredAudioTracks
+        }
+    }
 
     /**
      * Shares one source/trim/revision scan between continuous prefetch and
@@ -1104,7 +1135,7 @@ private fun VyroCutApp() {
             preferences,
             project.id,
             calculateTimelineDurationMs(clips.map { it.durationMs }),
-            recoveryDirectory,
+            mirroredAudioJournal = null,
         )
         selectedAudioTrackId = null
         selectedIndex = 0
@@ -3157,49 +3188,64 @@ private fun VyroCutApp() {
                                 onClick = {
                                     val restored = recoverableClips
                                     if (restored != null) {
-                                        val name = projects.firstOrNull { it.id == snapshot.projectId }?.name
-                                            ?: snapshot.projectName
-                                        val restoredDurationMs =
-                                            calculateTimelineDurationMs(restored.map { it.durationMs })
-                                        val currentAudioTracks = if (snapshot.projectId == activeProjectId) {
-                                            audioTrackClips
-                                        } else {
-                                            loadProjectAudioTracks(
-                                                preferences, snapshot.projectId, Long.MAX_VALUE, recoveryDirectory,
+                                        exportMessage = "Recovering local checkpoint…"
+                                        exportScope.launch {
+                                            val mirroredAudioJournal = withContext(Dispatchers.IO) {
+                                                ProjectRecoveryFileStore.read(
+                                                    recoveryDirectory,
+                                                    snapshot.projectId,
+                                                    ProjectRecoveryFileKind.AUDIO,
+                                                )
+                                            }
+                                            val name = projects.firstOrNull { it.id == snapshot.projectId }?.name
+                                                ?: snapshot.projectName
+                                            val restoredDurationMs =
+                                                calculateTimelineDurationMs(restored.map { it.durationMs })
+                                            val currentAudioTracks = if (snapshot.projectId == activeProjectId) {
+                                                audioTrackClips
+                                            } else {
+                                                loadProjectAudioTracks(
+                                                    preferences,
+                                                    snapshot.projectId,
+                                                    Long.MAX_VALUE,
+                                                    mirroredAudioJournal,
+                                                )
+                                            }
+                                            val matchingAudioJournal = matchingAudioRecoveryJournal(
+                                                projectId = snapshot.projectId,
+                                                savedAtMs = snapshot.savedAtMs,
+                                                candidates = listOf(
+                                                    preferences.getString("project_${snapshot.projectId}_audio_tracks_recovery", null),
+                                                    mirroredAudioJournal,
+                                                ),
                                             )
+                                            val restoredAudioTracks = audioTracksForProjectRecovery(
+                                                projectSnapshot = snapshot,
+                                                rawAudioRecoveryJournal = matchingAudioJournal,
+                                                currentAudioTracks = currentAudioTracks,
+                                                projectDurationMs = restoredDurationMs,
+                                            )
+                                            val recoveryBundle = persistProjectState(
+                                                preferences,
+                                                snapshot.projectId,
+                                                name,
+                                                restored,
+                                                restoredAudioTracks,
+                                                previousSavedAtMsOverride = snapshot.savedAtMs,
+                                            )
+                                            mirrorRecoveryJournals(snapshot.projectId, recoveryBundle)
+                                            if (snapshot.projectId == activeProjectId) {
+                                                clips = restored
+                                                audioTrackClips = restoredAudioTracks
+                                                selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
+                                                selectedIndex = 0
+                                                timelinePositionMs = 0f
+                                            }
+                                            if (recoveryCandidate?.checksum == snapshot.checksum) {
+                                                recoveryCandidate = null
+                                            }
+                                            exportMessage = "Recovered ${restored.size} clips from the local checkpoint"
                                         }
-                                        val matchingAudioJournal = matchingAudioRecoveryJournal(
-                                            projectId = snapshot.projectId,
-                                            savedAtMs = snapshot.savedAtMs,
-                                            candidates = listOf(
-                                                preferences.getString("project_${snapshot.projectId}_audio_tracks_recovery", null),
-                                                ProjectRecoveryFileStore.read(recoveryDirectory, snapshot.projectId, ProjectRecoveryFileKind.AUDIO),
-                                            ),
-                                        )
-                                        val restoredAudioTracks = audioTracksForProjectRecovery(
-                                            projectSnapshot = snapshot,
-                                            rawAudioRecoveryJournal = matchingAudioJournal,
-                                            currentAudioTracks = currentAudioTracks,
-                                            projectDurationMs = restoredDurationMs,
-                                        )
-                                        val recoveryBundle = persistProjectState(
-                                            preferences,
-                                            snapshot.projectId,
-                                            name,
-                                            restored,
-                                            restoredAudioTracks,
-                                            previousSavedAtMsOverride = snapshot.savedAtMs,
-                                        )
-                                        mirrorRecoveryJournals(snapshot.projectId, recoveryBundle)
-                                        if (snapshot.projectId == activeProjectId) {
-                                            clips = restored
-                                            audioTrackClips = restoredAudioTracks
-                                            selectedAudioTrackId = selectedAudioTrackId?.takeIf { id -> audioTrackClips.any { it.id == id } }
-                                            selectedIndex = 0
-                                            timelinePositionMs = 0f
-                                        }
-                                        recoveryCandidate = null
-                                        exportMessage = "Recovered ${restored.size} clips from the local checkpoint"
                                     }
                                 }
                             ) { Text("Recover") }
@@ -3771,52 +3817,26 @@ private fun loadProjectAudioTracks(
     preferences: android.content.SharedPreferences,
     projectId: String,
     projectDurationMs: Long,
-    recoveryDirectory: File,
-): List<AudioTrackClip> {
-    val primaryRaw = preferences.getString("project_${projectId}_audio_tracks", null)
-    val primary = primaryRaw?.let { decodeAudioTrackClips(it, projectDurationMs) }
-    val preferenceAudioJournal = preferences.getString("project_${projectId}_audio_tracks_recovery", null)
-    val mirroredAudioJournal = ProjectRecoveryFileStore.read(
-        recoveryDirectory, projectId, ProjectRecoveryFileKind.AUDIO,
-    )
-    val preferenceCheckpointAtMs = listOfNotNull(
-        ProjectRecoveryJournal.decode(preferenceAudioJournal, projectId)?.savedAtMs,
-        ProjectRecoveryJournal.decode(
-            preferences.getString("project_${projectId}_recovery", null), projectId,
-        )?.savedAtMs,
-    ).maxOrNull()
-    val mirroredAudioAtMs = ProjectRecoveryJournal.decode(mirroredAudioJournal, projectId)?.savedAtMs
-    val recoveryCandidates = listOfNotNull(preferenceAudioJournal, mirroredAudioJournal)
-    val recoveredTracks = recoveryCandidates
-        .mapNotNull { raw ->
-            decodeAudioTrackRecoveryJournal(raw, projectId, projectDurationMs)?.let { tracks ->
-                (ProjectRecoveryJournal.decode(raw, projectId)?.savedAtMs ?: 0L) to tracks
-            }
-        }
-        .maxByOrNull { it.first }
-        ?.second
-    return if (shouldPreferMirroredAudioRecovery(
-            primaryAudioTracksAvailable = primary != null,
-            preferenceCheckpointAtMs = preferenceCheckpointAtMs,
-            mirroredAudioAtMs = mirroredAudioAtMs,
-        )
-    ) {
-        recoveredTracks ?: primary ?: emptyList()
-    } else {
-        primary ?: recoveredTracks ?: emptyList()
-    }
-}
+    mirroredAudioJournal: String? = null,
+): List<AudioTrackClip> = selectProjectAudioTracks(
+    projectId = projectId,
+    projectDurationMs = projectDurationMs,
+    primaryAudioTracksJson = preferences.getString("project_${projectId}_audio_tracks", null),
+    preferenceAudioJournal = preferences.getString("project_${projectId}_audio_tracks_recovery", null),
+    preferenceProjectJournal = preferences.getString("project_${projectId}_recovery", null),
+    mirroredAudioJournal = mirroredAudioJournal,
+)
 
 private fun findProjectRecoveryCandidate(
     preferences: android.content.SharedPreferences,
     projectId: String,
-    recoveryDirectory: File,
+    mirroredProjectJournal: String?,
 ): ProjectRecoverySnapshot? {
     val snapshot = newestProjectRecoverySnapshot(
         projectId,
         listOf(
             preferences.getString("project_${projectId}_recovery", null),
-            ProjectRecoveryFileStore.read(recoveryDirectory, projectId, ProjectRecoveryFileKind.PROJECT),
+            mirroredProjectJournal,
         ),
     ) ?: return null
     if (preferences.getString("project_${projectId}_recovery_dismissed", null) == snapshot.checksum) {

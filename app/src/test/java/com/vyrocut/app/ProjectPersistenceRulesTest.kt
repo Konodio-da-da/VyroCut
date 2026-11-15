@@ -278,6 +278,94 @@ class ProjectPersistenceRulesTest {
         assertEquals(false, "project_project-2" in keys)
     }
 
+    @Test
+    fun audioLoadingPrefersANewerMirroredCheckpointOverPrimaryPreferences() {
+        val primary = listOf(recoveryAudioTrack("primary", 0L))
+        val preferenceTracks = listOf(recoveryAudioTrack("preference", 500L))
+        val mirroredTracks = listOf(recoveryAudioTrack("mirror", 1_000L))
+        val preferenceJournal = encodeAudioTrackRecoveryJournal(
+            "project-1", encodeAudioTrackClips(preferenceTracks), 100L,
+        )
+        val preferenceProjectJournal = ProjectRecoveryJournal.encode(
+            "project-1", "Project", 100L, "[]",
+        )
+        val mirroredJournal = encodeAudioTrackRecoveryJournal(
+            "project-1", encodeAudioTrackClips(mirroredTracks), 101L,
+        )
+
+        assertEquals(
+            mirroredTracks,
+            selectProjectAudioTracks(
+                projectId = "project-1",
+                projectDurationMs = 5_000L,
+                primaryAudioTracksJson = encodeAudioTrackClips(primary),
+                preferenceAudioJournal = preferenceJournal,
+                preferenceProjectJournal = preferenceProjectJournal,
+                mirroredAudioJournal = mirroredJournal,
+            ),
+        )
+    }
+
+    @Test
+    fun audioLoadingDoesNotReplacePrimaryWithAnOlderMirror() {
+        val primary = listOf(recoveryAudioTrack("primary", 0L))
+        val preferenceTracks = listOf(recoveryAudioTrack("preference", 500L))
+        val mirroredTracks = listOf(recoveryAudioTrack("stale-mirror", 1_000L))
+        val preferenceJournal = encodeAudioTrackRecoveryJournal(
+            "project-1", encodeAudioTrackClips(preferenceTracks), 200L,
+        )
+        val mirroredJournal = encodeAudioTrackRecoveryJournal(
+            "project-1", encodeAudioTrackClips(mirroredTracks), 199L,
+        )
+
+        assertEquals(
+            primary,
+            selectProjectAudioTracks(
+                projectId = "project-1",
+                projectDurationMs = 5_000L,
+                primaryAudioTracksJson = encodeAudioTrackClips(primary),
+                preferenceAudioJournal = preferenceJournal,
+                preferenceProjectJournal = null,
+                mirroredAudioJournal = mirroredJournal,
+            ),
+        )
+    }
+
+    @Test
+    fun audioLoadingFallsBackToValidPreferenceJournalWhenMirrorIsForeignOrCorrupt() {
+        val preferenceTracks = listOf(recoveryAudioTrack("preference", 500L))
+        val preferenceJournal = encodeAudioTrackRecoveryJournal(
+            "project-1", encodeAudioTrackClips(preferenceTracks), 200L,
+        )
+        val foreignMirror = encodeAudioTrackRecoveryJournal(
+            "project-2",
+            encodeAudioTrackClips(listOf(recoveryAudioTrack("foreign", 0L))),
+            300L,
+        )
+        assertEquals(
+            preferenceTracks,
+            selectProjectAudioTracks(
+                projectId = "project-1",
+                projectDurationMs = 5_000L,
+                primaryAudioTracksJson = null,
+                preferenceAudioJournal = preferenceJournal,
+                preferenceProjectJournal = null,
+                mirroredAudioJournal = foreignMirror,
+            ),
+        )
+        assertEquals(
+            preferenceTracks,
+            selectProjectAudioTracks(
+                projectId = "project-1",
+                projectDurationMs = 5_000L,
+                primaryAudioTracksJson = null,
+                preferenceAudioJournal = preferenceJournal,
+                preferenceProjectJournal = null,
+                mirroredAudioJournal = "corrupt",
+            ),
+        )
+    }
+
     private fun recoveryProjectSnapshot(savedAtMs: Long): ProjectRecoverySnapshot {
         val journal = ProjectRecoveryJournal.encode(
             projectId = "project-1",
