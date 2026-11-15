@@ -156,3 +156,11 @@ A control is only considered complete when its operation is connected to the pro
 - Document-provider last-modified values are treated as milliseconds; MediaStore DATE_MODIFIED values are converted from seconds. Metadata is queried on Dispatchers.IO whenever the Audio tool/lane effect runs.
 - If a provider exposes no usable revision metadata, caching falls back to URI/range identity without blocking waveform generation. In-place replacement cannot be detected reliably for providers that hide both size and modification time.
 - Pure Kotlin tests cover changed size/time revisions, stable revisions, partial metadata, and unavailable metadata.
+
+
+## Variable-frame-rate preview frame stepping (implemented; Android CI pending)
+- Frame navigation can use actual MediaExtractor presentation timestamps for the active clip and its adjacent clip instead of assuming one constant frame rate.
+- Timestamp extraction seeks to the preceding sync sample and scans only the clip's original source IN/OUT range on Dispatchers.IO. The scan checks coroutine cancellation on each sample and rejects out-of-order timestamps rather than using a partial index.
+- Each per-trim index is bounded to 120,000 timestamps. The in-memory LRU retains at most three URI/source-IN/source-OUT indexes; unsupported, oversized, or malformed indexes fall back to the existing nominal frame-rate resolver.
+- Pure Kotlin tests cover irregular VFR intervals, non-frame-aligned trim boundaries, first/last available frames, VFR cut crossing, invalid timestamp sequences, and LRU eviction.
+- Media3 still accepts millisecond seek positions, so source PTS values are rounded only when constructing the final seek target. Actual frame presentation, MediaExtractor timestamp ordering across devices, seek latency, and audio continuity remain subject to physical-device validation.
