@@ -77,3 +77,11 @@ Do not mark any of these device-only checks complete from CI results alone.
    - Test very short trims that contain no source presentation frame; confirm frame stepping fails closed without moving the playhead.
    - Cross between two trimmed clips with different frame rates in both directions; verify the first/last available source frame is selected rather than assuming clip-relative zero is a frame boundary.
    - Repeat with variable-frame-rate footage and record actual presentation timestamps separately. Nominal FPS metadata alone is not proof of frame-accurate VFR stepping.
+
+
+## Independent recovery-file mirror
+- Save a project with at least one video clip and Music/SFX/Voiceover items, then force-stop. In a disposable test install, remove the project's primary/recovery preference values while leaving the project index and app-private files directory intact.
+- Reopen the project and confirm the recovery prompt reads `filesDir/project-recovery`, restores the video edit list, and restores audio only when its checkpoint timestamp matches.
+- Make several rapid edits, then force-stop after the save UI returns. Verify the newest checkpoint is offered rather than a delayed older file write.
+- Delete a project and verify both recovery journal files are removed and a tombstone prevents a delayed write from recreating them. Confirm no recovery file is created outside the app-private files directory.
+- This mirror does not recover a lost project index, survive app-data clearing/uninstall/device loss, or include media bytes and edits that were never persisted.
