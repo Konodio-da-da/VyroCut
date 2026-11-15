@@ -123,3 +123,12 @@ Do not mark any of these device-only checks complete from CI results alone.
 4. Repeat with a provider exposing neither field. Confirm waveform generation still works using URI/range identity and does not fail because metadata is unavailable; stale-cache detection is not guaranteed in this fallback case.
 5. Repeat after switching projects and lanes. Confirm the source revision is queried on IO and identical clips still share the same revision-aware request gate/cache key.
 6. CI tests validate revision-string/key logic. Actual provider metadata behaviour and same-URI replacement require physical-device testing with document and MediaStore providers.
+
+
+## Variable-frame-rate preview frame stepping
+1. Import a VFR source with visibly irregular frame intervals and use Previous/Next Frame at several points. Confirm the target follows actual sample presentation timestamps rather than a constant nominal cadence.
+2. Trim the source at a timestamp between frames. Confirm the first seek displays the first available frame at/after trim IN, Next advances once, and Previous does not step outside the trim.
+3. Step across cuts between VFR, CFR, and mixed-rate clips. Confirm each clip uses its own source PTS index and the project playhead/audio lanes continue to use the existing synchronized project-clock seek path.
+4. Repeat with a long clip exceeding the 120,000-timestamp safety cap and with a provider/codec that cannot expose a monotonic sample index. Confirm the editor falls back to nominal frame-rate stepping instead of using a partial index.
+5. Switch projects, trim a clip, reorder clips, and repeat. Confirm timestamp indexes are keyed by URI plus source IN/OUT and the in-memory cache remains bounded to three entries.
+6. JVM tests validate irregular timestamp resolution, trim boundaries, cross-clip mapping, invalid-index rejection, and LRU eviction. Actual MediaExtractor sample ordering, seek presentation, VFR frame display, decoder latency, and audio continuity require physical Android-device validation.
