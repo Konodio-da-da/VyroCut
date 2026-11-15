@@ -168,6 +168,7 @@ class MainActivity : ComponentActivity() {
 private fun VyroCutApp() {
     val context = LocalContext.current
     val exportScope = rememberCoroutineScope()
+    val previewScope = rememberCoroutineScope()
     val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
     val lifecycleOwner = LocalLifecycleOwner.current
     val preferences = remember { context.getSharedPreferences("vyrocut_project", 0) }
@@ -226,6 +227,10 @@ private fun VyroCutApp() {
     var previewFrameRate by remember { mutableStateOf<Float?>(null) }
     var previewFrameRateUri by remember { mutableStateOf<String?>(null) }
     var previewFrameRatesByUri by remember { mutableStateOf<Map<String, Float?>>(emptyMap()) }
+    var previewFrameTimestampIndexes by remember(activeProjectId) {
+        mutableStateOf<Map<VideoFrameTimestampCacheKey, LongArray?>>(emptyMap())
+    }
+    var isResolvingFrameStep by remember(activeProjectId) { mutableStateOf(false) }
     LaunchedEffect(clips.map { it.uri }.distinct()) {
         val sourceUris = clips.map { it.uri }.distinct()
         val retainedRates = previewFrameRatesByUri.filterKeys { it in sourceUris }
@@ -758,29 +763,87 @@ private fun VyroCutApp() {
     }
 
     fun stepPreviewFrame(direction: PreviewFrameStepDirection) {
+        if (isResolvingFrameStep) return
         val clipIndex = player.currentMediaItemIndex
-        val currentClip = clips.getOrNull(clipIndex) ?: return
-        val frameRatesByClip = clips.mapIndexed { index, clip ->
-            if (index == clipIndex) {
-                previewFrameRate?.takeIf { previewFrameRateUri == clip.uri }
-                    ?: previewFrameRatesByUri[clip.uri]
-            } else {
-                previewFrameRatesByUri[clip.uri]
-                    ?: previewFrameRate?.takeIf { clip.uri == currentClip.uri }
+        val requestedClips = clips
+        val currentClip = requestedClips.getOrNull(clipIndex) ?: return
+        val projectIdAtRequest = activeProjectId
+        val adjacentClipIndex = clipIndex + if (direction == PreviewFrameStepDirection.PREVIOUS) -1 else 1
+        val clipsToIndex = listOfNotNull(
+            currentClip,
+            requestedClips.getOrNull(adjacentClipIndex),
+        )
+        isResolvingFrameStep = true
+        previewScope.launch {
+            try {
+                var timestampCache = previewFrameTimestampIndexes
+                for (clip in clipsToIndex) {
+                    val key = VideoFrameTimestampCacheKey(
+                        uri = clip.uri,
+                        sourceStartMs = clip.sourceStartMs,
+                        sourceEndMs = clip.sourceEndMs,
+                    )
+                    if (!timestampCache.containsKey(key)) {
+                        val timestamps = withContext(Dispatchers.IO) {
+                            MediaMetadataReader.videoPresentationTimestampsUs(
+                                context = context,
+                                uri = Uri.parse(clip.uri),
+                                sourceStartMs = clip.sourceStartMs,
+                                sourceEndMs = clip.sourceEndMs,
+                            )
+                        }
+                        timestampCache = cacheVideoFrameTimestampIndex(timestampCache, key, timestamps)
+                        if (activeProjectId == projectIdAtRequest) {
+                            previewFrameTimestampIndexes = timestampCache
+                        }
+                    }
+                }
+
+                // Do not apply a seek computed for a project/clip that changed while
+                // the bounded background timestamp scan was running.
+                val activeClip = clips.getOrNull(clipIndex) ?: return@launch
+                if (activeProjectId != projectIdAtRequest ||
+                    player.currentMediaItemIndex != clipIndex ||
+                    activeClip.id != currentClip.id ||
+                    activeClip.uri != currentClip.uri ||
+                    activeClip.sourceStartMs != currentClip.sourceStartMs ||
+                    activeClip.sourceEndMs != currentClip.sourceEndMs
+                ) return@launch
+
+                val frameRatesByClip = clips.mapIndexed { index, clip ->
+                    if (index == clipIndex) {
+                        previewFrameRate?.takeIf { previewFrameRateUri == clip.uri }
+                            ?: previewFrameRatesByUri[clip.uri]
+                    } else {
+                        previewFrameRatesByUri[clip.uri]
+                            ?: previewFrameRate?.takeIf { clip.uri == currentClip.uri }
+                    }
+                }
+                val timestampsByClip = clips.map { clip ->
+                    timestampCache[VideoFrameTimestampCacheKey(
+                        uri = clip.uri,
+                        sourceStartMs = clip.sourceStartMs,
+                        sourceEndMs = clip.sourceEndMs,
+                    )]
+                }
+                val target = resolvePreviewFrameStepAcrossClips(
+                    clipDurationsMs = clipDurationsMs,
+                    frameRatesByClip = frameRatesByClip,
+                    currentClipIndex = clipIndex,
+                    currentPositionMs = player.currentPosition,
+                    direction = direction,
+                    sourceStartMsByClip = clips.map { it.sourceStartMs },
+                    presentationTimestampsUsByClip = timestampsByClip,
+                ) ?: return@launch
+
+                player.pause()
+                seekPreviewToTimelinePosition(
+                    calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
+                )
+            } finally {
+                isResolvingFrameStep = false
             }
         }
-        val target = resolvePreviewFrameStepAcrossClips(
-            clipDurationsMs = clipDurationsMs,
-            frameRatesByClip = frameRatesByClip,
-            currentClipIndex = clipIndex,
-            currentPositionMs = player.currentPosition,
-            direction = direction,
-            sourceStartMsByClip = clips.map { it.sourceStartMs },
-        ) ?: return
-        player.pause()
-        seekPreviewToTimelinePosition(
-            calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
-        )
     }
 
     fun syncPlayerPosition(
@@ -1629,10 +1692,7 @@ private fun VyroCutApp() {
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
-                        enabled = selectedClip != null && (
-                            previewFrameRatesByUri[selectedClip.uri] != null ||
-                                (previewFrameRateUri == selectedClip.uri && previewFrameRate != null)
-                        ),
+                        enabled = selectedClip != null && !isResolvingFrameStep,
                         modifier = Modifier.size(36.dp),
                     ) {
                         Icon(
@@ -1676,10 +1736,7 @@ private fun VyroCutApp() {
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
-                        enabled = selectedClip != null && (
-                            previewFrameRatesByUri[selectedClip.uri] != null ||
-                                (previewFrameRateUri == selectedClip.uri && previewFrameRate != null)
-                        ),
+                        enabled = selectedClip != null && !isResolvingFrameStep,
                         modifier = Modifier.size(36.dp),
                     ) {
                         Icon(
