@@ -792,6 +792,25 @@ internal data class VideoFrameTimestampCacheKey(
     val sourceRevision: String? = null,
 )
 
+/**
+ * Stable, collision-resistant key for sharing one bounded MediaExtractor scan
+ * across playback prefetch and manual frame-step requests. Length-prefixing
+ * string fields keeps arbitrary content URIs/revisions unambiguous.
+ */
+internal fun videoFrameTimestampRequestKey(key: VideoFrameTimestampCacheKey): String = buildString {
+    append("video-pts-v1:")
+    append(key.uri.length).append(':').append(key.uri)
+    append(':').append(key.sourceStartMs)
+    append(':').append(key.sourceEndMs)
+    append(':')
+    val revision = key.sourceRevision
+    if (revision == null) {
+        append("-1:")
+    } else {
+        append(revision.length).append(':').append(revision)
+    }
+}
+
 /** Rejects partial, empty, oversized, negative, duplicate, or out-of-order PTS indexes. */
 internal fun isValidVideoPresentationTimestampsUs(timestampsUs: LongArray?): Boolean {
     if (timestampsUs == null || timestampsUs.isEmpty() ||

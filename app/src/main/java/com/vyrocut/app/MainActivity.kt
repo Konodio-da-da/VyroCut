@@ -142,6 +142,7 @@ internal data class EditClip(
 }
 
 private val startupExportCleanupStarted = AtomicBoolean(false)
+private val videoFrameTimestampRequestGate = KeyedSuspendRequestGate()
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -234,6 +235,45 @@ private fun VyroCutApp() {
     // The playback sampler is a long-lived coroutine; keep its cache view current
     // without restarting the loop (and resetting its checkpoint throttle) on each fill.
     val latestPreviewFrameTimestampIndexes by rememberUpdatedState(previewFrameTimestampIndexes)
+
+    /**
+     * Shares one source/trim/revision scan between continuous prefetch and
+     * manual frame stepping. The cache is re-read and updated inside the gate,
+     * using the latest Compose state so concurrent scans for different clips
+     * cannot overwrite one another's LRU updates from stale local snapshots.
+     */
+    suspend fun ensureVideoFrameTimestampIndex(
+        clip: EditClip,
+        key: VideoFrameTimestampCacheKey,
+        isStillRelevant: () -> Boolean,
+    ) {
+        if (!isStillRelevant()) return
+        videoFrameTimestampRequestGate.withKey(videoFrameTimestampRequestKey(key)) {
+            if (!isStillRelevant()) return@withKey
+            if (previewFrameTimestampIndexes.containsKey(key)) {
+                previewFrameTimestampIndexes = touchVideoFrameTimestampIndex(
+                    previewFrameTimestampIndexes,
+                    key,
+                )
+            } else {
+                val timestamps = withContext(Dispatchers.IO) {
+                    MediaMetadataReader.videoPresentationTimestampsUs(
+                        context = context,
+                        uri = Uri.parse(clip.uri),
+                        sourceStartMs = clip.sourceStartMs,
+                        sourceEndMs = clip.sourceEndMs,
+                    )
+                }
+                if (isStillRelevant()) {
+                    previewFrameTimestampIndexes = cacheVideoFrameTimestampIndex(
+                        previewFrameTimestampIndexes,
+                        key,
+                        timestamps,
+                    )
+                }
+            }
+        }
+    }
     LaunchedEffect(clips.map { it.uri }.distinct()) {
         val sourceUris = clips.map { it.uri }.distinct()
         val retainedRates = previewFrameRatesByUri.filterKeys { it in sourceUris }
@@ -533,7 +573,13 @@ private fun VyroCutApp() {
                 )
             }
         }
-        var timestampCache = previewFrameTimestampIndexes
+        val clipsSnapshot = clips
+        val isStillRelevant = {
+            activeProjectId == projectIdAtRequest &&
+                clips == clipsSnapshot &&
+                player.currentMediaItemIndex == activeClipIndex &&
+                player.currentMediaItem?.mediaId == activeClipId
+        }
         val keyedClips = clipsToWarm.map { clip ->
             clip to VideoFrameTimestampCacheKey(
                 uri = clip.uri,
@@ -544,30 +590,9 @@ private fun VyroCutApp() {
         }.distinctBy { it.second }
 
         for ((clip, key) in keyedClips) {
-            if (activeProjectId != projectIdAtRequest ||
-                player.currentMediaItemIndex != activeClipIndex ||
-                player.currentMediaItem?.mediaId != activeClipId
-            ) return@LaunchedEffect
-
-            if (timestampCache.containsKey(key)) {
-                timestampCache = touchVideoFrameTimestampIndex(timestampCache, key)
-            } else {
-                val timestamps = withContext(Dispatchers.IO) {
-                    MediaMetadataReader.videoPresentationTimestampsUs(
-                        context = context,
-                        uri = Uri.parse(clip.uri),
-                        sourceStartMs = clip.sourceStartMs,
-                        sourceEndMs = clip.sourceEndMs,
-                    )
-                }
-                timestampCache = cacheVideoFrameTimestampIndex(timestampCache, key, timestamps)
-            }
-
-            if (activeProjectId != projectIdAtRequest ||
-                player.currentMediaItemIndex != activeClipIndex ||
-                player.currentMediaItem?.mediaId != activeClipId
-            ) return@LaunchedEffect
-            previewFrameTimestampIndexes = timestampCache
+            if (!isStillRelevant()) return@LaunchedEffect
+            ensureVideoFrameTimestampIndex(clip, key, isStillRelevant)
+            if (!isStillRelevant()) return@LaunchedEffect
         }
     }
 
@@ -869,7 +894,12 @@ private fun VyroCutApp() {
                         )
                     }
                 }
-                var timestampCache = previewFrameTimestampIndexes
+                val isStillRelevant = {
+                    activeProjectId == projectIdAtRequest &&
+                        clips == requestedClips &&
+                        player.currentMediaItemIndex == clipIndex &&
+                        player.currentMediaItem?.mediaId == currentClip.id
+                }
                 for (clip in clipsToIndex) {
                     val key = VideoFrameTimestampCacheKey(
                         uri = clip.uri,
@@ -877,30 +907,20 @@ private fun VyroCutApp() {
                         sourceEndMs = clip.sourceEndMs,
                         sourceRevision = sourceRevisionsByUri[clip.uri],
                     )
-                    if (!timestampCache.containsKey(key)) {
-                        val timestamps = withContext(Dispatchers.IO) {
-                            MediaMetadataReader.videoPresentationTimestampsUs(
-                                context = context,
-                                uri = Uri.parse(clip.uri),
-                                sourceStartMs = clip.sourceStartMs,
-                                sourceEndMs = clip.sourceEndMs,
-                            )
-                        }
-                        timestampCache = cacheVideoFrameTimestampIndex(timestampCache, key, timestamps)
-                    } else {
-                        // A cache hit is a successful use: keep frequently stepped clips
-                        // resident and let colder indexes become the next eviction targets.
-                        timestampCache = touchVideoFrameTimestampIndex(timestampCache, key)
-                    }
+                    ensureVideoFrameTimestampIndex(clip, key, isStillRelevant)
+                    if (!isStillRelevant()) return@launch
                 }
-                if (activeProjectId == projectIdAtRequest) {
-                    previewFrameTimestampIndexes = timestampCache
-                }
+
+                // Read the latest shared cache after all gated requests complete;
+                // another clip's concurrent prefetch may have updated the LRU meanwhile.
+                if (!isStillRelevant()) return@launch
+                val timestampCache = previewFrameTimestampIndexes
 
                 // Do not apply a seek computed for a project/clip that changed while
                 // the bounded background timestamp scan was running.
                 val activeClip = clips.getOrNull(clipIndex) ?: return@launch
                 if (activeProjectId != projectIdAtRequest ||
+                    clips != requestedClips ||
                     player.currentMediaItemIndex != clipIndex ||
                     activeClip.id != currentClip.id ||
                     activeClip.uri != currentClip.uri ||

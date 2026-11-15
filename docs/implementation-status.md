@@ -203,3 +203,11 @@ A control is only considered complete when its operation is connected to the pro
 - Pure Kotlin tests cover floor-to-PTS sampling, non-frame-aligned trims, invalid positions/indexes, and the 16/33/100 ms cadence decisions. Continuous playback, frame display, mixed-rate transitions, and audio sync still require physical Android-device validation.
 
 - VFR timestamp cache writes and successful hits prune superseded revisions for the same URI/source-IN/source-OUT tuple. This keeps the range-based continuous-playhead lookup from selecting an older cached index after a source has been re-read.
+
+
+## Shared VFR timestamp extraction
+- Continuous playback prefetch and manual frame stepping now use one process-wide keyed suspend gate for identical URI/source-IN/source-OUT/source-revision requests. A frame-step request arriving during prefetch waits for the in-flight scan and rechecks the latest in-memory cache before opening another MediaExtractor.
+- The shared cache is re-read and updated inside the per-key gate, so simultaneous scans for different clips merge into the latest three-entry LRU state instead of overwriting each other's recency updates from stale local snapshots.
+- Unsupported/null PTS indexes are negative-cached for the exact request key. Different trims or source revisions retain independent gates and can run concurrently.
+- Project/clip relevance is checked before waiting, after acquiring the gate, and before publishing scan results. Cancellation releases only the waiting request's reference; an active owner is not cancelled by another caller.
+- Pure JVM tests cover length-prefixed request-key separation and reuse of a cached null result; the shared keyed gate's existing tests cover unrelated-key concurrency and cancelled waiters. Physical MediaExtractor counts, VFR display timing, and audio synchronization remain device-only checks.

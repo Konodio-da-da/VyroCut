@@ -1519,6 +1519,26 @@ class TimelineMathTest {
     }
 
     @Test
+    fun videoFrameTimestampRequestKeyIncludesUriTrimAndSourceRevision() {
+        val original = VideoFrameTimestampCacheKey(
+            uri = "content://media/video:one",
+            sourceStartMs = 125L,
+            sourceEndMs = 4_000L,
+            sourceRevision = "size:120:modified:42",
+        )
+
+        assertEquals(videoFrameTimestampRequestKey(original), videoFrameTimestampRequestKey(original.copy()))
+        assertFalse(videoFrameTimestampRequestKey(original) == videoFrameTimestampRequestKey(original.copy(sourceStartMs = 126L)))
+        assertFalse(videoFrameTimestampRequestKey(original) == videoFrameTimestampRequestKey(original.copy(sourceEndMs = 4_001L)))
+        assertFalse(videoFrameTimestampRequestKey(original) == videoFrameTimestampRequestKey(original.copy(sourceRevision = "size:121:modified:42")))
+        assertFalse(videoFrameTimestampRequestKey(original) == videoFrameTimestampRequestKey(original.copy(uri = "content://media/video:two")))
+        assertFalse(
+            videoFrameTimestampRequestKey(original.copy(sourceRevision = null)) ==
+                videoFrameTimestampRequestKey(original.copy(sourceRevision = "unversioned")),
+        )
+    }
+
+    @Test
     fun presentationTimestampCacheOwnsSnapshotOfMutableDecoderArray() {
         val key = VideoFrameTimestampCacheKey("content://video/mutable", 0L, 1_000L)
         val decoderOutput = longArrayOf(0L, 33_333L, 66_667L)

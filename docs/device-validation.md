@@ -166,3 +166,12 @@ Do not mark any of these device-only checks complete from CI results alone.
 3. Repeat with a second trim of the same URI and with another clip source. Confirm unrelated trim/source entries remain cached and the three-entry LRU bound is preserved.
 4. Repeat with providers exposing size only, modified time only, and neither field. Confirm the fallback revision remains usable and never throws.
 5. JVM tests validate superseded-revision pruning on cache insertion and successful cache access. Same-URI provider replacement and visible playback behaviour require physical Android-device validation.
+
+
+## Shared VFR timestamp extraction requests
+1. Start playback so active/next clip prefetch begins, then immediately press Previous/Next Frame while the active source index is still warming.
+2. Repeat with the same URI, source IN/OUT and provider revision. Confirm prefetch and frame-step consumers share one MediaExtractor scan rather than opening duplicate extractors.
+3. Repeat with a different trim and with a changed source revision. Confirm those are separate request keys and can proceed independently.
+4. Use a source/codec that produces no usable PTS index. Confirm the null result is negative-cached for that exact revision so concurrent waiters do not repeatedly scan it.
+5. Switch projects or reorder/trim clips while a request waits on the gate. Confirm stale requests do not publish results into the new project state, and a cancelled waiter does not cancel the active owner.
+6. JVM tests cover request-key separation, same-key null-result reuse, unrelated-key concurrency, and cancellation-safe reference cleanup. Actual MediaExtractor counts, playback responsiveness, and displayed-frame behaviour still require physical Android-device validation.

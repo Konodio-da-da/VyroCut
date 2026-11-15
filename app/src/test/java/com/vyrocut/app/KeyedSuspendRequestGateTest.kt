@@ -11,10 +11,10 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class AudioWaveformRequestGateTest {
+class KeyedSuspendRequestGateTest {
     @Test
     fun concurrentSameKeyRequestsPerformOneCacheFill() = runBlocking {
-        val gate = AudioWaveformRequestGate()
+        val gate = KeyedSuspendRequestGate()
         val decodeCount = AtomicInteger()
         val decodeStarted = CompletableDeferred<Unit>()
         val finishDecode = CompletableDeferred<Unit>()
@@ -45,7 +45,7 @@ class AudioWaveformRequestGateTest {
 
     @Test
     fun differentKeysCanDecodeConcurrently() = runBlocking {
-        val gate = AudioWaveformRequestGate()
+        val gate = KeyedSuspendRequestGate()
         val enteredCount = AtomicInteger()
         val bothEntered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
@@ -68,8 +68,31 @@ class AudioWaveformRequestGateTest {
     }
 
     @Test
+    fun concurrentSameKeyRequestsReuseCachedNullNegativeResult() = runBlocking {
+        val gate = KeyedSuspendRequestGate()
+        val decodeCount = AtomicInteger()
+        val cache = mutableMapOf<String, LongArray?>()
+        val requests = List(8) {
+            async(start = CoroutineStart.UNDISPATCHED) {
+                gate.withKey("unsupported-video-source") {
+                    if (!cache.containsKey("unsupported-video-source")) {
+                        decodeCount.incrementAndGet()
+                        cache["unsupported-video-source"] = null
+                    }
+                    cache["unsupported-video-source"]
+                }
+            }
+        }
+
+        assertEquals(List<LongArray?>(8) { null }, requests.map { it.await() })
+        assertEquals(1, decodeCount.get())
+        assertEquals(true, cache.containsKey("unsupported-video-source"))
+        assertEquals(0, gate.trackedKeyCount)
+    }
+
+    @Test
     fun cancelledWaiterDoesNotPoisonTheNextRequest() = runBlocking {
-        val gate = AudioWaveformRequestGate()
+        val gate = KeyedSuspendRequestGate()
         val ownerStarted = CompletableDeferred<Unit>()
         val releaseOwner = CompletableDeferred<Unit>()
 

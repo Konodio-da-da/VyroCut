@@ -35,7 +35,7 @@ private const val MAX_AUDIO_WAVEFORM_CACHE_FILES = 64
 
 internal const val MAX_AUDIO_WAVEFORM_IDLE_POLLS = 5_000
 
-private val audioWaveformRequestGate = AudioWaveformRequestGate()
+private val audioWaveformRequestGate = KeyedSuspendRequestGate()
 
 /** Pure decode-loop policy so cancellation and decoder timeouts stay testable. */
 internal fun shouldContinueAudioWaveformDecode(

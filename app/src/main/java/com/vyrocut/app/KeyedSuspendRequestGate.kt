@@ -12,7 +12,7 @@ import kotlinx.coroutines.sync.Mutex
  * lifetime of the application. A cancelled waiter releases its reference
  * without cancelling the caller that currently owns the key.
  */
-internal class AudioWaveformRequestGate {
+internal class KeyedSuspendRequestGate {
     private class Entry {
         val mutex = Mutex()
         var references: Int = 0
@@ -25,7 +25,7 @@ internal class AudioWaveformRequestGate {
 
         val entry = entries.compute(key) { _, current ->
             (current ?: Entry()).also { it.references += 1 }
-        } ?: error("Unable to allocate waveform request gate")
+        } ?: error("Unable to allocate keyed request gate")
 
         var acquired = false
         try {
