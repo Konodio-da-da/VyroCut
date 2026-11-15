@@ -142,3 +142,10 @@ A control is only considered complete when its operation is connected to the pro
 - Startup cleanup and new export rendering share one pure path resolver: app-specific external Movies storage is preferred, with `filesDir/Movies/VyroCut` as the fallback.
 - The existing 24-hour retention, strict generated-name filter, direct-child restriction, symlink rejection, and fail-closed timestamp handling remain unchanged. The publishing-time cleanup still protects the current verified export.
 - JVM tests cover both directory-resolution paths. Physical-device validation must still confirm cleanup across process restarts and storage-volume availability on API 29 and a current Android release.
+
+
+## Deduplicated audio waveform decoding
+- Concurrent requests with the same source URI, source IN/OUT range, and bucket resolution now share a per-key suspend gate. The first cache miss opens the MediaExtractor/MediaCodec pipeline; waiting callers re-check the disk cache after the first request writes its waveform.
+- Different source ranges and resolutions use independent keys and can decode concurrently. The gate reference-counts waiters and removes idle keys, so the process does not retain one mutex per waveform ever requested.
+- Cancelling a waiter while it is queued releases only that waiter's reference; it does not cancel the active decode owner. Cancelling the owner still propagates through the existing decoder cancellation path and releases MediaCodec/MediaExtractor in `finally`.
+- Pure Kotlin tests cover one cache fill for concurrent identical requests, parallel work for different keys, and cancellation of a queued waiter without poisoning subsequent requests. Cache-write failure remains best-effort: a later caller may retry the decode if no valid disk cache was produced.

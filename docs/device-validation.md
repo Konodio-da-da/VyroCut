@@ -105,3 +105,12 @@ Do not mark any of these device-only checks complete from CI results alone.
 3. Scroll a video timeline clip with waveform extraction active, then remove the clip or leave the composable. Confirm the decode is cancelled and the MediaCodec/MediaExtractor resources are released.
 4. Repeat while switching projects and while a decoder is slow or unable to produce output. Confirm the no-progress timeout still returns a normal unavailable waveform, while coroutine cancellation propagates to the Compose caller.
 5. CI tests validate the pure decode-loop policy. Cancellation latency, codec release, UI responsiveness, and stale-state behaviour require physical Android-device validation.
+
+
+## Audio waveform request deduplication
+1. Display the same source URI, source IN/OUT range, and bucket resolution in more than one waveform consumer. Confirm both consumers receive the same normalized bars while only one decode is needed for the cache miss.
+2. Repeat with different trim ranges and with 48-bucket versus 96-bucket requests; confirm distinct cache keys do not block or reuse the wrong resolution.
+3. Cancel one consumer while it is waiting behind another request for the same key. Confirm the active request can finish and a later consumer can still acquire the key.
+4. Request two different source ranges at the same time. Confirm the per-key gate does not serialize unrelated decodes globally.
+5. Repeat while switching lanes, closing the Audio tool, removing a clip, and switching projects. Confirm obsolete Compose callers remain cancellable and decoder resources are released by the active owner.
+6. CI tests validate request coordination and cancellation. Actual decoder-session counts, codec latency, and UI responsiveness require physical Android-device validation.

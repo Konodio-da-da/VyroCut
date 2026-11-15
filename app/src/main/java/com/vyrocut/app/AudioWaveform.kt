@@ -35,6 +35,8 @@ private const val MAX_AUDIO_WAVEFORM_CACHE_FILES = 64
 
 internal const val MAX_AUDIO_WAVEFORM_IDLE_POLLS = 5_000
 
+private val audioWaveformRequestGate = AudioWaveformRequestGate()
+
 /** Pure decode-loop policy so cancellation and decoder timeouts stay testable. */
 internal fun shouldContinueAudioWaveformDecode(
     isActive: Boolean,
@@ -142,80 +144,76 @@ internal suspend fun decodeAudioWaveform(
     ) return null
 
     val cacheDirectory = File(context.cacheDir, "audio-waveforms")
-    cleanupStaleWaveformTemporaryFiles(cacheDirectory)
     val cacheFile = File(
         cacheDirectory,
         audioWaveformCacheFileName(uriString, sourceStartMs, sourceEndMs, bucketCount),
     )
-    readWaveformCache(cacheFile, bucketCount)?.let { return it }
+    val requestKey = audioWaveformCacheKey(uriString, sourceStartMs, sourceEndMs, bucketCount)
 
-    val extractor = MediaExtractor()
-    var decoder: MediaCodec? = null
-    var decoderStarted = false
-    try {
-        extractor.setDataSource(context, Uri.parse(uriString), null)
+    // Re-check the disk cache after acquiring the per-key gate. Concurrent
+    // consumers of the same source range then share the first completed decode
+    // instead of opening duplicate MediaExtractor/MediaCodec instances.
+    return audioWaveformRequestGate.withKey(requestKey) {
         coroutineContext.ensureActive()
-        var audioTrackIndex = -1
-        var inputFormat: MediaFormat? = null
-        for (index in 0 until extractor.trackCount) {
+        cleanupStaleWaveformTemporaryFiles(cacheDirectory)
+        readWaveformCache(cacheFile, bucketCount)?.let { return@withKey it }
+
+        val extractor = MediaExtractor()
+        var decoder: MediaCodec? = null
+        var decoderStarted = false
+        try {
+            extractor.setDataSource(context, Uri.parse(uriString), null)
             coroutineContext.ensureActive()
-            val candidate = extractor.getTrackFormat(index)
-            if (candidate.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
-                audioTrackIndex = index
-                inputFormat = candidate
-                break
+            var audioTrackIndex = -1
+            var inputFormat: MediaFormat? = null
+            for (index in 0 until extractor.trackCount) {
+                coroutineContext.ensureActive()
+                val candidate = extractor.getTrackFormat(index)
+                if (candidate.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
+                    audioTrackIndex = index
+                    inputFormat = candidate
+                    break
+                }
             }
-        }
-        if (audioTrackIndex < 0 || inputFormat == null) return null
-        val mime = inputFormat.getString(MediaFormat.KEY_MIME) ?: return null
-        val startUs = sourceStartMs * 1_000L
-        val endUs = sourceEndMs * 1_000L
+            if (audioTrackIndex < 0 || inputFormat == null) return@withKey null
+            val mime = inputFormat.getString(MediaFormat.KEY_MIME) ?: return@withKey null
+            val startUs = sourceStartMs * 1_000L
+            val endUs = sourceEndMs * 1_000L
 
-        extractor.selectTrack(audioTrackIndex)
-        extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            extractor.selectTrack(audioTrackIndex)
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
 
-        decoder = MediaCodec.createDecoderByType(mime)
-        decoder.configure(inputFormat, null, null, 0)
-        decoder.start()
-        decoderStarted = true
-        coroutineContext.ensureActive()
-
-        var outputFormat: MediaFormat = inputFormat
-        var inputFinished = false
-        var outputFinished = false
-        var idlePolls = 0
-        val info = MediaCodec.BufferInfo()
-        val accumulator = AudioWaveformAccumulator(bucketCount, startUs, endUs)
-
-        while (
-            shouldContinueAudioWaveformDecode(
-                isActive = coroutineContext.isActive,
-                outputFinished = outputFinished,
-                idlePolls = idlePolls,
-            )
-        ) {
+            decoder = MediaCodec.createDecoderByType(mime)
+            decoder.configure(inputFormat, null, null, 0)
+            decoder.start()
+            decoderStarted = true
             coroutineContext.ensureActive()
-            var madeProgress = false
 
-            if (!inputFinished) {
-                val inputIndex = decoder.dequeueInputBuffer(10_000L)
-                if (inputIndex >= 0) {
-                    val inputBuffer = decoder.getInputBuffer(inputIndex)
-                        ?: throw IllegalStateException("Decoder input buffer was unavailable")
-                    inputBuffer.clear()
-                    val sampleTimeUs = extractor.sampleTime
-                    if (sampleTimeUs < 0L || sampleTimeUs >= endUs) {
-                        decoder.queueInputBuffer(
-                            inputIndex,
-                            0,
-                            0,
-                            endUs,
-                            MediaCodec.BUFFER_FLAG_END_OF_STREAM,
-                        )
-                        inputFinished = true
-                    } else {
-                        val sampleSize = extractor.readSampleData(inputBuffer, 0)
-                        if (sampleSize < 0) {
+            var outputFormat: MediaFormat = inputFormat
+            var inputFinished = false
+            var outputFinished = false
+            var idlePolls = 0
+            val info = MediaCodec.BufferInfo()
+            val accumulator = AudioWaveformAccumulator(bucketCount, startUs, endUs)
+
+            while (
+                shouldContinueAudioWaveformDecode(
+                    isActive = coroutineContext.isActive,
+                    outputFinished = outputFinished,
+                    idlePolls = idlePolls,
+                )
+            ) {
+                coroutineContext.ensureActive()
+                var madeProgress = false
+
+                if (!inputFinished) {
+                    val inputIndex = decoder.dequeueInputBuffer(10_000L)
+                    if (inputIndex >= 0) {
+                        val inputBuffer = decoder.getInputBuffer(inputIndex)
+                            ?: throw IllegalStateException("Decoder input buffer was unavailable")
+                        inputBuffer.clear()
+                        val sampleTimeUs = extractor.sampleTime
+                        if (sampleTimeUs < 0L || sampleTimeUs >= endUs) {
                             decoder.queueInputBuffer(
                                 inputIndex,
                                 0,
@@ -225,61 +223,73 @@ internal suspend fun decodeAudioWaveform(
                             )
                             inputFinished = true
                         } else {
-                            decoder.queueInputBuffer(
-                                inputIndex,
-                                0,
-                                sampleSize,
-                                sampleTimeUs,
-                                extractor.sampleFlags,
-                            )
-                            extractor.advance()
+                            val sampleSize = extractor.readSampleData(inputBuffer, 0)
+                            if (sampleSize < 0) {
+                                decoder.queueInputBuffer(
+                                    inputIndex,
+                                    0,
+                                    0,
+                                    endUs,
+                                    MediaCodec.BUFFER_FLAG_END_OF_STREAM,
+                                )
+                                inputFinished = true
+                            } else {
+                                decoder.queueInputBuffer(
+                                    inputIndex,
+                                    0,
+                                    sampleSize,
+                                    sampleTimeUs,
+                                    extractor.sampleFlags,
+                                )
+                                extractor.advance()
+                            }
                         }
+                        madeProgress = true
                     }
-                    madeProgress = true
                 }
+
+                val outputIndex = decoder.dequeueOutputBuffer(info, 10_000L)
+                when {
+                    outputIndex >= 0 -> {
+                        val outputBuffer = decoder.getOutputBuffer(outputIndex)
+                        if (info.size > 0 && outputBuffer != null) {
+                            accumulatePcmFrames(outputBuffer, info, outputFormat, accumulator)
+                        }
+                        val reachedEnd = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
+                        decoder.releaseOutputBuffer(outputIndex, false)
+                        if (reachedEnd) outputFinished = true
+                        madeProgress = true
+                    }
+                    outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                        outputFormat = decoder.outputFormat
+                        madeProgress = true
+                    }
+                    outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> madeProgress = true
+                }
+
+                idlePolls = nextAudioWaveformIdlePollCount(idlePolls, madeProgress)
             }
 
-            val outputIndex = decoder.dequeueOutputBuffer(info, 10_000L)
-            when {
-                outputIndex >= 0 -> {
-                    val outputBuffer = decoder.getOutputBuffer(outputIndex)
-                    if (info.size > 0 && outputBuffer != null) {
-                        accumulatePcmFrames(outputBuffer, info, outputFormat, accumulator)
-                    }
-                    val reachedEnd = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
-                    decoder.releaseOutputBuffer(outputIndex, false)
-                    if (reachedEnd) outputFinished = true
-                    madeProgress = true
-                }
-                outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    outputFormat = decoder.outputFormat
-                    madeProgress = true
-                }
-                outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED -> madeProgress = true
+            coroutineContext.ensureActive()
+            if (!outputFinished) return@withKey null
+            val waveform = accumulator.finish()
+            coroutineContext.ensureActive()
+            writeWaveformCache(cacheDirectory, cacheFile, waveform)
+            coroutineContext.ensureActive()
+            waveform
+        } catch (cancelled: CancellationException) {
+            // Compose LaunchedEffect/produceState cancellation must reach the caller;
+            // swallowing it here would leave obsolete decoder work running.
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        } finally {
+            decoder?.let { codec ->
+                if (decoderStarted) runCatching { codec.stop() }
+                runCatching { codec.release() }
             }
-
-            idlePolls = nextAudioWaveformIdlePollCount(idlePolls, madeProgress)
+            runCatching { extractor.release() }
         }
-
-        coroutineContext.ensureActive()
-        if (!outputFinished) return null
-        val waveform = accumulator.finish()
-        coroutineContext.ensureActive()
-        writeWaveformCache(cacheDirectory, cacheFile, waveform)
-        coroutineContext.ensureActive()
-        return waveform
-    } catch (cancelled: CancellationException) {
-        // Compose LaunchedEffect/produceState cancellation must reach the caller;
-        // swallowing it here would leave obsolete decoder work running.
-        throw cancelled
-    } catch (_: Exception) {
-        return null
-    } finally {
-        decoder?.let { codec ->
-            if (decoderStarted) runCatching { codec.stop() }
-            runCatching { codec.release() }
-        }
-        runCatching { extractor.release() }
     }
 }
 
