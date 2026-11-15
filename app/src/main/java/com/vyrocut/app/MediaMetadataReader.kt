@@ -9,6 +9,9 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.OpenableColumns
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 object MediaMetadataReader {
     fun displayName(contentResolver: ContentResolver, uri: Uri): String {
@@ -82,6 +85,68 @@ object MediaMetadataReader {
         }
     }
     
+    /**
+     * Reads presentation timestamps only inside one clip's original source trim.
+     * Seeking to the preceding sync sample avoids indexing the entire source file.
+     * Call from Dispatchers.IO; the bounded loop checks coroutine cancellation.
+     *
+     * Null means the provider/codec did not expose a complete monotonic index,
+     * the trim contained no video samples, or the range exceeded the safety cap.
+     */
+    suspend fun videoPresentationTimestampsUs(
+        context: Context,
+        uri: Uri,
+        sourceStartMs: Long,
+        sourceEndMs: Long,
+    ): LongArray? {
+        if (sourceStartMs < 0L || sourceEndMs <= sourceStartMs ||
+            sourceEndMs > Long.MAX_VALUE / 1_000L
+        ) return null
+        val startUs = sourceStartMs * 1_000L
+        val endUs = sourceEndMs * 1_000L
+        val extractor = MediaExtractor()
+        return try {
+            currentCoroutineContext().ensureActive()
+            extractor.setDataSource(context, uri, null)
+            val videoTrackIndex = (0 until extractor.trackCount).firstOrNull { index ->
+                runCatching {
+                    extractor.getTrackFormat(index)
+                        .getString(MediaFormat.KEY_MIME)
+                        ?.startsWith("video/") == true
+                }.getOrDefault(false)
+            } ?: return null
+
+            extractor.selectTrack(videoTrackIndex)
+            extractor.seekTo(startUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+
+            val timestamps = LongArray(MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP)
+            var count = 0
+            var previousTimestampUs = -1L
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val sampleTimeUs = extractor.sampleTime
+                if (sampleTimeUs < 0L || sampleTimeUs >= endUs) break
+                if (sampleTimeUs >= startUs) {
+                    if (sampleTimeUs < previousTimestampUs) return null
+                    if (sampleTimeUs > previousTimestampUs) {
+                        if (count >= MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP) return null
+                        timestamps[count++] = sampleTimeUs
+                        previousTimestampUs = sampleTimeUs
+                    }
+                }
+                if (!extractor.advance()) break
+            }
+            if (count == 0) null else timestamps.copyOf(count)
+                .takeIf(::isValidVideoPresentationTimestampsUs)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { extractor.release() }
+        }
+    }
+
     /**
      * Builds a best-effort revision for disposable audio waveform caching.
      * Document providers expose last-modified in milliseconds; MediaStore's
