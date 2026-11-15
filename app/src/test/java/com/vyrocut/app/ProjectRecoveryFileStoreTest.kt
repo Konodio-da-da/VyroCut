@@ -82,9 +82,6 @@ class ProjectRecoveryFileStoreTest {
         assertEquals(1_001L, nextProjectRecoveryTimestampMs(1_000L, 1_000L))
         assertEquals(1_002L, nextProjectRecoveryTimestampMs(999L, 1_001L))
     }
-}
-
-
     @Test
     fun prefersMirroredAudioOnlyWhenPrimaryIsMissingOrMirrorCheckpointIsNewer() {
         assertTrue(shouldPreferMirroredAudioRecovery(false, null, null))
@@ -94,3 +91,5 @@ class ProjectRecoveryFileStoreTest {
         assertFalse(shouldPreferMirroredAudioRecovery(true, 100L, 99L))
         assertFalse(shouldPreferMirroredAudioRecovery(true, null, null))
     }
+
+}
