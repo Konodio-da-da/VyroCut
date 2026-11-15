@@ -805,7 +805,12 @@ internal fun isValidVideoPresentationTimestampsUs(timestampsUs: LongArray?): Boo
     return true
 }
 
-/** Small insertion-ordered LRU for decoded clip PTS indexes; null values cache unsupported sources. */
+/**
+ * Small insertion-ordered LRU for decoded clip PTS indexes; null values cache unsupported sources.
+ *
+ * The cache stores its own snapshot of a valid [LongArray]. Kotlin arrays are mutable, so retaining
+ * the caller's instance would let a later decoder/test mutation silently corrupt a cached index.
+ */
 internal fun cacheVideoFrameTimestampIndex(
     cache: Map<VideoFrameTimestampCacheKey, LongArray?>,
     key: VideoFrameTimestampCacheKey,
@@ -815,7 +820,10 @@ internal fun cacheVideoFrameTimestampIndex(
     require(maxEntries > 0)
     val updated = LinkedHashMap(cache)
     updated.remove(key)
-    updated[key] = timestampsUs?.takeIf(::isValidVideoPresentationTimestampsUs)
+    val validSnapshot = timestampsUs
+        ?.takeIf(::isValidVideoPresentationTimestampsUs)
+        ?.copyOf()
+    updated[key] = validSnapshot
     while (updated.size > maxEntries) {
         updated.remove(updated.keys.first())
     }

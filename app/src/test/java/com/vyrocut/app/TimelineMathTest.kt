@@ -1303,6 +1303,24 @@ class TimelineMathTest {
     }
 
     @Test
+    fun presentationTimestampCacheOwnsSnapshotOfMutableDecoderArray() {
+        val key = VideoFrameTimestampCacheKey("content://video/mutable", 0L, 1_000L)
+        val decoderOutput = longArrayOf(0L, 33_333L, 66_667L)
+        val cache = cacheVideoFrameTimestampIndex(emptyMap(), key, decoderOutput)
+        val cached = cache[key]
+
+        assertTrue(cached != null)
+        assertFalse(cached === decoderOutput)
+        assertTrue(cached!!.contentEquals(longArrayOf(0L, 33_333L, 66_667L)))
+
+        // Reusing or clearing the caller-owned source array must not mutate the cached PTS index.
+        decoderOutput[1] = 40_000L
+        decoderOutput[2] = -1L
+        assertTrue(cached.contentEquals(longArrayOf(0L, 33_333L, 66_667L)))
+        assertTrue(isValidVideoPresentationTimestampsUs(cached))
+    }
+
+    @Test
     fun touchingUnsupportedTimestampIndexRefreshesRecencyWithoutAddingMissingKeys() {
         val first = VideoFrameTimestampCacheKey("content://video/1", 0L, 1_000L)
         val unsupported = VideoFrameTimestampCacheKey("content://video/2", 0L, 1_000L)

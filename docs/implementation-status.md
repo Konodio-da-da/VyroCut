@@ -1,3 +1,9 @@
+## Current VFR timestamp-index ownership milestone — 15 November 2026
+- The bounded three-entry VFR timestamp LRU now stores a defensive copy of every valid decoder-produced `LongArray`. Later reuse or mutation of a decoder output buffer cannot silently corrupt a cached presentation-timestamp index.
+- Unsupported-source `null` entries and existing LRU recency semantics are unchanged; invalid indexes are still rejected before storage.
+- A pure Kotlin regression test mutates the original decoder array after insertion and verifies that the cached snapshot remains ordered and valid.
+- Last verified baseline before this change: `8a4b1d8fde3650496b9fab6a403bfb7ab6bb56fa` passed Android compilation, JVM unit tests, and debug APK upload in [run #433](https://github.com/Konodio-da-da/VyroCut/actions/runs/43698718551). This new commit requires its own Actions result.
+
 ## Current VFR timestamp-index LRU milestone — 15 November 2026
 - Successful timestamp-index cache hits now refresh insertion order, so the three-entry cache behaves as a true least-recently-used cache rather than evicting by original insertion order.
 - Both decoded indexes and cached unsupported-source results participate in recency updates. A lookup for a missing key does not insert an entry.

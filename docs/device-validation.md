@@ -135,6 +135,7 @@ Do not mark any of these device-only checks complete from CI results alone.
 7. Step repeatedly between three recently used clips, then index a fourth; revisit the first three and record whether hot indexes remain responsive while the least-recently-used index is the one that needs rebuilding. JVM tests verify the cache recency order.
 
 ## Variable-frame-rate preview frame stepping
+0. Repeat frame stepping after rapidly switching between source clips and reopening the Audio/Preview tools; verify the selected clip still resolves against its own source timestamps. JVM coverage confirms later mutation of the caller-owned timestamp array cannot alter the cached snapshot; actual MediaExtractor output and displayed-frame behaviour still require device validation.
 1. Import a VFR source with visibly irregular frame intervals and use Previous/Next Frame at several points. Confirm the target follows actual sample presentation timestamps rather than a constant nominal cadence.
 2. Trim the source at a timestamp between frames. Confirm the first seek displays the first available frame at/after trim IN, Next advances once, and Previous does not step outside the trim.
 3. Step across cuts between VFR, CFR, and mixed-rate clips. Confirm each clip uses its own source PTS index and the project playhead/audio lanes continue to use the existing synchronized project-clock seek path.
