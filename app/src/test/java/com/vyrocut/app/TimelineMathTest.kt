@@ -1145,4 +1145,161 @@ class TimelineMathTest {
         assertFalse(shouldPersistPreviewCheckpoint(nowElapsedMs = 1_000L, lastPersistedElapsedMs = -1L))
     }
 
+
+    @Test
+    fun variableFrameRateSteppingUsesActualIrregularPresentationTimestamps() {
+        val timestampsUs = longArrayOf(0L, 33_333L, 66_667L, 100_000L, 166_667L)
+        assertTrue(isValidVideoPresentationTimestampsUs(timestampsUs))
+        assertEquals(
+            100L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 67L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertEquals(
+            33L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 67L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+            ),
+        )
+        assertEquals(
+            167L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 120L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.NEXT,
+            ),
+        )
+        assertEquals(
+            100L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 120L,
+                clipDurationMs = 200L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+            ),
+        )
+    }
+
+    @Test
+    fun variableFrameRateSteppingHonoursTrimBoundsAndFirstPresentedFrame() {
+        val timestampsUs = longArrayOf(
+            0L, 33_333L, 66_667L, 100_000L, 166_667L, 200_000L,
+        )
+        assertEquals(
+            50L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 0L,
+                clipDurationMs = 130L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMs = 50L,
+            ),
+        )
+        assertEquals(
+            null,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 0L,
+                clipDurationMs = 130L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMs = 50L,
+            ),
+        )
+        assertEquals(
+            50L,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 117L,
+                clipDurationMs = 130L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMs = 50L,
+            ),
+        )
+        assertEquals(
+            null,
+            resolvePreviewFrameStepTargetFromTimestampsMs(
+                currentPositionMs = 117L,
+                clipDurationMs = 130L,
+                timestampsUs = timestampsUs,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMs = 50L,
+            ),
+        )
+    }
+
+    @Test
+    fun variableFrameRateSteppingCrossesClipsUsingEachTrimmedPtsIndex() {
+        val durations = listOf(100L, 100L)
+        val timestampsByClip = listOf(
+            longArrayOf(0L, 33_333L, 66_667L),
+            longArrayOf(5_000L, 25_000L, 70_000L),
+        )
+        assertEquals(
+            PreviewFrameStepTarget(1, 5L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(null, null),
+                currentClipIndex = 0,
+                currentPositionMs = 67L,
+                direction = PreviewFrameStepDirection.NEXT,
+                sourceStartMsByClip = listOf(0L, 0L),
+                presentationTimestampsUsByClip = timestampsByClip,
+            ),
+        )
+        assertEquals(
+            PreviewFrameStepTarget(0, 67L),
+            resolvePreviewFrameStepAcrossClips(
+                clipDurationsMs = durations,
+                frameRatesByClip = listOf(null, null),
+                currentClipIndex = 1,
+                currentPositionMs = 0L,
+                direction = PreviewFrameStepDirection.PREVIOUS,
+                sourceStartMsByClip = listOf(0L, 0L),
+                presentationTimestampsUsByClip = timestampsByClip,
+            ),
+        )
+    }
+
+    @Test
+    fun presentationTimestampIndexesRejectInvalidOrUnboundedSequences() {
+        assertFalse(isValidVideoPresentationTimestampsUs(null))
+        assertFalse(isValidVideoPresentationTimestampsUs(longArrayOf()))
+        assertFalse(isValidVideoPresentationTimestampsUs(longArrayOf(0L, 33_333L, 33_333L)))
+        assertFalse(isValidVideoPresentationTimestampsUs(longArrayOf(0L, 66_667L, 33_333L)))
+        assertFalse(isValidVideoPresentationTimestampsUs(longArrayOf(-1L, 33_333L)))
+        assertFalse(
+            isValidVideoPresentationTimestampsUs(
+                LongArray(MAX_VIDEO_FRAME_TIMESTAMPS_PER_CLIP + 1) { it.toLong() },
+            ),
+        )
+    }
+
+    @Test
+    fun presentationTimestampCacheIsBoundedLruAndRetainsUnsupportedSources() {
+        val first = VideoFrameTimestampCacheKey("content://video/1", 0L, 1_000L)
+        val second = VideoFrameTimestampCacheKey("content://video/2", 0L, 1_000L)
+        val third = VideoFrameTimestampCacheKey("content://video/3", 0L, 1_000L)
+        val fourth = VideoFrameTimestampCacheKey("content://video/4", 0L, 1_000L)
+        var cache = emptyMap<VideoFrameTimestampCacheKey, LongArray?>()
+
+        cache = cacheVideoFrameTimestampIndex(cache, first, longArrayOf(0L, 40_000L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, second, null, maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, third, longArrayOf(0L, 33_333L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, first, longArrayOf(0L, 41_000L), maxEntries = 3)
+        cache = cacheVideoFrameTimestampIndex(cache, fourth, null, maxEntries = 3)
+
+        assertEquals(listOf(third, first, fourth), cache.keys.toList())
+        assertTrue(cache.containsKey(fourth))
+        assertEquals(null, cache[fourth])
+        assertFalse(cache.containsKey(second))
+    }
+
 }
