@@ -130,6 +130,13 @@ internal fun publishExportToMovies(
     check(exportFileFingerprintsMatch(verifiedFingerprint, verifiedFingerprint)) {
         "The verified MP4 fingerprint is invalid"
     }
+
+    // A process death during Transformer can leave an app-private partial MP4.
+    // Retire only old VyroCut temporary exports, never this verified file.
+    file.parentFile?.let { directory ->
+        cleanupStaleExportTemporaryFiles(directory, protectedFile = file)
+    }
+
     var destination: Uri? = null
     try {
         val values = ContentValues().apply {
