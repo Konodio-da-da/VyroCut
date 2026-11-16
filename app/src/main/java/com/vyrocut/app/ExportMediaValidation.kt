@@ -16,7 +16,11 @@ internal fun verifyExportedMp4(
     file: File,
     sourceUris: List<String>,
     expectedDurationMs: Long,
-) {
+    clipDurationsMs: List<Long>,
+    expectedCanvasSize: ExportCanvasSize? = null,
+    canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
+    expectedBackgroundArgb: Int? = null,
+): ExportFileFingerprint {
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
     val extractor = MediaExtractor()
@@ -58,17 +62,25 @@ internal fun verifyExportedMp4(
             ?.takeIf { it.containsKey(MediaFormat.KEY_DURATION) }
             ?.let { runCatching { it.getLong(MediaFormat.KEY_DURATION) }.getOrNull() }
             ?: 0L
+        val videoWidthPx = videoFormat
+            ?.takeIf { it.containsKey(MediaFormat.KEY_WIDTH) }
+            ?.let { runCatching { it.getInteger(MediaFormat.KEY_WIDTH) }.getOrDefault(0) }
+            ?: 0
+        val videoHeightPx = videoFormat
+            ?.takeIf { it.containsKey(MediaFormat.KEY_HEIGHT) }
+            ?.let { runCatching { it.getInteger(MediaFormat.KEY_HEIGHT) }.getOrDefault(0) }
+            ?: 0
         val measuredDurationMs = if (declaredDurationUs > 0L) {
             declaredDurationUs / 1_000L
         } else {
             (lastVideoSampleTimeUs / 1_000L).coerceAtLeast(0L)
         }
-        ExportTrackSummary(videoSamples, audioSamples, measuredDurationMs)
+        ExportTrackSummary(videoSamples, audioSamples, measuredDurationMs, videoWidthPx, videoHeightPx)
     } finally {
         extractor.release()
     }
 
-    val sourceHasAudio = sourceUris.any { sourceUri ->
+    val sourceHasAudio = distinctExportSourceUris(sourceUris).any { sourceUri ->
         val source = MediaExtractor()
         try {
             source.setDataSource(context, Uri.parse(sourceUri), null)
@@ -80,13 +92,51 @@ internal fun verifyExportedMp4(
         }
     }
 
-    validateExportTrackSummary(summary, expectedDurationMs, sourceHasAudio)?.let { message ->
+    validateExportTrackSummary(summary, expectedDurationMs, sourceHasAudio, expectedCanvasSize)?.let { message ->
         error(message)
     }
+
+    // Demuxing proves that packets exist; decode real frames and PCM before
+    // publishing so a structurally valid but undecodable MP4 is never exposed.
+    expectedCanvasSize?.let { canvas ->
+        verifyExportedVideoFrames(file, clipDurationsMs, canvas)
+    }
+    if (expectedBackgroundArgb != null) {
+        check(canvasVisualClips.isNotEmpty()) {
+            "Source dimensions are unavailable for canvas background verification"
+        }
+        verifyExportedCanvasBackgroundPixels(
+            file = file,
+            canvasSize = expectedCanvasSize
+                ?: error("Canvas dimensions are required for background verification"),
+            clips = canvasVisualClips,
+            expectedBackgroundArgb = expectedBackgroundArgb,
+        )
+    }
+    if (sourceHasAudio) {
+        verifyExportedAudioSamples(file, expectedDurationMs)
+    }
+
+    // Bind publication to the exact bytes that passed demux and decoder validation.
+    return FileInputStream(file).use(::fingerprintExportStream)
 }
 
-/** Publishes only a fully verified export; a failed copy removes its pending MediaStore row. */
-internal fun publishExportToMovies(context: Context, file: File): Uri {
+/** Publishes only a fully verified export; a failed or altered copy removes its pending MediaStore row. */
+internal fun publishExportToMovies(
+    context: Context,
+    file: File,
+    verifiedFingerprint: ExportFileFingerprint,
+): Uri {
+    check(exportFileFingerprintsMatch(verifiedFingerprint, verifiedFingerprint)) {
+        "The verified MP4 fingerprint is invalid"
+    }
+
+    // A process death during Transformer can leave an app-private partial MP4.
+    // Retire only old VyroCut temporary exports, never this verified file.
+    file.parentFile?.let { directory ->
+        cleanupStaleExportTemporaryFiles(directory, protectedFile = file)
+    }
+
     var destination: Uri? = null
     try {
         val values = ContentValues().apply {
@@ -100,9 +150,20 @@ internal fun publishExportToMovies(context: Context, file: File): Uri {
             values,
         ) ?: error("Could not create a Movies library entry")
 
-        context.contentResolver.openOutputStream(destination!!)?.use { output ->
-            FileInputStream(file).use { input -> input.copyTo(output) }
+        val copiedFingerprint = context.contentResolver.openOutputStream(destination!!)?.use { output ->
+            FileInputStream(file).use { input -> copyAndFingerprintExport(input, output) }
         } ?: error("Could not write the exported video")
+        check(exportFileFingerprintsMatch(verifiedFingerprint, copiedFingerprint)) {
+            "The temporary MP4 changed after verification; the export was not published"
+        }
+
+        // MediaStore owns a separate copy. Read it back while the row is still pending
+        // and verify its bytes before making the video visible to other applications.
+        val storedFingerprint = context.contentResolver.openInputStream(destination!!)?.use(::fingerprintExportStream)
+            ?: error("Could not read back the saved Movies video")
+        check(exportFileFingerprintsMatch(verifiedFingerprint, storedFingerprint)) {
+            "The saved Movies video does not match the verified MP4"
+        }
 
         val publishedRows = context.contentResolver.update(
             destination!!,

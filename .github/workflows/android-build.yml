@@ -3,16 +3,17 @@ name: Android build
 on:
   pull_request:
     branches: [main, feat/android-foundation]
+    types: [opened, synchronize, reopened, edited]
   push:
-    branches: [main]
+    branches: [main, fix/capcut-workflow-ui]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Feature branches are validated by their pull-request event only; this avoids
-# duplicate push + pull-request builds competing for the same runner slot.
-# New commits supersede stale PR runs so the latest code gets CI capacity first.
+# The active editor feature branch also runs on push so every committed
+# milestone is verifiable before review. PR events continue to validate the
+# proposed changes against the target branch; newer runs supersede stale ones.
 concurrency:
   group: android-build-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true

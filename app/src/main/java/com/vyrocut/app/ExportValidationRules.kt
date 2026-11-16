@@ -4,6 +4,8 @@ internal data class ExportTrackSummary(
     val videoSampleCount: Long,
     val audioSampleCount: Long,
     val videoDurationMs: Long,
+    val videoWidthPx: Int = 0,
+    val videoHeightPx: Int = 0,
 )
 
 /**
@@ -14,10 +16,16 @@ internal fun validateExportTrackSummary(
     summary: ExportTrackSummary,
     expectedDurationMs: Long,
     sourceHasAudio: Boolean,
+    expectedCanvasSize: ExportCanvasSize? = null,
 ): String? {
     if (expectedDurationMs <= 0L) return "The project has no playable duration"
     if (summary.videoSampleCount <= 0L) return "The exported MP4 contains no readable video samples"
     if (summary.videoDurationMs <= 0L) return "The exported video has no measurable duration"
+    if (expectedCanvasSize != null &&
+        (summary.videoWidthPx != expectedCanvasSize.widthPx || summary.videoHeightPx != expectedCanvasSize.heightPx)
+    ) {
+        return "Export canvas ${summary.videoWidthPx}x${summary.videoHeightPx} does not match selected ${expectedCanvasSize.widthPx}x${expectedCanvasSize.heightPx} canvas"
+    }
 
     // Allow codec/frame-boundary rounding without accepting a materially truncated render.
     val durationToleranceMs = maxOf(250L, expectedDurationMs / 100L)
