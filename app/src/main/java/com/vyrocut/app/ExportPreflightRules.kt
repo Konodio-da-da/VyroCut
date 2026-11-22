@@ -25,11 +25,35 @@ internal data class ExportCanvasSize(
     }
 }
 
-/** Uses a fixed landscape, square, or portrait frame so every clip exports consistently. */
-internal fun exportCanvasSizeForPreset(preset: String): ExportCanvasSize = when (preset) {
-    "16:9" -> ExportCanvasSize(widthPx = 1_920, heightPx = 1_080)
-    "1:1" -> ExportCanvasSize(widthPx = 1_080, heightPx = 1_080)
-    else -> ExportCanvasSize(widthPx = 1_080, heightPx = 1_920)
+internal enum class ExportResolutionPreset(
+    val id: String,
+    val label: String,
+    val shortEdgePx: Int,
+) {
+    HD_720(id = "720p", label = "720p", shortEdgePx = 720),
+    FULL_HD_1080(id = "1080p", label = "1080p", shortEdgePx = 1_080);
+
+    companion object {
+        fun fromId(value: String?): ExportResolutionPreset =
+            values().firstOrNull { it.id == value } ?: FULL_HD_1080
+    }
+}
+
+/**
+ * Uses a fixed landscape, square, or portrait frame at the selected short-edge
+ * resolution. Keeping the short edge fixed preserves the existing canvas ratio
+ * while allowing export quality to be selected independently of the preview.
+ */
+internal fun exportCanvasSizeForPreset(
+    preset: String,
+    resolution: ExportResolutionPreset = ExportResolutionPreset.FULL_HD_1080,
+): ExportCanvasSize {
+    val shortEdge = resolution.shortEdgePx
+    return when (preset) {
+        "16:9" -> ExportCanvasSize(widthPx = shortEdge * 16 / 9, heightPx = shortEdge)
+        "1:1" -> ExportCanvasSize(widthPx = shortEdge, heightPx = shortEdge)
+        else -> ExportCanvasSize(widthPx = shortEdge, heightPx = shortEdge * 16 / 9)
+    }
 }
 
 internal data class ExportClipRequirement(
