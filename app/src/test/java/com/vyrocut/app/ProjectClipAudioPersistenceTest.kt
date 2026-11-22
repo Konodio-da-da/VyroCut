@@ -543,4 +543,53 @@ class ProjectClipAudioPersistenceTest {
         assertNull(runCatching { decodeProjectBackup(malformed) }.getOrNull())
     }
 
+
+    @Test
+    fun perClipHueShiftSurvivesProjectAndBackupSerializationAtSupportedBoundaries() {
+        val original = listOf(-180, -37, 0, 90, 180).mapIndexed { index, hue ->
+            EditClip(
+                id = "hue-$index",
+                uri = "content://media/hue-$index",
+                name = "Hue $hue",
+                sourceStartMs = 0L,
+                sourceEndMs = 2_000L,
+                visualAdjustments = ClipVisualAdjustments(hueShiftDegrees = hue),
+            )
+        }
+
+        val projectJson = encodeProject(original)
+        val encodedClips = org.json.JSONArray(projectJson)
+        original.indices.forEach { index ->
+            assertEquals(
+                original[index].visualAdjustments.hueShiftDegrees,
+                encodedClips.getJSONObject(index)
+                    .getJSONObject("visualAdjustments")
+                    .getInt("hueShiftDegrees"),
+            )
+        }
+        assertEquals(original, decodeProjectStrict(projectJson))
+
+        val backup = encodeProjectBackup(
+            name = "Hue project",
+            clips = original,
+            canvasSettings = ProjectCanvasSettings(),
+        )
+        assertEquals(13, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(original, decodeProjectBackup(backup).clips)
+    }
+
+    @Test
+    fun olderVisualAdjustmentPayloadDefaultsHueToZeroAndInvalidHueRejectsProject() {
+        val legacy = """[{"id":"legacy-hue","uri":"content://media/legacy-hue","name":"Legacy hue","start":0,"end":2000,"visualAdjustments":{"brightness":10,"contrast":-5,"saturation":20}}]"""
+        val restored = decodeProjectStrict(legacy)
+
+        assertNotNull(restored)
+        assertEquals(
+            ClipVisualAdjustments(brightness = 10, contrast = -5, saturation = 20),
+            restored!!.single().visualAdjustments,
+        )
+
+        val invalid = """[{"id":"invalid-hue","uri":"content://media/invalid-hue","name":"Invalid hue","start":0,"end":2000,"visualAdjustments":{"hueShiftDegrees":181}}]"""
+        assertNull(decodeProjectStrict(invalid))
+    }
 }
