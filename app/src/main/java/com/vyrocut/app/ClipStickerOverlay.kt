@@ -64,6 +64,25 @@ internal fun isValidClipStickerOverlayScale(scale: Float): Boolean =
 internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boolean =
     startMs >= 0L && (endMs == null || endMs > startMs)
 
+/**
+ * Updates a sticker's clip-local interval without allowing it to escape the owning clip.
+ * An end equal to the clip duration is stored as null, meaning "through clip end".
+ */
+internal fun updateClipStickerOverlayTiming(
+    overlay: ClipStickerOverlay,
+    clipDurationMs: Long,
+    requestedStartMs: Long,
+    requestedEndMs: Long,
+): ClipStickerOverlay? {
+    if (clipDurationMs <= 0L) return null
+    val startMs = requestedStartMs.coerceIn(0L, clipDurationMs - 1L)
+    val endMs = requestedEndMs.coerceIn(startMs + 1L, clipDurationMs)
+    return overlay.copy(
+        startMs = startMs,
+        endMs = endMs.takeIf { it < clipDurationMs },
+    )
+}
+
 internal fun isClipStickerOverlayVisibleAtMs(overlay: ClipStickerOverlay, positionMs: Long): Boolean =
     positionMs >= overlay.startMs && (overlay.endMs == null || positionMs < overlay.endMs)
 
