@@ -25,17 +25,17 @@ class ExportFrameRateRulesTest {
     }
 
     @Test
-    fun cappedPresetsExposeTheirExactMaximumFrameRates() {
+    fun cappedPresetsExposeTheirExactTargetFrameRates() {
         assertEquals(24f, exportFrameDropTargetRate(ExportFrameRatePreset.FPS_24)!!, 0f)
         assertEquals(30f, exportFrameDropTargetRate(ExportFrameRatePreset.FPS_30)!!, 0f)
         assertEquals(60f, exportFrameDropTargetRate(ExportFrameRatePreset.FPS_60)!!, 0f)
     }
 
     @Test
-    fun completionLabelsDescribeCapsRatherThanPromisingUpsampling() {
+    fun completionLabelsDescribeTargetsWithoutPromisingUpsampling() {
         assertEquals("Source FPS", ExportFrameRatePreset.SOURCE.summaryLabel)
-        assertEquals("Up to 24 FPS", ExportFrameRatePreset.FPS_24.summaryLabel)
-        assertEquals("Up to 30 FPS", ExportFrameRatePreset.FPS_30.summaryLabel)
-        assertEquals("Up to 60 FPS", ExportFrameRatePreset.FPS_60.summaryLabel)
+        assertEquals("Target 24 FPS", ExportFrameRatePreset.FPS_24.summaryLabel)
+        assertEquals("Target 30 FPS", ExportFrameRatePreset.FPS_30.summaryLabel)
+        assertEquals("Target 60 FPS", ExportFrameRatePreset.FPS_60.summaryLabel)
     }
 }

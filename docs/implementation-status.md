@@ -242,8 +242,8 @@ A control is only considered complete when its operation is connected to the pro
 - The completion state reports the actual output dimensions/resolution and keeps the existing Share action. Cancellation still invalidates the export session, calls Transformer.cancel, and removes its temporary output; late callbacks for an invalidated session remain ignored.
 - Pure Kotlin regression tests cover valid percentage bounds, ignored invalid values, and monotonic progress updates. Android CI verifies compilation and JVM tests only; real Transformer progress, cancellation timing, verification, and playback still require physical-device testing.
 
-## Export maximum frame-rate controls — 22 November 2026
-- Export settings now offer Source, 24, 30, and 60 FPS maximum-rate choices, stored per project in local preferences. Existing projects default to Source so their prior export cadence is not changed.
-- Selected caps are applied to each video clip in the Media3 Transformer composition with Media3 1.5.1 FrameDropEffect. Its default strategy compares source presentation timestamps and drops excess frames; it does not interpolate lower-rate clips.
-- The cap is export-only. Preview playback, the VFR source timestamp index, clip trim points, project clock, and audio-lane timing remain unchanged.
-- Pure Kotlin tests cover preference migration/defaults, every supported cap, source-cadence no-op behaviour, and truthful completion labels. CI must verify compilation and tests; actual frame cadence, export playback, and audio continuity remain device-validation items.
+## Export target frame-rate controls — 22 November 2026
+- Export settings now offer Source, 24, 30, and 60 FPS target-rate choices, stored per project in local preferences. Existing projects default to Source so their prior export cadence is not changed.
+- Selected targets are applied to each video clip in the Media3 Transformer composition with Media3 1.5.1 FrameDropEffect. Its default strategy compares source presentation timestamps and drops excess frames; it does not interpolate lower-rate clips.
+- The target is export-only. Preview playback, the VFR source timestamp index, clip trim points, project clock, and audio-lane timing remain unchanged.
+- Pure Kotlin tests cover preference migration/defaults, every supported target, source-cadence no-op behaviour, and truthful completion labels. CI must verify compilation and tests; actual frame cadence, export playback, and audio continuity remain device-validation items.

@@ -3082,7 +3082,7 @@ private fun VyroCutApp() {
                     fontSize = 9.sp,
                 )
                 Text(
-                    "MAX FPS",
+                    "TARGET FPS",
                     color = StudioMuted,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,
@@ -3106,7 +3106,7 @@ private fun VyroCutApp() {
                     }
                 }
                 Text(
-                    "Source keeps the current frame cadence. FPS caps drop excess frames using source timestamps; lower-rate clips are not interpolated.",
+                    "Media3 targets the selected average frame rate by dropping frames using source timestamps; lower-rate clips are not interpolated.",
                     color = StudioMuted,
                     fontSize = 9.sp,
                 )
