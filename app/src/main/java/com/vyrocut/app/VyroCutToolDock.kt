@@ -52,7 +52,7 @@ internal fun VyroCutToolDock(
         EditorTool("Adjust", Icons.Default.Tune),
     )
     Row(
-        Modifier.background(Color(0xFF1B201F), RoundedCornerShape(12.dp))
+        Modifier.background(VyroCutPalette.SurfaceToolbar, RoundedCornerShape(12.dp))
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 7.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -63,7 +63,7 @@ internal fun VyroCutToolDock(
             Column(
                 modifier = Modifier
                     .background(
-                        if (selected) Color(0xFF16483D) else Color.Transparent,
+                        if (selected) VyroCutPalette.SurfaceSelected else Color.Transparent,
                         RoundedCornerShape(9.dp)
                     )
                     .padding(horizontal = 7.dp, vertical = 4.dp),
@@ -78,13 +78,13 @@ internal fun VyroCutToolDock(
                         Icon(
                             tool.icon,
                             contentDescription = tool.title,
-                            tint = if (selected) Color(0xFF8AFFD8) else Color(0xFFB9CAC2),
+                            tint = if (selected) VyroCutPalette.AccentSoft else VyroCutPalette.TextMuted,
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             tool.title,
-                            color = if (selected) Color(0xFF8AFFD8) else Color(0xFFB9CAC2),
+                            color = if (selected) VyroCutPalette.AccentSoft else VyroCutPalette.TextMuted,
                             fontSize = 9.sp,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                             maxLines = 1
@@ -94,7 +94,7 @@ internal fun VyroCutToolDock(
                 Spacer(Modifier.height(2.dp))
                 Spacer(
                     Modifier.size(width = 18.dp, height = 2.dp)
-                        .background(if (selected) Color(0xFF8AFFD8) else Color.Transparent, RoundedCornerShape(2.dp))
+                        .background(if (selected) VyroCutPalette.AccentSoft else Color.Transparent, RoundedCornerShape(2.dp))
                 )
             }
         }
