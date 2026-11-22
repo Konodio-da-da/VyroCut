@@ -6,11 +6,8 @@ import org.junit.Test
 
 class StudioToolAvailabilityTest {
     @Test
-    fun effectsPanelExplainsThatPreviewAndExportAreUnchanged() {
-        assertEquals(
-            "Effects aren't available yet. This panel does not apply anything to preview or export.",
-            unavailableStudioToolMessage("Effects"),
-        )
+    fun implementedHueEffectDoesNotShowAnUnavailableWarning() {
+        assertNull(unavailableStudioToolMessage("Effects"))
     }
 
     @Test
@@ -23,7 +20,7 @@ class StudioToolAvailabilityTest {
 
     @Test
     fun implementedToolsDoNotShowUnavailableWarnings() {
-        listOf("Edit", "Audio", "Text", "Filters", "Ratio", "Canvas", "Adjust").forEach { tool ->
+        listOf("Edit", "Audio", "Text", "Filters", "Ratio", "Canvas", "Adjust", "Effects").forEach { tool ->
             assertNull("$tool should remain available", unavailableStudioToolMessage(tool))
         }
     }
