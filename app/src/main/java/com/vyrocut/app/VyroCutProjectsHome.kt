@@ -27,11 +27,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val HomeBackground = Color(0xFF111111)
-private val HomePanel = Color(0xFF1C1C1C)
-private val HomePanelHigh = Color(0xFF292929)
-private val HomeAccent = Color(0xFF12E6B8)
-private val HomeMuted = Color(0xFFB8C4C0)
+private val HomeBackground = VyroCutPalette.Background
+private val HomePanel = VyroCutPalette.Surface
+private val HomePanelHigh = VyroCutPalette.SurfaceElevated
+private val HomeAccent = VyroCutPalette.Accent
+private val HomeMuted = VyroCutPalette.TextMuted
 
 @Composable
 internal fun VyroCutProjectsHome(
@@ -123,7 +123,7 @@ internal fun VyroCutProjectsHome(
                 Modifier.fillMaxWidth()
                     .height(176.dp)
                     .background(
-                        Brush.linearGradient(listOf(Color(0xFF202725), Color(0xFF171918))),
+                        Brush.linearGradient(listOf(VyroCutPalette.HeroGradientStart, VyroCutPalette.HeroGradientEnd)),
                         RoundedCornerShape(16.dp),
                     )
                     .clickable { onNewProject() }
@@ -135,12 +135,12 @@ internal fun VyroCutProjectsHome(
                     Icon(
                         Icons.Default.Add,
                         "New project",
-                        tint = Color(0xFF00382A),
+                        tint = VyroCutPalette.AccentInk,
                         modifier = Modifier.padding(13.dp).size(34.dp),
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("New project", color = Color(0xFFE8E8E8), fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("New project", color = VyroCutPalette.TextPrimary, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Import videos from your device and start editing",
@@ -206,7 +206,7 @@ internal fun VyroCutProjectsHome(
                     Box(
                         Modifier.size(76.dp, 68.dp)
                             .background(
-                                Brush.linearGradient(listOf(Color(0xFF34443E), Color(0xFF252A28))),
+                                Brush.linearGradient(listOf(VyroCutPalette.ThumbnailGradientStart, VyroCutPalette.SurfaceClip)),
                                 RoundedCornerShape(8.dp),
                             ),
                         contentAlignment = Alignment.Center,
@@ -221,7 +221,7 @@ internal fun VyroCutProjectsHome(
                                 Text(
                                     "OPEN",
                                     Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                                    color = Color(0xFF00382A),
+                                    color = VyroCutPalette.AccentInk,
                                     fontSize = 8.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
