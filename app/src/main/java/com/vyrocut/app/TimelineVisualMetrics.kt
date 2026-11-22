@@ -4,6 +4,7 @@ internal const val TIMELINE_RULER_HEIGHT_DP = 26
 internal const val TIMELINE_VIDEO_TRACK_HEIGHT_DP = 70
 internal const val TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP = 42
 internal const val TIMELINE_TEXT_ROW_HEIGHT_DP = 28
+internal const val TIMELINE_STICKER_ROW_HEIGHT_DP = 28
 internal const val TIMELINE_SOURCE_TRACK_HEIGHT_DP = 30
 internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = 32
 internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 12
@@ -19,3 +20,11 @@ internal const val TIMELINE_CLIP_META_FONT_SP = 9
  */
 internal fun timelineTextTrackHeightDp(layerCount: Int): Int =
     layerCount.coerceIn(1, MAX_CLIP_TEXT_OVERLAYS) * TIMELINE_TEXT_ROW_HEIGHT_DP
+
+
+/**
+ * Returns the vertical space needed by the visible sticker-overlay rows.
+ * Keep the calculation bounded by the same overlay limit used by editing.
+ */
+internal fun timelineStickerTrackHeightDp(layerCount: Int): Int =
+    layerCount.coerceIn(1, MAX_CLIP_STICKER_OVERLAYS) * TIMELINE_STICKER_ROW_HEIGHT_DP

@@ -199,6 +199,29 @@ internal fun decodeClipStickerOverlay(
     return ClipStickerOverlay(normalized, scale, decodedPosition, startMs, endMs)
 }
 
+internal data class ClipStickerOverlayTimelineBounds(
+    val startOffsetPx: Float,
+    val widthPx: Float,
+)
+
+/** Maps a clip-local sticker interval onto its row inside the owning video clip. */
+internal fun calculateClipStickerOverlayTimelineBounds(
+    trackWidthPx: Float,
+    clipDurationMs: Long,
+    overlay: ClipStickerOverlay,
+): ClipStickerOverlayTimelineBounds? {
+    if (!trackWidthPx.isFinite() || trackWidthPx <= 0f || clipDurationMs <= 0L) return null
+    val startMs = overlay.startMs.coerceIn(0L, clipDurationMs)
+    val endMs = (overlay.endMs ?: clipDurationMs).coerceIn(0L, clipDurationMs)
+    if (endMs <= startMs) return null
+    val start = trackWidthPx * (startMs.toDouble() / clipDurationMs.toDouble()).toFloat()
+    val end = trackWidthPx * (endMs.toDouble() / clipDurationMs.toDouble()).toFloat()
+    return ClipStickerOverlayTimelineBounds(
+        startOffsetPx = start.coerceIn(0f, trackWidthPx),
+        widthPx = (end - start).coerceIn(0f, trackWidthPx - start).coerceAtLeast(1f),
+    )
+}
+
 internal data class ClipStickerOverlayBitmapSize(val widthPx: Int, val heightPx: Int)
 
 internal fun calculateClipStickerOverlayBitmapSize(

@@ -203,6 +203,7 @@ private fun VyroCutApp() {
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedAdjustment by remember { mutableStateOf("Brightness") }
     var selectedStickerPosition by remember { mutableStateOf(ClipStickerPosition.BOTTOM_RIGHT) }
+    var selectedStickerLayerIndex by remember(activeProjectId) { mutableIntStateOf(-1) }
         val initialCanvasSettings = remember {
         decodeProjectCanvasSettings(
             preferences.getString("project_" + activeProjectId + "_canvas_settings", null)
@@ -1488,20 +1489,33 @@ private fun VyroCutApp() {
             raw = symbol,
             position = selectedStickerPosition.name,
         ) ?: return
+        val addedIndex = clip.allStickerOverlays.size
         commitSelectedClipStickerOverlays(
             clip,
             clip.allStickerOverlays + overlay,
             "Sticker added to this clip",
         )
+        selectedStickerLayerIndex = addedIndex
     }
     fun removeSelectedClipSticker(overlayIndex: Int) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (overlayIndex !in clip.allStickerOverlays.indices) return
+        val remaining = clip.allStickerOverlays.filterIndexed { index, _ -> index != overlayIndex }
         commitSelectedClipStickerOverlays(
             clip,
-            clip.allStickerOverlays.filterIndexed { index, _ -> index != overlayIndex },
+            remaining,
             "Sticker removed",
         )
+        selectedStickerLayerIndex = if (remaining.isEmpty()) {
+            -1
+        } else {
+            when {
+                selectedStickerLayerIndex == overlayIndex ->
+                    (overlayIndex - 1).coerceIn(0, remaining.lastIndex)
+                selectedStickerLayerIndex > overlayIndex -> selectedStickerLayerIndex - 1
+                else -> selectedStickerLayerIndex.coerceIn(0, remaining.lastIndex)
+            }
+        }
     }
     fun updateSelectedClipStickerTiming(
         overlayIndex: Int,
@@ -2117,6 +2131,21 @@ private fun VyroCutApp() {
                             )
                             seekPreviewToTimelinePosition(
                                 calculateTimelinePositionMs(clipDurationsMs, index, positionMs),
+                            )
+                        }
+                    },
+                    onSelectSticker = { index, layerIndex ->
+                        clips.getOrNull(index)?.let { clip ->
+                            selectedIndex = index
+                            selectedStickerLayerIndex = layerIndex.takeIf {
+                                it in clip.allStickerOverlays.indices
+                            } ?: -1
+                            activeTool = "Stickers"
+                            val localPositionMs = clip.allStickerOverlays.getOrNull(layerIndex)?.startMs
+                                ?.coerceIn(0L, (clip.durationMs - 1L).coerceAtLeast(0L))
+                                ?: 0L
+                            seekPreviewToTimelinePosition(
+                                calculateTimelinePositionMs(clipDurationsMs, index, localPositionMs),
                             )
                         }
                     }
@@ -2758,7 +2787,14 @@ private fun VyroCutApp() {
                                     }
                                     Column(
                                         Modifier.fillMaxWidth()
-                                            .background(StudioBackground, RoundedCornerShape(8.dp))
+                                            .background(
+                                                if (selectedStickerLayerIndex == index) {
+                                                    VyroCutPalette.SurfaceSelected
+                                                } else {
+                                                    StudioBackground
+                                                },
+                                                RoundedCornerShape(8.dp),
+                                            )
                                             .padding(horizontal = 8.dp, vertical = 6.dp),
                                         verticalArrangement = Arrangement.spacedBy(3.dp),
                                     ) {
@@ -4271,6 +4307,7 @@ private fun TimelineEditorStrip(
     onSelectAudioTrack: (AudioTrackClip) -> Unit,
     onSeek: (TimelineSeekTarget) -> Unit,
     onSelectText: (Int, Int) -> Unit,
+    onSelectSticker: (Int, Int) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
@@ -4532,6 +4569,83 @@ private fun TimelineEditorStrip(
                 Modifier.offset(x = markerX.dp)
                     .width(2.dp)
                     .height(textTrackHeight)
+                    .background(StudioAccent),
+            )
+        }
+
+        val stickerLayerCount = maxOf(
+            1,
+            clips.maxOfOrNull { it.allStickerOverlays.size } ?: 0,
+        ).coerceAtMost(MAX_CLIP_STICKER_OVERLAYS)
+        val stickerTrackHeight = timelineStickerTrackHeightDp(stickerLayerCount).dp
+        Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
+            Text("STICKERS", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.width(8.dp))
+            Text("Timed emoji overlays • tap a segment to edit its timing", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+        }
+        Box(Modifier.width(totalWidth).height(stickerTrackHeight)) {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    Column(Modifier.width(clipWidths[index].dp)) {
+                        repeat(stickerLayerCount) { layerIndex ->
+                            val overlay = clip.allStickerOverlays.getOrNull(layerIndex)
+                            Box(
+                                Modifier.fillMaxWidth()
+                                    .height(TIMELINE_STICKER_ROW_HEIGHT_DP.dp)
+                                    .background(VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp)),
+                            ) {
+                                if (overlay == null) {
+                                    if (
+                                        layerIndex == clip.allStickerOverlays.size &&
+                                        clip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS
+                                    ) {
+                                        Text(
+                                            "+ Add sticker",
+                                            color = StudioMuted,
+                                            fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
+                                            maxLines = 1,
+                                            modifier = Modifier.fillMaxSize()
+                                                .clickable { onSelectSticker(index, layerIndex) }
+                                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                                        )
+                                    }
+                                } else {
+                                    val bounds = calculateClipStickerOverlayTimelineBounds(
+                                        trackWidthPx = clipWidths[index],
+                                        clipDurationMs = clip.durationMs,
+                                        overlay = overlay,
+                                    )
+                                    bounds?.let { segment ->
+                                        Box(
+                                            Modifier.offset(x = segment.startOffsetPx.dp)
+                                                .width(segment.widthPx.dp)
+                                                .fillMaxHeight()
+                                                .background(
+                                                    VyroCutPalette.SurfaceSelectedTimeline,
+                                                    RoundedCornerShape(4.dp),
+                                                )
+                                                .clickable { onSelectSticker(index, layerIndex) }
+                                                .padding(horizontal = 4.dp),
+                                            contentAlignment = Alignment.CenterStart,
+                                        ) {
+                                            Text(
+                                                overlay.symbol,
+                                                color = StudioAccent,
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Box(
+                Modifier.offset(x = markerX.dp)
+                    .width(2.dp)
+                    .height(stickerTrackHeight)
                     .background(StudioAccent),
             )
         }

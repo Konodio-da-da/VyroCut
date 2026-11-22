@@ -146,6 +146,47 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerTimelineBoundsMapClipLocalInAndOutToTrackWidth() {
+        val fullClip = calculateClipStickerOverlayTimelineBounds(
+            trackWidthPx = 120f,
+            clipDurationMs = 6_000L,
+            overlay = ClipStickerOverlay("🔥"),
+        )
+        assertEquals(0f, fullClip!!.startOffsetPx, 0.001f)
+        assertEquals(120f, fullClip.widthPx, 0.001f)
+
+        val timed = calculateClipStickerOverlayTimelineBounds(
+            trackWidthPx = 120f,
+            clipDurationMs = 6_000L,
+            overlay = ClipStickerOverlay("✨", startMs = 1_500L, endMs = 4_500L),
+        )
+        assertEquals(30f, timed!!.startOffsetPx, 0.001f)
+        assertEquals(60f, timed.widthPx, 0.001f)
+    }
+
+    @Test
+    fun stickerTimelineBoundsClampToClipAndRejectInvalidGeometry() {
+        val clamped = calculateClipStickerOverlayTimelineBounds(
+            trackWidthPx = 80f,
+            clipDurationMs = 4_000L,
+            overlay = ClipStickerOverlay("🚀", startMs = 3_000L, endMs = 9_000L),
+        )
+        assertEquals(60f, clamped!!.startOffsetPx, 0.001f)
+        assertEquals(20f, clamped.widthPx, 0.001f)
+
+        assertNull(calculateClipStickerOverlayTimelineBounds(0f, 4_000L, ClipStickerOverlay("🔥")))
+        assertNull(calculateClipStickerOverlayTimelineBounds(Float.NaN, 4_000L, ClipStickerOverlay("🔥")))
+        assertNull(calculateClipStickerOverlayTimelineBounds(80f, 0L, ClipStickerOverlay("🔥")))
+        assertNull(
+            calculateClipStickerOverlayTimelineBounds(
+                80f,
+                4_000L,
+                ClipStickerOverlay("🔥", startMs = 5_000L),
+            ),
+        )
+    }
+
+    @Test
     fun bitmapSizingPreservesAspectRatioAndCapsLongEdge() {
         assertEquals(
             ClipStickerOverlayBitmapSize(1_080, 1_920),
