@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -168,6 +169,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
+    val editorPreviewHeight = editorPreviewHeightDp(LocalConfiguration.current.screenHeightDp)
     val exportScope = rememberCoroutineScope()
     val previewScope = rememberCoroutineScope()
     val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
@@ -1776,6 +1778,7 @@ private fun VyroCutApp() {
             } else {
             Column(
                 Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -1793,7 +1796,7 @@ private fun VyroCutApp() {
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
                 Box(
-                    Modifier.fillMaxWidth().height(148.dp)
+                    Modifier.fillMaxWidth().height(editorPreviewHeight.dp)
                         .background(canvasBackground, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
