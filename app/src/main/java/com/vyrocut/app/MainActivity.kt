@@ -76,6 +76,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.SeekParameters
 import androidx.media3.ui.PlayerView
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.FrameDropEffect
 import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
@@ -220,6 +221,13 @@ private fun VyroCutApp() {
         mutableStateOf(
             ExportResolutionPreset.fromId(
                 preferences.getString("project_${activeProjectId}_export_resolution", null),
+            ),
+        )
+    }
+    var exportFrameRatePreset by remember(activeProjectId) {
+        mutableStateOf(
+            ExportFrameRatePreset.fromId(
+                preferences.getString("project_${activeProjectId}_export_frame_rate", null),
             ),
         )
     }
@@ -3073,6 +3081,35 @@ private fun VyroCutApp() {
                     color = StudioMuted,
                     fontSize = 9.sp,
                 )
+                Text(
+                    "MAX FPS",
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    ExportFrameRatePreset.values().forEach { preset ->
+                        FilterChip(
+                            selected = exportFrameRatePreset == preset,
+                            onClick = {
+                                exportFrameRatePreset = preset
+                                preferences.edit()
+                                    .putString("project_${activeProjectId}_export_frame_rate", preset.id)
+                                    .apply()
+                            },
+                            enabled = !isExporting && !isReadingMedia,
+                            label = { Text(preset.label, fontSize = 10.sp) },
+                        )
+                    }
+                }
+                Text(
+                    "Source keeps the current frame cadence. FPS caps drop excess frames using source timestamps; lower-rate clips are not interpolated.",
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
@@ -3082,6 +3119,8 @@ private fun VyroCutApp() {
                                 val exportAudioTracks = audioTrackClips.toList()
                                 val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
                                 val exportResolution = exportResolutionPreset
+                                val exportFrameRate = exportFrameRatePreset
+                                val exportFrameDropTargetFps = exportFrameDropTargetRate(exportFrameRate)
                                 val exportCanvasSize = exportCanvasSizeForPreset(
                                     exportCanvasSettings.aspectRatioPreset,
                                     exportResolution,
@@ -3226,6 +3265,12 @@ private fun VyroCutApp() {
                                                         .build()
                                                 ).build()
                                             val videoEffects = mutableListOf<androidx.media3.common.Effect>()
+                                            // FrameDropEffect selects frames by their source presentation
+                                            // timestamps, so VFR sources are capped without changing the
+                                            // editor's source timestamp index or the shared audio clock.
+                                            exportFrameDropTargetFps?.let { targetFps ->
+                                                videoEffects += FrameDropEffect.createDefaultFrameDropEffect(targetFps)
+                                            }
                                             videoEffects += createClipVisualEffects(clip.visualAdjustments)
                                             videoEffects += Presentation.createForWidthAndHeight(
                                                 exportCanvasSize.widthPx,
@@ -3365,7 +3410,7 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • MP4"
+                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • MP4"
                                                             exportUiStage = ExportUiStage.COMPLETE
                                                             exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {
