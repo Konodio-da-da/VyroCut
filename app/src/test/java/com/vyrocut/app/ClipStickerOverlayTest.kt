@@ -64,6 +64,47 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun timingUpdatesStayInsideTheClipAndUseClipEndSentinel() {
+        val sticker = ClipStickerOverlay("🔥", startMs = 500L, endMs = 2_500L)
+
+        assertEquals(
+            ClipStickerOverlay("🔥", startMs = 1_000L, endMs = 4_000L),
+            updateClipStickerOverlayTiming(
+                sticker,
+                clipDurationMs = 5_000L,
+                requestedStartMs = 1_000L,
+                requestedEndMs = 4_000L,
+            ),
+        )
+        assertEquals(
+            ClipStickerOverlay("🔥", startMs = 0L),
+            updateClipStickerOverlayTiming(
+                sticker,
+                clipDurationMs = 5_000L,
+                requestedStartMs = -100L,
+                requestedEndMs = 9_000L,
+            ),
+        )
+        assertEquals(
+            ClipStickerOverlay("🔥", startMs = 4_999L),
+            updateClipStickerOverlayTiming(
+                sticker,
+                clipDurationMs = 5_000L,
+                requestedStartMs = 9_000L,
+                requestedEndMs = 1_000L,
+            ),
+        )
+        assertNull(
+            updateClipStickerOverlayTiming(
+                sticker,
+                clipDurationMs = 0L,
+                requestedStartMs = 0L,
+                requestedEndMs = 0L,
+            ),
+        )
+    }
+
+    @Test
     fun splitKeepsOnlyTheVisibleStickerIntervalOnEachVideoHalf() {
         val sticker = ClipStickerOverlay(
             "🚀",
