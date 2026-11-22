@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#131313", "outline-variant": "#3b4a44", "surface-container-highest": "#353534", "outline": "#84948d", "surface-container-high": "#2a2a2a", "tertiary-fixed-dim": "#ffb4aa", "surface-tint": "#00e0b2", "surface-container-low": "#1c1b1b", "on-surface-variant": "#b9cac2", "on-primary-fixed-variant": "#00513e", "on-primary-fixed": "#002117", "inverse-on-surface": "#313030", "on-primary": "#00382a", "tertiary": "#ffe4e0", "on-secondary-container": "#00616d", "on-primary-container": "#00634d", "tertiary-fixed": "#ffdad5", "surface-dim": "#131313", "primary": "#8affd8", "on-tertiary": "#690004", "on-secondary-fixed": "#001f24", "inverse-surface": "#e5e2e1", "surface-variant": "#353534", "primary-fixed": "#42fecc", "on-tertiary-fixed-variant": "#930007", "error": "#ffb4ab", "secondary": "#bdf4ff", "inverse-primary": "#006b54", "on-error": "#690005", "on-background": "#e5e2e1", "tertiary-container": "#ffbeb6", "on-secondary-fixed-variant": "#004f58", "secondary-container": "#00e3fd", "on-error-container": "#ffdad6", "secondary-fixed": "#9cf0ff", "on-tertiary-container": "#b2000c", "on-secondary": "#00363d", "error-container": "#93000a", "surface-bright": "#393939", "primary-fixed-dim": "#00e0b2", "on-tertiary-fixed": "#410001", "surface-container-lowest": "#0e0e0e", "surface-container": "#201f1f", "on-surface": "#e5e2e1", "surface": "#131313", "primary-container": "#0fe8b8", "secondary-fixed-dim": "#00daf3" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "gutter-desktop": "1rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-xl": "1.5rem", "margin-desktop": "1.5rem", "margin": "0.75rem", "space-xs": "0.25rem", "gutter": "0.5rem", "space-md": "0.75rem" }, "fontFamily": { "label-md": ["Inter"], "title-md": ["Inter"], "headline-lg": ["Inter"], "timecode-sm": ["JetBrains Mono"], "body-sm": ["Inter"], "display-lg": ["Inter"], "label-xs": ["Inter"], "timecode-lg": ["JetBrains Mono"], "headline-sm": ["Inter"], "body-md": ["Inter"] }, "fontSize": { "label-md": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "title-md": ["15px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "timecode-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-xs": ["9px", { "lineHeight": "12px", "letterSpacing": "0.04em", "fontWeight": "600" }], "timecode-lg": ["16px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md text-body-md flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-14 px-margin flex items-center justify-between gap-space-sm"><button class="w-11 h-11 flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[22px]">close</span></button><h1 class="font-title-md text-title-md text-on-surface truncate text-center">Editor Studio</h1><div class="flex items-center gap-space-xs"><button class="h-8 px-space-md rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-label-md text-label-md flex items-center justify-center transition-colors">Done</button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-24 bg-surface"><div class="flex flex-col w-full text-on-surface select-none pb-4">
+<!-- Video Canvas & Scrubbing Stage -->
+<section class="relative w-full px-margin pt-space-xs flex flex-col items-center">
+<!-- Viewport Container (9:16 vertical ratio framed in studio stage) -->
+<div class="relative w-full max-w-[290px] aspect-[9/14] bg-surface-container-lowest rounded-xl overflow-hidden shadow-2xl flex flex-col justify-between">
+<!-- Media Preview Layer -->
+<div class="absolute inset-0 z-0">
+<img class="w-full h-full object-cover transition-transform duration-300" data-alt="Cinematic street portrait of a cool dancer mid-motion under neon city lights at night, electric cyan and turquoise ambient glow, sharp focus, cinematic anamorphic lens style, dark matte background with chromatic fringe" id="preview-media" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCUhm6dl-jugQ18phJpmMRLAVY9v3Vw9WDmtv6qpXoqF7StXwLhrg2iDdkw0r2o9UkWkI_g22jv6tPElq1I07kNKjjWXQQ9oaxtkdFMpFEXM2NeGuMDUJP3-_UYQtiI-S5Epi6Ak8nR4uvT7WJpfr8udLV1BhDHaBw0vio62n5aEpQV1s6AsFz27YGyXhh2yPqN_MSUeSS7RDDO_y0aVf4-jtDG4PapoVGUg3fG3dGZ"/>
+<!-- Active Effect Simulated Overlay (Edge Glow + Chromatic Tint) -->
+<div class="absolute inset-0 pointer-events-none mix-blend-screen opacity-90 transition-opacity duration-300 shadow-[inset_0_0_40px_rgba(15,232,184,0.65)]" id="effect-overlay"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest/80 via-transparent to-surface-container-lowest/40 pointer-events-none"></div>
+</div>
+<!-- Canvas Top Micro Bar (Resolution & Timecode) -->
+<div class="relative z-10 p-space-sm flex items-center justify-between">
+<div class="bg-surface-container-lowest/70 backdrop-blur-md px-space-xs py-0.5 rounded-lg flex items-center gap-1 text-on-surface-variant font-timecode-sm text-timecode-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary-container animate-pulse"></span>
+<span>1080P</span>
+<span class="text-outline">·</span>
+<span>60 FPS</span>
+</div>
+<div class="bg-surface-container-lowest/70 backdrop-blur-md px-space-xs py-0.5 rounded-lg text-primary font-timecode-sm text-timecode-sm">
+          00:03.18 / 00:15.00
+        </div>
+</div>
+<!-- Playback Floating Controls Center -->
+<div class="relative z-10 self-center">
+<button class="w-11 h-11 rounded-full bg-surface-container-lowest/60 backdrop-blur-md flex items-center justify-center text-on-surface hover:scale-105 active:scale-95 transition-transform shadow-lg" id="play-btn">
+<span class="material-symbols-outlined text-[24px]">play_arrow</span>
+</button>
+</div>
+<!-- Canvas Bottom Mini Timeline Track Strip -->
+<div class="relative z-10 p-space-sm bg-surface-container-lowest/80 backdrop-blur-lg flex flex-col gap-1.5">
+<div class="w-full flex items-center justify-between font-timecode-sm text-timecode-sm text-on-surface-variant">
+<span class="text-primary font-medium">FX: Edge Glow</span>
+<span class="text-on-surface-variant">00:01.20 - 00:06.45</span>
+</div>
+<!-- Segmented Scrubber Track -->
+<div class="relative w-full h-4 bg-surface-container-high rounded flex items-center px-1 overflow-hidden">
+<div class="h-2 rounded bg-surface-container-highest w-full relative">
+<!-- Cut Clips -->
+<div class="absolute left-[15%] w-[45%] h-full bg-primary-container/40 rounded flex items-center">
+<div class="w-full h-0.5 bg-primary-container"></div>
+</div>
+<!-- Playhead Pin -->
+<div class="absolute left-[38%] top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center">
+<div class="w-1.5 h-3.5 bg-primary-container rounded-full shadow-[0_0_8px_rgba(15,232,184,0.8)]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CapCut Active Editing Modal / Bottom Sheet -->
+<section class="mt-space-md w-full bg-surface-container-low rounded-t-xl shadow-[0_-8px_30px_rgba(0,0,0,0.6)] flex flex-col overflow-hidden">
+<!-- Drag Handle / Grab Notch -->
+<div class="w-full pt-space-xs pb-1 flex justify-center items-center">
+<div class="w-9 h-1 rounded-full bg-surface-container-highest"></div>
+</div>
+<!-- Tier 1: Main Category Tabs Navigation -->
+<div class="w-full px-margin flex items-center justify-between overflow-x-auto no-scrollbar gap-space-lg pb-1">
+<button class="relative py-2 text-on-surface font-title-md text-title-md shrink-0 flex flex-col items-center group">
+<span>Video effects</span>
+<span class="absolute bottom-0 w-5 h-0.5 rounded-full bg-primary-container shadow-[0_0_6px_rgba(15,232,184,0.8)]"></span>
+</button>
+<button class="py-2 text-outline font-title-md text-title-md shrink-0 hover:text-on-surface transition-colors">
+        Body effects
+      </button>
+<button class="py-2 text-outline font-title-md text-title-md shrink-0 hover:text-on-surface transition-colors">
+        Photo effects
+      </button>
+<button class="py-2 text-outline font-title-md text-title-md shrink-0 flex items-center gap-1 hover:text-on-surface transition-colors">
+<span>AI effects</span>
+<span class="px-1 py-0.2 rounded bg-surface-container-high text-primary font-label-xs text-label-xs uppercase">New</span>
+</button>
+</div>
+<!-- Tier 2: Sub-category Horizon Pills Bar -->
+<div class="w-full px-margin py-2 flex items-center gap-2 overflow-x-auto no-scrollbar">
+<button class="px-3 py-1.5 rounded-full bg-surface-container-highest text-primary font-label-md text-label-md whitespace-nowrap shadow-sm">
+        Trending
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Opening &amp; Closing
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Lens
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Glitch
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Distort
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Retro
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Light effect
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Party
+      </button>
+<button class="px-3 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors">
+        Split
+      </button>
+</div>
+<!-- Active Parameters Quick-Adjust Drawer (CapCut Signature Real-Time Slider) -->
+<div class="mx-margin mt-1 mb-2 px-space-md py-space-sm bg-surface-container-high rounded-xl flex flex-col gap-1.5 transition-all" id="slider-drawer">
+<div class="flex items-center justify-between text-on-surface font-label-md text-label-md">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">tune</span>
+<span class="font-medium">Intensity (Edge Glow)</span>
+</div>
+<span class="font-timecode-sm text-timecode-sm text-primary" id="slider-val">68</span>
+</div>
+<div class="relative w-full h-6 flex items-center">
+<input class="w-full h-1 bg-surface-container-lowest rounded-lg appearance-none cursor-pointer accent-primary-container" id="effect-slider" max="100" min="0" type="range" value="68"/>
+</div>
+</div>
+<!-- Effects Cards Grid (3 Columns) -->
+<div class="px-margin pt-1 pb-3 grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-[290px] overflow-y-auto overscroll-contain">
+<!-- Card 1: Edge Glow (Selected Active State) -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all ring-2 ring-primary-container shadow-md" data-effect="Edge Glow" data-intensity="68">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Graphic icon of electric neon turquoise silhouette glow edge line art on pitch black dark background, vector render, studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDl1PN9KKC1lBTNMjARBXLyc0s9_eIcBuSOKJEMz5XTFOrjbyahwbXdq3NToohG6l6_B5_S1M9z2ds8d5CW6cL0Nu4iW3YzxWhKQY-8FmNp-LTkHA2o_RhvMxJ_-T05EMZ93Rye_ZAJPkHJjDRLJnakprW591UkuxsBmyJfO8JdBVeV8SAMc42YxgoenlEh9b4OcNTT41VejtgyU7XgppvJx2scNHTVbb1XNL8789I3"/>
+<!-- Selected CapCut Indicator Badge -->
+<div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-md">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+</div>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-primary font-medium">Edge Glow</span>
+</button>
+<!-- Card 2: Camera Shake -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Camera Shake" data-intensity="45">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Digital motion camera shake jitter blur trail frame showing abstract geometric distortion on black background, moody dark cinematic effect" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5YdhVgy82PluD49O7RLuI1zhrxlhe0RFRjNdPqiZUKNatPB_vX7GF1ZgtQ6QyVgUUzGMx7IULpsOt8Ldd5vD2TaWBtb0QtrhaHeOfsKoMd3DH3IVHoTwrtQVfDOFArhEM2jIQswsI2nlRdRAkJrzl6oaHov7pLb-gQnZtu1K5cjZqO_FdJcqrUGlF4w37e7TdClUpiW1WsMax9-JBjNPv0EgS1XcS2gRD8Bws3PKr"/>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Camera Shake</span>
+</button>
+<!-- Card 3: Flash Black -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Flash Black" data-intensity="80">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Dramatic strobe black and white flash pulse shutter effect with high contrast dynamic streaks on black background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCIqydCEdx8OMdF7DTwBDjhcOAfGorsteEXZ06H3T0FojPtn3p0zAvzVahUeo65d6uQJLXBDb2oH4sxpDC6PdS88jMdvwr8ctF5ImH5tKTuMq4R1ZZfdZhgalSL4LI8ZiFFpbtEmlWj_P1l-CcZUNTUVADsscnb7vH0VQmCmsGINOxtM7u6rxltiBajTMPDJRs9J7pfvlFlURjIyp8wHdOIMF_hKDRqoAx3X4gdQB4D"/>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Flash Black</span>
+</button>
+<!-- Card 4: Diamond Zoom -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Diamond Zoom" data-intensity="50">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Symmetrical diamond prismatic kaleidoscope zoom tunnel refraction pattern with sharp specular geometric highlights, pro motion graphic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDkQyic7Ags45-e_Gedv5eI2kixwBJBfmLucVN5lc537a2Ugo3XbNzR2M-zBWvHilRPL8W3uXzwWGZm4hjWedBFkX-yHeS5X1mpc5OtRRzX7q40qj02W6nt8XeHuZ-Vlvz69jHyscnRrjB73aef9AwFunFwCKYfBNVtP5mWMK3ezg9Djy9g6ziV3wdlBZmprdu0qbTUp1wWBOLf-WEkKhL35pQb4_4Mz6HaN4-uSWGw"/>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Diamond Zoom</span>
+</button>
+<!-- Card 5: Motion Blur (PRO Badge) -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Motion Blur" data-intensity="75">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Ultra smooth high frame rate optical motion blur streaks across a nighttime cityscape, glowing cyan highlights and velvety blacks" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBREmLMkuKHaLa0vKhwh_pg-1w9xooy7_JMUWdFWGepJKqYe4bbWAL1gyECScjTcOKNiarNIKUu7-bTAiqTINCYmY6tfTGyFWE43tynIEg08hpk71C47WsLJ0m0R3Q7CSu4J1us9g4F2z6wzZsA__xBBz7LHH_IX7WxaFm4oiMXCzRKdvptpY03Xsf8g2vyVhU7N1xdiAwjcLB984un0-FcE4zPtve3UqoEtMpF6s7F"/>
+<!-- PRO Badge -->
+<div class="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-xs text-label-xs font-bold tracking-wider">
+            PRO
+          </div>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Motion Blur</span>
+</button>
+<!-- Card 6: Smart Sharpen (PRO Badge) -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Smart Sharpen" data-intensity="60">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="Macro split frame detail showing ultra-sharp micro texture contrast enhancement on human iris and skin, clean studio render" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo6XnZteHTU8q6KqDzrmGJc3XfdEH-YyqobmdpOXoQgrN1P8yn_CSR_QVllRJp4o5jwresFt1tcdSakD4sNs8zjQ5qhH2r98ihj6hOu-k0SCRZDRnQCShn1X9-em9ZAmddX7-9AxMtAyI6NMsukwcrTUAaLCKkl8XN_t4pTnGYWicQABafhRThpe8F4gWdD4lvMdEAluccZ5zqVyThZgDOFVp6kIoAEyvwUbOVM1Fe"/>
+<!-- PRO Badge -->
+<div class="absolute top-1 right-1 px-1.5 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed font-label-xs text-label-xs font-bold tracking-wider">
+            PRO
+          </div>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Smart Sharpen</span>
+</button>
+<!-- Card 7: Chromatic Aberration -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Chromatic" data-intensity="40">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="RGB color channel split fringe displacement effect, cyan and magenta optical distortion on black geometric typography backdrop" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDklwdl1iWvyp_iCnOLNf9niEAYPAYVmZ3f15Ap2QFwMgdw_xJ0MUlwf7v_CRoVzEUjoirn62AVdXQMUmjdvEIv5g5l7NtUBwJ0_wyGLJzrsb52z5ooNpIMcdpr506UJTmDqkWM2CNCOK8q5m4kRsiHqDoy_LN5RI9dxu5lDD82AXAWCyx1dPofJHjjvoKropgJLYYzYuoOu9gokSuWNcNeJTXg763jPCp1Wzu2b3lq"/>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Chromatic</span>
+</button>
+<!-- Card 8: Film Grain -->
+<button class="effect-card group relative flex flex-col items-center bg-surface-container-high rounded-xl p-1.5 text-left transition-all hover:bg-surface-container-highest" data-effect="Film Grain" data-intensity="30">
+<div class="relative w-full aspect-square rounded-lg bg-surface-container-lowest overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform" data-alt="16mm authentic analog organic film grain noise overlay texture with nostalgic warm specks on deep matte charcoal background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAT8Oyhi_CXSW9_5Iq2df-HkHUTdH8HSxUJYRofiZjAa-2-yXCz6VQ1bE-mL0kL_s27E1aewgEmwcEEsY-QqWb8OpPkUdMj6dks_frrLiHUo3lGbQpIT7euajjnwbkW7ndLTPddcdMaHKr0RkuKCmOAQayFDjYo8PpzNWl1bovkFMRlkCe7PXD_vcaQ0-7VTn0Be-560DfWWKzdr76vyYnxgfWUcrs_AoU82Wntvs-7"/>
+</div>
+<span class="mt-1.5 w-full text-center truncate font-label-md text-label-md text-on-surface">Film Grain</span>
+</button>
+</div>
+<!-- Modal Action Footer Bar (CapCut Commit / Cancel / Apply All) -->
+<div class="w-full px-margin py-2.5 bg-surface-container flex items-center justify-between">
+<!-- Discard Button -->
+<button class="w-9 h-9 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors" id="cancel-fx-btn">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+<!-- Apply to all clips toggle pill -->
+<label class="flex items-center gap-2 cursor-pointer py-1 px-3 rounded-full bg-surface-container-high hover:bg-surface-container-highest transition-colors">
+<input class="sr-only peer" id="apply-all-toggle" type="checkbox"/>
+<div class="w-4 h-4 rounded bg-surface-container-lowest peer-checked:bg-primary-container flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[13px] text-on-primary opacity-0 peer-checked:opacity-100 transition-opacity">check</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant peer-checked:text-on-surface">Apply to all clips</span>
+</label>
+<!-- Confirm Commit Button -->
+<button class="w-9 h-9 rounded-full bg-primary-container hover:brightness-105 active:scale-95 text-on-primary flex items-center justify-center transition-transform shadow-[0_2px_10px_rgba(15,232,184,0.3)]" id="commit-fx-btn">
+<span class="material-symbols-outlined text-[20px] font-bold">check</span>
+</button>
+</div>
+</section>
+</div>
+<script>
+  (function initCapcutEffectsSheet() {
+    const cards = document.querySelectorAll('.effect-card');
+    const slider = document.getElementById('effect-slider');
+    const sliderVal = document.getElementById('slider-val');
+    const overlay = document.getElementById('effect-overlay');
+    const playBtn = document.getElementById('play-btn');
+    let isPlaying = false;
+
+    // Card selection interaction
+    cards.forEach(card => {
+      card.addEventListener('click', () => {
+        cards.forEach(c => {
+          c.classList.remove('ring-2', 'ring-primary-container', 'shadow-md');
+          const title = c.querySelector('span:last-child');
+          if (title) {
+            title.classList.remove('text-primary');
+            title.classList.add('text-on-surface');
+          }
+          const tuneBadge = c.querySelector('.bg-primary-container');
+          if (tuneBadge && !c.querySelector('.bg-tertiary-fixed')) {
+            tuneBadge.remove();
+          }
+        });
+
+        card.classList.add('ring-2', 'ring-primary-container', 'shadow-md');
+        const title = card.querySelector('span:last-child');
+        if (title) {
+          title.classList.remove('text-on-surface');
+          title.classList.add('text-primary');
+        }
+
+        const intensity = card.getAttribute('data-intensity') || '50';
+        if (slider && sliderVal) {
+          slider.value = intensity;
+          sliderVal.textContent = intensity;
+        }
+
+        // Add tune indicator badge if not present
+        const imgWrap = card.querySelector('.aspect-square');
+        if (imgWrap && !imgWrap.querySelector('.material-symbols-outlined')) {
+          const badge = document.createElement('div');
+          badge.className = 'absolute bottom-1 right-1 w-5 h-5 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-md';
+          badge.innerHTML = '<span class="material-symbols-outlined text-[14px]">tune</span>';
+          imgWrap.appendChild(badge);
+        }
+
+        // Visual feedback on preview
+        if (overlay) {
+          overlay.style.opacity = (parseInt(intensity, 10) / 100).toString();
+        }
+      });
+    });
+
+    // Real-time parameter slider scrub
+    if (slider && sliderVal && overlay) {
+      slider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        sliderVal.textContent = val;
+        overlay.style.opacity = (parseInt(val, 10) / 100).toString();
+      });
+    }
+
+    // Play/Pause toggler preview
+    if (playBtn) {
+      playBtn.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        const icon = playBtn.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.textContent = isPlaying ? 'pause' : 'play_arrow';
+        }
+      });
+    }
+  })();
+</script></main><div class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.5)]"><div class="h-20 px-margin flex items-center gap-space-sm"><button class="flex-1 h-12 rounded-full bg-primary-container text-on-primary font-title-md text-title-md flex items-center justify-center gap-space-xs hover:brightness-95 active:scale-[0.99] transition-all shadow-[0_4px_16px_rgba(15,232,184,0.25)]"><span class="material-symbols-outlined text-[20px]">share</span><span>Share to TikTok</span></button><button class="h-12 w-12 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface flex items-center justify-center transition-colors shrink-0"><span class="material-symbols-outlined text-[20px]">more_horiz</span></button></div></div></body></html>
