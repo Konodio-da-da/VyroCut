@@ -90,11 +90,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
-private val StudioBackground = Color(0xFF111313)
-private val StudioPanel = Color(0xFF1C2221)
-private val StudioAccent = Color(0xFF0FE8B8)
-private val StudioText = Color(0xFFE5EDEA)
-private val StudioMuted = Color(0xFF9BAAA5)
+private val StudioBackground = VyroCutPalette.Background
+private val StudioPanel = VyroCutPalette.Surface
+private val StudioAccent = VyroCutPalette.Accent
+private val StudioText = VyroCutPalette.TextPrimary
+private val StudioMuted = VyroCutPalette.TextMuted
 
 @OptIn(UnstableApi::class)
 private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
@@ -1824,7 +1824,7 @@ private fun VyroCutApp() {
                                 sourceMissing -> "Source unavailable • Relink to keep this edit"
                                 else -> "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}"
                             },
-                            color = if (sourceMissing) Color(0xFFFF8A80) else StudioMuted,
+                            color = if (sourceMissing) VyroCutPalette.Danger else StudioMuted,
                             fontSize = 11.sp
                         )
                     }
@@ -1926,7 +1926,7 @@ private fun VyroCutApp() {
                             player.play()
                         }
                     }, enabled = selectedClip != null,
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))) {
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk)) {
                         Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlaying) "Pause" else "Play")
                     }
                 }
@@ -2113,7 +2113,7 @@ private fun VyroCutApp() {
                         shape = RoundedCornerShape(10.dp)
                     ) { Text("Trim", maxLines = 1) }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
-                        Icon(Icons.Default.Delete, "Delete selected clip", tint = Color(0xFFFF8A80))
+                        Icon(Icons.Default.Delete, "Delete selected clip", tint = VyroCutPalette.Danger)
                     }
                 }
                 VyroCutToolDock(
@@ -2144,7 +2144,7 @@ private fun VyroCutApp() {
                                     )
                                 }
                             } else {
-                                listOf("Black" to Color.Black, "Dark" to Color(0xFF202322), "White" to Color.White).forEach { (label, color) ->
+                                listOf("Black" to Color.Black, "Dark" to VyroCutPalette.CanvasDark, "White" to Color.White).forEach { (label, color) ->
                                     FilterChip(
                                         selected = canvasBackground == color,
                                         onClick = {
@@ -2367,7 +2367,7 @@ private fun VyroCutApp() {
                         Button(
                             onClick = { audioPicker.launch(arrayOf("audio/*")) },
                             enabled = clips.isNotEmpty() && !isReadingMedia && audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
-                            colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
+                            colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk),
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Icon(Icons.Default.Add, null)
@@ -2381,7 +2381,7 @@ private fun VyroCutApp() {
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .background(
-                                            if (trackClip.id == selectedAudioTrackId) Color(0xFF16483D) else Color(0xFF252A28),
+                                            if (trackClip.id == selectedAudioTrackId) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip,
                                             RoundedCornerShape(6.dp),
                                         )
                                         .clickable { selectedAudioTrackId = trackClip.id },
@@ -2391,7 +2391,7 @@ private fun VyroCutApp() {
                                         Text(trackClip.name, color = StudioText, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         AudioWaveformStrip(
                                             amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
-                                            color = if (trackClip.id == selectedAudioTrackId) StudioAccent else Color(0xFF71827B),
+                                            color = if (trackClip.id == selectedAudioTrackId) StudioAccent else VyroCutPalette.TextSubtle,
                                         )
                                         Text(
                                             "${formatTime(trackClip.startMs)} – ${formatTime(trackClip.endMs)} • ${(trackClip.volume * 100f).toInt()}%",
@@ -2403,7 +2403,7 @@ private fun VyroCutApp() {
                                         onClick = { changedAudioTracks(audioTrackClips.filterNot { it.id == trackClip.id }) },
                                         modifier = Modifier.size(32.dp),
                                     ) {
-                                        Icon(Icons.Default.Delete, "Remove audio clip", tint = Color(0xFFFF8A80), modifier = Modifier.size(17.dp))
+                                        Icon(Icons.Default.Delete, "Remove audio clip", tint = VyroCutPalette.Danger, modifier = Modifier.size(17.dp))
                                     }
                                 }
                             }
@@ -2566,7 +2566,7 @@ private fun VyroCutApp() {
                                     onClick = { rippleDeleteSelectedAudioTrack() },
                                     contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
                                 ) {
-                                    Text("Ripple delete", color = Color(0xFFFF8A80), fontSize = 10.sp)
+                                    Text("Ripple delete", color = VyroCutPalette.Danger, fontSize = 10.sp)
                                 }
                             }
                             Text("Ripple delete closes a removed clip duration; ripple trim shifts later clips by the source-range duration change.", color = StudioMuted, fontSize = 9.sp)
@@ -2582,7 +2582,7 @@ private fun VyroCutApp() {
                         Text("ADD STICKER", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("Emoji", "Shapes", "Decorations", "Arrows").forEach { option ->
-                                Surface(color = Color(0xFF29312E), shape = RoundedCornerShape(7.dp)) {
+                                Surface(color = VyroCutPalette.SurfaceBadge, shape = RoundedCornerShape(7.dp)) {
                                     Text(option, color = StudioText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
                                 }
                             }
@@ -2723,7 +2723,7 @@ private fun VyroCutApp() {
                                         )
                                     },
                                     enabled = clipTextDraft.trim().length <= MAX_CLIP_TEXT_OVERLAY_LENGTH,
-                                    colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A)),
+                                    colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk),
                                     modifier = Modifier.weight(1f),
                                 ) { Text("Apply layer") }
                                 TextButton(
@@ -3069,7 +3069,7 @@ private fun VyroCutApp() {
                         },
                         enabled = clips.isNotEmpty() && !isExporting && !isReadingMedia,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = Color(0xFF00382A))
+                        colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk)
                     ) {
                         Text(if (isExporting) "Exporting…" else "Export MP4", fontWeight = FontWeight.Bold)
                     }
@@ -3125,7 +3125,7 @@ private fun VyroCutApp() {
                                         TextButton(
                                             onClick = { projectToDelete = project },
                                             enabled = projects.size > 1
-                                        ) { Text("Delete", color = if (projects.size > 1) Color(0xFFFF8A80) else StudioMuted, fontSize = 11.sp) }
+                                        ) { Text("Delete", color = if (projects.size > 1) VyroCutPalette.Danger else StudioMuted, fontSize = 11.sp) }
                                     }
                                 }
                                 HorizontalDivider()
@@ -3331,7 +3331,7 @@ private fun VyroCutApp() {
                         text = { Text("Delete \"${project.name}\" and its saved edit list? This cannot be undone.") },
                         confirmButton = {
                             TextButton(onClick = { deleteProject(project) }) {
-                                Text("Delete", color = Color(0xFFFF8A80))
+                                Text("Delete", color = VyroCutPalette.Danger)
                             }
                         },
                         dismissButton = {
@@ -3388,7 +3388,7 @@ private fun ClipThumbnail(clip: EditClip, modifier: Modifier = Modifier) {
         }
     }
     Box(
-        modifier = modifier.background(Color(0xFF293330), RoundedCornerShape(6.dp)),
+        modifier = modifier.background(VyroCutPalette.SurfaceTrack, RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center
     ) {
         if (thumbnail != null) {
@@ -3950,7 +3950,7 @@ private fun canvasAspectRatioForPreset(preset: String): Float = when (preset) {
 }
 
 private fun canvasBackgroundForPreset(preset: String): Color = when (preset) {
-    "DARK" -> Color(0xFF202322)
+    "DARK" -> VyroCutPalette.CanvasDark
     "WHITE" -> Color.White
     else -> Color.Black
 }
@@ -3963,7 +3963,7 @@ private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): Pro
     }
     val backgroundPreset = when (background) {
         Color.White -> "WHITE"
-        Color(0xFF202322) -> "DARK"
+        VyroCutPalette.CanvasDark -> "DARK"
         else -> "BLACK"
     }
     return ProjectCanvasSettings(ratioPreset, backgroundPreset)
@@ -4107,7 +4107,7 @@ private fun TimelineEditorStrip(
                 clips.forEachIndexed { index, clip ->
                     Column(
                         Modifier.width(clipWidths[index].dp)
-                            .background(if (index == selectedIndex) Color(0xFF16483D) else Color(0xFF252A28), RoundedCornerShape(5.dp))
+                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip, RoundedCornerShape(5.dp))
                             .padding(3.dp)
                     ) {
                         Box(Modifier.fillMaxWidth().height(38.dp)) {
@@ -4191,7 +4191,7 @@ private fun TimelineEditorStrip(
                             Box(
                                 Modifier.fillMaxWidth()
                                     .height(24.dp)
-                                    .background(Color(0xFF202725), RoundedCornerShape(4.dp))
+                                    .background(VyroCutPalette.HeroGradientStart, RoundedCornerShape(4.dp))
                                     .clickable {
                                         if (overlay != null || layerIndex == clip.allTextOverlays.size) {
                                             onSelectText(index, layerIndex)
@@ -4219,7 +4219,7 @@ private fun TimelineEditorStrip(
                                             Modifier.offset(x = segment.startOffsetPx.dp)
                                                 .width(segment.widthPx.dp)
                                                 .fillMaxHeight()
-                                                .background(Color(0xFF16483D), RoundedCornerShape(4.dp))
+                                                .background(VyroCutPalette.SurfaceSelected, RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 6.dp),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
@@ -4255,7 +4255,7 @@ private fun TimelineEditorStrip(
             clips.forEachIndexed { index, clip ->
                 Box(
                     Modifier.width(clipWidths[index].dp).height(26.dp)
-                        .background(if (index == selectedIndex) Color(0xFF1B4239) else Color(0xFF172C28), RoundedCornerShape(4.dp))
+                        .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -4293,9 +4293,9 @@ private fun TimelineEditorStrip(
                         gap,
                     )
                     val laneColor = when (type) {
-                        AudioTrackType.MUSIC -> Color(0xFF185C48)
-                        AudioTrackType.SFX -> Color(0xFF57452A)
-                        AudioTrackType.VOICEOVER -> Color(0xFF344A67)
+                        AudioTrackType.MUSIC -> VyroCutPalette.MusicTrack
+                        AudioTrackType.SFX -> VyroCutPalette.SfxTrack
+                        AudioTrackType.VOICEOVER -> VyroCutPalette.VoiceoverTrack
                     }
                     Box(
                         Modifier.offset(x = startPx.dp)
