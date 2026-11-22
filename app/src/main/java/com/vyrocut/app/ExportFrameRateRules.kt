@@ -26,4 +26,4 @@ internal enum class ExportFrameRatePreset(
 
 /** Returns null for source cadence, or the timestamp-based target FPS. */
 internal fun exportFrameDropTargetRate(preset: ExportFrameRatePreset): Float? =
-    preset.maximumFramesPerSecond?.toFloat()
+    preset.targetFramesPerSecond?.toFloat()

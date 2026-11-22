@@ -13,7 +13,7 @@ class ExportFrameRateRulesTest {
     }
 
     @Test
-    fun restoresEverySupportedMaximumFrameRate() {
+    fun restoresEverySupportedTargetFrameRate() {
         assertEquals(ExportFrameRatePreset.FPS_24, ExportFrameRatePreset.fromId("24"))
         assertEquals(ExportFrameRatePreset.FPS_30, ExportFrameRatePreset.fromId("30"))
         assertEquals(ExportFrameRatePreset.FPS_60, ExportFrameRatePreset.fromId("60"))
