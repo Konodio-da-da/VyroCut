@@ -16,9 +16,10 @@ internal data class ClipVisualAdjustments(
     val brightness: Int = 0,
     val contrast: Int = 0,
     val saturation: Int = 0,
+    val hueShiftDegrees: Int = 0,
 ) {
     init {
-        require(isValidClipVisualAdjustments(brightness, contrast, saturation)) {
+        require(isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) {
             "Clip visual adjustments must be between -100 and 100"
         }
     }
@@ -28,22 +29,26 @@ internal fun isValidClipVisualAdjustments(
     brightness: Int,
     contrast: Int,
     saturation: Int,
+    hueShiftDegrees: Int = 0,
 ): Boolean = brightness in -100..100 &&
     contrast in -100..100 &&
-    saturation in -100..100
+    saturation in -100..100 &&
+    hueShiftDegrees in -180..180
 
 internal fun decodeClipVisualAdjustments(
     brightness: Int,
     contrast: Int,
     saturation: Int,
+    hueShiftDegrees: Int = 0,
 ): ClipVisualAdjustments? {
-    if (!isValidClipVisualAdjustments(brightness, contrast, saturation)) return null
-    return ClipVisualAdjustments(brightness, contrast, saturation)
+    if (!isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) return null
+    return ClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)
 }
 
 internal enum class ClipVisualEffectType {
     BRIGHTNESS,
     CONTRAST,
+    HUE_SHIFT,
     SATURATION,
 }
 
@@ -66,6 +71,9 @@ internal fun createClipVisualEffectSpecs(
     if (adjustments.contrast != 0) {
         add(ClipVisualEffectSpec(ClipVisualEffectType.CONTRAST, adjustments.contrast / 100f))
     }
+    if (adjustments.hueShiftDegrees != 0) {
+        add(ClipVisualEffectSpec(ClipVisualEffectType.HUE_SHIFT, adjustments.hueShiftDegrees.toFloat()))
+    }
     if (adjustments.saturation != 0) {
         add(ClipVisualEffectSpec(ClipVisualEffectType.SATURATION, adjustments.saturation.toFloat()))
     }
@@ -83,6 +91,9 @@ internal fun createClipVisualEffects(
     when (spec.type) {
         ClipVisualEffectType.BRIGHTNESS -> Brightness(spec.amount)
         ClipVisualEffectType.CONTRAST -> Contrast(spec.amount)
+        ClipVisualEffectType.HUE_SHIFT -> HslAdjustment.Builder()
+            .adjustHue(spec.amount)
+            .build()
         ClipVisualEffectType.SATURATION -> HslAdjustment.Builder()
             .adjustSaturation(spec.amount)
             .build()
