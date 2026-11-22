@@ -215,6 +215,13 @@ private fun VyroCutApp() {
     var canvasBackground by remember {
         mutableStateOf(canvasBackgroundForPreset(initialCanvasSettings.backgroundPreset))
     }
+    var exportResolutionPreset by remember(activeProjectId) {
+        mutableStateOf(
+            ExportResolutionPreset.fromId(
+                preferences.getString("project_${activeProjectId}_export_resolution", null),
+            ),
+        )
+    }
     var showProjects by remember { mutableStateOf(false) }
     var showClipActions by remember { mutableStateOf(false) }
     var showTrimDialog by remember { mutableStateOf(false) }
@@ -3017,6 +3024,51 @@ private fun VyroCutApp() {
                         }
                     }
                 }
+                val exportSettingsForDisplay = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
+                val displayedExportSize = exportCanvasSizeForPreset(
+                    exportSettingsForDisplay.aspectRatioPreset,
+                    exportResolutionPreset,
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            "EXPORT SIZE",
+                            color = StudioMuted,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            "${displayedExportSize.widthPx} × ${displayedExportSize.heightPx} • ${exportResolutionPreset.label}",
+                            color = StudioText,
+                            fontSize = 10.sp,
+                        )
+                    }
+                    ExportResolutionPreset.values().forEach { preset ->
+                        FilterChip(
+                            selected = exportResolutionPreset == preset,
+                            onClick = {
+                                exportResolutionPreset = preset
+                                preferences.edit()
+                                    .putString("project_${activeProjectId}_export_resolution", preset.id)
+                                    .apply()
+                            },
+                            enabled = !isExporting && !isReadingMedia,
+                            label = { Text(preset.label, fontSize = 10.sp) },
+                        )
+                    }
+                }
+                Text(
+                    "Resolution changes the MP4 output size without changing your canvas ratio or preview.",
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
@@ -3025,7 +3077,11 @@ private fun VyroCutApp() {
                                 val exportClips = clips.toList()
                                 val exportAudioTracks = audioTrackClips.toList()
                                 val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
-                                val exportCanvasSize = exportCanvasSizeForPreset(exportCanvasSettings.aspectRatioPreset)
+                                val exportResolution = exportResolutionPreset
+                                val exportCanvasSize = exportCanvasSizeForPreset(
+                                    exportCanvasSettings.aspectRatioPreset,
+                                    exportResolution,
+                                )
                                 val exportBackgroundArgb = exportCanvasBackgroundArgbForPreset(
                                     exportCanvasSettings.backgroundPreset,
                                 )
