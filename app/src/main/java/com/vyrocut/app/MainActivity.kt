@@ -177,7 +177,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
-    val editorPreviewHeight = editorPreviewHeightDp(LocalConfiguration.current.screenHeightDp)
+    val editorMetrics = editorLayoutMetrics(LocalConfiguration.current.screenHeightDp)
     val exportScope = rememberCoroutineScope()
     val previewScope = rememberCoroutineScope()
     val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
@@ -1886,8 +1886,8 @@ private fun VyroCutApp() {
             Column(
                 Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                    .padding(horizontal = 10.dp, vertical = editorMetrics.contentPaddingVerticalDp.dp),
+                verticalArrangement = Arrangement.spacedBy(editorMetrics.sectionSpacingDp.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
@@ -1903,7 +1903,7 @@ private fun VyroCutApp() {
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
                 Box(
-                    Modifier.fillMaxWidth().height(editorPreviewHeight.dp)
+                    Modifier.fillMaxWidth().height(editorMetrics.previewHeightDp.dp)
                         .background(canvasBackground, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
