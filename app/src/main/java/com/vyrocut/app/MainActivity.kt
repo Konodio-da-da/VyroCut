@@ -1459,6 +1459,25 @@ private fun VyroCutApp() {
         }
         exportMessage = if (normalizedText.isBlank()) "Removed text layer" else "Text layer updated"
     }
+    fun commitSelectedClipStickerOverlays(
+        clip: EditClip,
+        overlays: List<ClipStickerOverlay>,
+        message: String,
+    ) {
+        if (overlays == clip.allStickerOverlays) return
+        val updatedClip = clip.copy(stickerOverlays = overlays)
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = updatedClip
+        })
+        if (player.currentMediaItem?.mediaId == clip.id) {
+            player.setVideoEffects(
+                createClipVisualEffects(updatedClip.visualAdjustments) +
+                    createClipTextOverlayEffects(updatedClip.allTextOverlays) +
+                    createClipStickerOverlayEffects(updatedClip.allStickerOverlays),
+            )
+        }
+        exportMessage = message
+    }
     fun addSelectedClipSticker(symbol: String) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (clip.allStickerOverlays.size >= MAX_CLIP_STICKER_OVERLAYS) {
@@ -1469,20 +1488,40 @@ private fun VyroCutApp() {
             raw = symbol,
             position = selectedStickerPosition.name,
         ) ?: return
-        changed(clips.toMutableList().apply {
-            this[selectedIndex] = clip.copy(stickerOverlays = clip.allStickerOverlays + overlay)
-        })
-        exportMessage = "Sticker added to this clip"
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays + overlay,
+            "Sticker added to this clip",
+        )
     }
     fun removeSelectedClipSticker(overlayIndex: Int) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (overlayIndex !in clip.allStickerOverlays.indices) return
-        changed(clips.toMutableList().apply {
-            this[selectedIndex] = clip.copy(
-                stickerOverlays = clip.allStickerOverlays.filterIndexed { index, _ -> index != overlayIndex },
-            )
-        })
-        exportMessage = "Sticker removed"
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.filterIndexed { index, _ -> index != overlayIndex },
+            "Sticker removed",
+        )
+    }
+    fun updateSelectedClipStickerTiming(
+        overlayIndex: Int,
+        startMs: Long? = null,
+        endMs: Long? = null,
+    ) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val sticker = clip.allStickerOverlays.getOrNull(overlayIndex) ?: return
+        val updated = updateClipStickerOverlayTiming(
+            overlay = sticker,
+            clipDurationMs = clip.durationMs,
+            requestedStartMs = startMs ?: sticker.startMs,
+            requestedEndMs = endMs ?: (sticker.endMs ?: clip.durationMs),
+        ) ?: return
+        if (updated == sticker) return
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
+            "Sticker timing updated",
+        )
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -2706,27 +2745,77 @@ private fun VyroCutApp() {
                                 Text("No stickers on this clip yet.", color = StudioMuted, fontSize = 10.sp)
                             } else {
                                 selectedClip.allStickerOverlays.forEachIndexed { index, sticker ->
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically,
+                                    val clipDurationMs = selectedClip.durationMs.coerceAtLeast(1L)
+                                    val safeStartMs = sticker.startMs.coerceIn(0L, clipDurationMs - 1L)
+                                    val safeEndMs = (sticker.endMs ?: clipDurationMs)
+                                        .coerceIn(safeStartMs + 1L, clipDurationMs)
+                                    val durationSeconds = clipDurationMs / 1_000f
+                                    var startSeconds by remember(selectedClip.id, sticker) {
+                                        mutableFloatStateOf(safeStartMs / 1_000f)
+                                    }
+                                    var endSeconds by remember(selectedClip.id, sticker) {
+                                        mutableFloatStateOf(safeEndMs / 1_000f)
+                                    }
+                                    Column(
+                                        Modifier.fillMaxWidth()
+                                            .background(StudioBackground, RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(3.dp),
                                     ) {
-                                        Text(sticker.symbol, fontSize = 20.sp)
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(
-                                            sticker.position.name.lowercase().replace('_', ' '),
-                                            color = StudioMuted,
-                                            fontSize = 10.sp,
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(sticker.symbol, fontSize = 20.sp)
+                                            Spacer(Modifier.width(8.dp))
+                                            Text(
+                                                sticker.position.name.lowercase().replace('_', ' '),
+                                                color = StudioMuted,
+                                                fontSize = 10.sp,
+                                            )
+                                            Spacer(Modifier.weight(1f))
+                                            TextButton(
+                                                onClick = { removeSelectedClipSticker(index) },
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                            ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = 10.sp) }
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "IN ${String.format(java.util.Locale.US, "%.1f", startSeconds)}s",
+                                                color = StudioMuted,
+                                                fontSize = 9.sp,
+                                            )
+                                            Spacer(Modifier.weight(1f))
+                                            Text(
+                                                "OUT ${String.format(java.util.Locale.US, "%.1f", endSeconds)}s",
+                                                color = StudioMuted,
+                                                fontSize = 9.sp,
+                                            )
+                                        }
+                                        Slider(
+                                            value = startSeconds,
+                                            onValueChange = { startSeconds = it },
+                                            valueRange = 0f..durationSeconds,
+                                            onValueChangeFinished = {
+                                                updateSelectedClipStickerTiming(
+                                                    index,
+                                                    startMs = (startSeconds * 1_000f).toLong(),
+                                                )
+                                            },
                                         )
-                                        Spacer(Modifier.weight(1f))
-                                        TextButton(
-                                            onClick = { removeSelectedClipSticker(index) },
-                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                        ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = 10.sp) }
+                                        Slider(
+                                            value = endSeconds,
+                                            onValueChange = { endSeconds = it },
+                                            valueRange = 0f..durationSeconds,
+                                            onValueChangeFinished = {
+                                                updateSelectedClipStickerTiming(
+                                                    index,
+                                                    endMs = (endSeconds * 1_000f).toLong(),
+                                                )
+                                            },
+                                        )
                                     }
                                 }
                             }
                             Text(
-                                "Non-destructive • Rendered in preview and MP4 export • Visible for the full clip",
+                                "Clip-local IN/OUT timing • Survives split, trim, save and MP4 export",
                                 color = StudioMuted,
                                 fontSize = 9.sp,
                             )
