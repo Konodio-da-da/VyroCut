@@ -381,6 +381,9 @@ private fun VyroCutApp() {
     var clipSaturationDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.saturation) {
         mutableFloatStateOf(selectedClip?.visualAdjustments?.saturation?.toFloat() ?: 0f)
     }
+    var clipHueShiftDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.hueShiftDegrees) {
+        mutableFloatStateOf(selectedClip?.visualAdjustments?.hueShiftDegrees?.toFloat() ?: 0f)
+    }
     var clipTextDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.text) {
         mutableStateOf(selectedTextOverlay?.text ?: "")
     }
@@ -1384,9 +1387,10 @@ private fun VyroCutApp() {
         brightness: Int,
         contrast: Int,
         saturation: Int,
+        hueShiftDegrees: Int = selectedClip?.visualAdjustments?.hueShiftDegrees ?: 0,
     ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
-        val next = decodeClipVisualAdjustments(brightness, contrast, saturation) ?: return
+        val next = decodeClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees) ?: return
         if (clip.visualAdjustments == next) return
         changed(clips.toMutableList().apply {
             this[selectedIndex] = clip.copy(visualAdjustments = next)
@@ -2173,11 +2177,47 @@ private fun VyroCutApp() {
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                         )
-                        Text(
-                            unavailableStudioToolMessage(activeTool).orEmpty(),
-                            color = StudioMuted,
-                            fontSize = 10.sp,
-                        )
+                        if (selectedClip == null) {
+                            Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = 10.sp)
+                        } else {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Hue shift", color = StudioMuted, fontSize = 11.sp)
+                                Spacer(Modifier.weight(1f))
+                                Text("${clipHueShiftDraft.toInt()}°", color = StudioAccent, fontSize = 11.sp)
+                                TextButton(
+                                    onClick = {
+                                        clipHueShiftDraft = 0f
+                                        commitSelectedClipVisualAdjustments(
+                                            clipBrightnessDraft.toInt(),
+                                            clipContrastDraft.toInt(),
+                                            clipSaturationDraft.toInt(),
+                                            hueShiftDegrees = 0,
+                                        )
+                                    },
+                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                ) { Text("Reset", fontSize = 10.sp) }
+                            }
+                            Slider(
+                                value = clipHueShiftDraft.coerceIn(-180f, 180f),
+                                onValueChange = { clipHueShiftDraft = it },
+                                onValueChangeFinished = {
+                                    commitSelectedClipVisualAdjustments(
+                                        brightness = clipBrightnessDraft.toInt(),
+                                        contrast = clipContrastDraft.toInt(),
+                                        saturation = clipSaturationDraft.toInt(),
+                                        hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                    )
+                                },
+                                valueRange = -180f..180f,
+                                steps = 359,
+                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                            )
+                            Text(
+                                "Non-destructive • Applied to this clip in preview and MP4 export",
+                                color = StudioMuted,
+                                fontSize = 10.sp,
+                            )
+                        }
                     }
                 } else if (activeTool == "Filters" || activeTool == "Adjust") {
                     Column(
@@ -3460,6 +3500,7 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("brightness", clip.visualAdjustments.brightness)
             put("contrast", clip.visualAdjustments.contrast)
             put("saturation", clip.visualAdjustments.saturation)
+            put("hueShiftDegrees", clip.visualAdjustments.hueShiftDegrees)
         })
         put("textOverlays", JSONArray().apply {
             clip.allTextOverlays.forEach { overlay ->
@@ -3673,6 +3714,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                 brightness = if (visualJson?.has("brightness") == true) visualJson.optInt("brightness", Int.MIN_VALUE) else 0,
                 contrast = if (visualJson?.has("contrast") == true) visualJson.optInt("contrast", Int.MIN_VALUE) else 0,
                 saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
+                hueShiftDegrees = if (visualJson?.has("hueShiftDegrees") == true) visualJson.optInt("hueShiftDegrees", Int.MIN_VALUE) else 0,
             ) ?: error("A clip has invalid visual adjustments")
             fun decodeOverlay(overlayJson: JSONObject): ClipTextOverlay =
                 decodeClipTextOverlay(
