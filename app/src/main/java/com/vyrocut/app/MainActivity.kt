@@ -1742,7 +1742,7 @@ private fun VyroCutApp() {
         }
     }
 
-    MaterialTheme {
+    VyroCutTheme {
         Surface(Modifier.fillMaxSize(), color = StudioBackground) {
             if (showHome) {
                 VyroCutProjectsHome(
