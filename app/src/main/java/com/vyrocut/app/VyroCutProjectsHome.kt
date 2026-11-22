@@ -90,8 +90,8 @@ internal fun VyroCutProjectsHome(
                         unfocusedContainerColor = HomePanelHigh,
                         focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
+                        focusedTextColor = VyroCutPalette.TextPrimary,
+                        unfocusedTextColor = VyroCutPalette.TextPrimary,
                         cursorColor = HomeAccent,
                     ),
                 )
@@ -156,7 +156,7 @@ internal fun VyroCutProjectsHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Your projects", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Your projects", color = VyroCutPalette.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "${projects.size} saved on this device",
                         color = HomeMuted,
@@ -183,7 +183,7 @@ internal fun VyroCutProjectsHome(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         if (projects.isEmpty()) "No projects yet" else "No matching projects",
-                        color = Color.White,
+                        color = VyroCutPalette.TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
@@ -235,7 +235,7 @@ internal fun VyroCutProjectsHome(
                     ) {
                         Text(
                             project.second,
-                            color = Color.White,
+                            color = VyroCutPalette.TextPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 14.sp,
                             maxLines = 1,

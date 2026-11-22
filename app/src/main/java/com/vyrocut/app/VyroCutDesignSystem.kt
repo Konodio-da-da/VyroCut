@@ -37,6 +37,15 @@ internal object VyroCutPalette {
     val TextMuted = Color(0xFF9BAAA5)
     val TextSubtle = Color(0xFF71827B)
     val Danger = Color(0xFFFF8A80)
+    val OnDanger = Color.Black
+    val Outline = Color(0xFF39423F)
+
+    // Semantic media/canvas colors: keep true black/white distinct from UI text.
+    val CanvasBlack = Color.Black
+    val CanvasWhite = Color.White
+    val MediaOverlayText = Color.White
+    val MediaOverlayScrim = Color.Black.copy(alpha = 0.68f)
+    val WaveformForeground = Color.White.copy(alpha = 0.9f)
 
     val MusicTrack = Color(0xFF185C48)
     val SfxTrack = Color(0xFF57452A)
@@ -57,8 +66,8 @@ internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     surfaceVariant = VyroCutPalette.SurfaceElevated,
     onSurfaceVariant = VyroCutPalette.TextMuted,
     error = VyroCutPalette.Danger,
-    onError = Color.Black,
-    outline = Color(0xFF39423F),
+    onError = VyroCutPalette.OnDanger,
+    outline = VyroCutPalette.Outline,
 )
 
 @Composable

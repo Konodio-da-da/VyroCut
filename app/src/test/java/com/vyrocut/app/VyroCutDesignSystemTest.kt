@@ -16,6 +16,17 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun semanticCanvasAndMediaColorsStayCentralized() {
+        assertEquals(Color.Black, VyroCutPalette.CanvasBlack)
+        assertEquals(Color.White, VyroCutPalette.CanvasWhite)
+        assertEquals(Color.White, VyroCutPalette.MediaOverlayText)
+        assertEquals(Color.Black.copy(alpha = 0.68f), VyroCutPalette.MediaOverlayScrim)
+        assertEquals(Color.White.copy(alpha = 0.9f), VyroCutPalette.WaveformForeground)
+        assertEquals(Color.Black, VyroCutPalette.OnDanger)
+        assertEquals(Color(0xFF39423F), VyroCutPalette.Outline)
+    }
+
+    @Test
     fun materialColorSchemeUsesTheSharedPalette() {
         val scheme = vyroCutColorScheme()
 
@@ -25,5 +36,7 @@ class VyroCutDesignSystemTest {
         assertEquals(VyroCutPalette.Surface, scheme.surface)
         assertEquals(VyroCutPalette.TextPrimary, scheme.onSurface)
         assertEquals(VyroCutPalette.Danger, scheme.error)
+        assertEquals(VyroCutPalette.OnDanger, scheme.onError)
+        assertEquals(VyroCutPalette.Outline, scheme.outline)
     }
 }

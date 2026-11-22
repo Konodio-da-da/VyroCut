@@ -2276,7 +2276,7 @@ private fun VyroCutApp() {
                                     )
                                 }
                             } else {
-                                listOf("Black" to Color.Black, "Dark" to VyroCutPalette.CanvasDark, "White" to Color.White).forEach { (label, color) ->
+                                listOf("Black" to VyroCutPalette.CanvasBlack, "Dark" to VyroCutPalette.CanvasDark, "White" to VyroCutPalette.CanvasWhite).forEach { (label, color) ->
                                     FilterChip(
                                         selected = canvasBackground == color,
                                         onClick = {
@@ -4500,8 +4500,8 @@ private fun canvasAspectRatioForPreset(preset: String): Float = when (preset) {
 
 private fun canvasBackgroundForPreset(preset: String): Color = when (preset) {
     "DARK" -> VyroCutPalette.CanvasDark
-    "WHITE" -> Color.White
-    else -> Color.Black
+    "WHITE" -> VyroCutPalette.CanvasWhite
+    else -> VyroCutPalette.CanvasBlack
 }
 
 private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): ProjectCanvasSettings {
@@ -4511,7 +4511,7 @@ private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): Pro
         else -> "9:16"
     }
     val backgroundPreset = when (background) {
-        Color.White -> "WHITE"
+        VyroCutPalette.CanvasWhite -> "WHITE"
         VyroCutPalette.CanvasDark -> "DARK"
         else -> "BLACK"
     }
@@ -4663,12 +4663,12 @@ private fun TimelineEditorStrip(
                         Box(Modifier.fillMaxWidth().height(TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP.dp)) {
                             ClipThumbnail(clip, Modifier.fillMaxSize())
                             Text(
-                                "V" + (index + 1), color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.align(Alignment.TopStart).background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                "V" + (index + 1), color = VyroCutPalette.MediaOverlayText, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                                modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                             Text(
-                                formatTime(clip.durationMs), color = Color.White, fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
-                                modifier = Modifier.align(Alignment.BottomEnd).background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                formatTime(clip.durationMs), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
+                                modifier = Modifier.align(Alignment.BottomEnd).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
                         Text(clip.name, color = if (index == selectedIndex) StudioAccent else StudioText, fontSize = TIMELINE_CLIP_LABEL_FONT_SP.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -4939,14 +4939,14 @@ private fun TimelineEditorStrip(
                         ) {
                             Text(
                                 trackClip.name,
-                                color = Color.White,
+                                color = VyroCutPalette.MediaOverlayText,
                                 fontSize = TIMELINE_CLIP_LABEL_FONT_SP.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             AudioWaveformStrip(
                                 amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
-                                color = Color.White.copy(alpha = 0.9f),
+                                color = VyroCutPalette.WaveformForeground,
                                 height = TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP.dp,
                             )
                         }
