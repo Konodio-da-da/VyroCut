@@ -5,6 +5,5 @@ package com.vyrocut.app
  * Keep unfinished tools explicit until real preview, persistence and export support exists.
  */
 internal fun unavailableStudioToolMessage(tool: String): String? = when (tool) {
-    "Stickers" -> "Sticker overlays aren't available yet. This tool does not add anything to the project."
     else -> null
 }

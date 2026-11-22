@@ -129,6 +129,7 @@ internal data class EditClip(
     val visualAdjustments: ClipVisualAdjustments = ClipVisualAdjustments(),
     val textOverlay: ClipTextOverlay? = null,
     val additionalTextOverlays: List<ClipTextOverlay> = emptyList(),
+    val stickerOverlays: List<ClipStickerOverlay> = emptyList(),
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
@@ -136,9 +137,14 @@ internal data class EditClip(
         require((if (textOverlay == null) 0 else 1) + additionalTextOverlays.size <= MAX_CLIP_TEXT_OVERLAYS) {
             "A clip cannot contain more than $MAX_CLIP_TEXT_OVERLAYS text layers"
         }
+        require(stickerOverlays.size <= MAX_CLIP_STICKER_OVERLAYS) {
+            "A clip cannot contain more than $MAX_CLIP_STICKER_OVERLAYS sticker overlays"
+        }
     }
     val allTextOverlays: List<ClipTextOverlay>
         get() = listOfNotNull(textOverlay) + additionalTextOverlays
+    val allStickerOverlays: List<ClipStickerOverlay>
+        get() = stickerOverlays
     val durationMs: Long get() = (sourceEndMs - sourceStartMs).coerceAtLeast(0L)
 }
 
@@ -196,6 +202,7 @@ private fun VyroCutApp() {
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedAdjustment by remember { mutableStateOf("Brightness") }
+    var selectedStickerPosition by remember { mutableStateOf(ClipStickerPosition.BOTTOM_RIGHT) }
         val initialCanvasSettings = remember {
         decodeProjectCanvasSettings(
             preferences.getString("project_" + activeProjectId + "_canvas_settings", null)
@@ -555,7 +562,7 @@ private fun VyroCutApp() {
             }
             player.playWhenReady = false
             val restoredClip = clips[restoreTarget.clipIndex]
-            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.allTextOverlays))
+            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.allTextOverlays) + createClipStickerOverlayEffects(restoredClip.allStickerOverlays))
             player.setVolume(
                 clipAudioPlaybackGain(
                     restoredClip.audioVolume,
@@ -1011,7 +1018,7 @@ private fun VyroCutApp() {
             seekAudioPlayersToProjectPosition(position.timelinePositionMs)
         }
         clips.getOrNull(position.clipIndex)?.let { clip ->
-            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays))
+            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays) + createClipStickerOverlayEffects(clip.allStickerOverlays))
             player.setVolume(
                 clipAudioPlaybackGain(
                     clip.audioVolume,
@@ -1451,6 +1458,31 @@ private fun VyroCutApp() {
             if (normalizedText.isBlank()) layerIndex.coerceAtMost(overlays.lastIndex) else layerIndex
         }
         exportMessage = if (normalizedText.isBlank()) "Removed text layer" else "Text layer updated"
+    }
+    fun addSelectedClipSticker(symbol: String) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        if (clip.allStickerOverlays.size >= MAX_CLIP_STICKER_OVERLAYS) {
+            exportMessage = "A clip can contain up to $MAX_CLIP_STICKER_OVERLAYS stickers."
+            return
+        }
+        val overlay = decodeClipStickerOverlay(
+            raw = symbol,
+            position = selectedStickerPosition.name,
+        ) ?: return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(stickerOverlays = clip.allStickerOverlays + overlay)
+        })
+        exportMessage = "Sticker added to this clip"
+    }
+    fun removeSelectedClipSticker(overlayIndex: Int) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        if (overlayIndex !in clip.allStickerOverlays.indices) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(
+                stickerOverlays = clip.allStickerOverlays.filterIndexed { index, _ -> index != overlayIndex },
+            )
+        })
+        exportMessage = "Sticker removed"
     }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
@@ -2078,11 +2110,17 @@ private fun VyroCutApp() {
                             splitOffsetMs,
                             clip.durationMs,
                         )
+                        val (leftStickerOverlays, rightStickerOverlays) = splitClipStickerOverlaysAt(
+                            clip.allStickerOverlays,
+                            splitOffsetMs,
+                            clip.durationMs,
+                        )
                         val left = clip.copy(
                             sourceEndMs = halves.first.endMs,
                             fadeOutMs = 0L,
                             textOverlay = leftTextOverlays.firstOrNull(),
                             additionalTextOverlays = leftTextOverlays.drop(1),
+                            stickerOverlays = leftStickerOverlays,
                         )
                         val right = clip.copy(
                             id = java.util.UUID.randomUUID().toString(),
@@ -2091,6 +2129,7 @@ private fun VyroCutApp() {
                             fadeInMs = 0L,
                             textOverlay = rightTextOverlays.firstOrNull(),
                             additionalTextOverlays = rightTextOverlays.drop(1),
+                            stickerOverlays = rightStickerOverlays,
                         )
                         val updated = clips.toMutableList().apply {
                             removeAt(splitIndex)
@@ -2623,14 +2662,75 @@ private fun VyroCutApp() {
                     Column(
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp))
                             .padding(horizontal = 10.dp, vertical = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Text("STICKERS", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Text(
-                            unavailableStudioToolMessage(activeTool).orEmpty(),
-                            color = StudioMuted,
-                            fontSize = 10.sp,
-                        )
+                        Text("STICKER OVERLAYS", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        if (selectedClip == null) {
+                            Text("Select a video clip before adding a sticker.", color = StudioMuted, fontSize = 10.sp)
+                        } else {
+                            Text("Choose a sticker position, then tap a symbol to add it to this clip.", color = StudioMuted, fontSize = 10.sp)
+                            Row(
+                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                ClipStickerPosition.values().forEach { position ->
+                                    FilterChip(
+                                        selected = selectedStickerPosition == position,
+                                        onClick = { selectedStickerPosition = position },
+                                        label = {
+                                            Text(position.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }, fontSize = 9.sp)
+                                        },
+                                    )
+                                }
+                            }
+                            Row(
+                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                listOf("⭐", "❤️", "🔥", "😂", "😎", "✨", "🎉", "🚀", "💯", "👏").forEach { symbol ->
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = { addSelectedClipSticker(symbol) },
+                                        label = { Text(symbol, fontSize = 19.sp) },
+                                        enabled = selectedClip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
+                                    )
+                                }
+                            }
+                            Text(
+                                "ADDED • " + selectedClip.allStickerOverlays.size + "/" + MAX_CLIP_STICKER_OVERLAYS,
+                                color = StudioMuted,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            if (selectedClip.allStickerOverlays.isEmpty()) {
+                                Text("No stickers on this clip yet.", color = StudioMuted, fontSize = 10.sp)
+                            } else {
+                                selectedClip.allStickerOverlays.forEachIndexed { index, sticker ->
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(sticker.symbol, fontSize = 20.sp)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            sticker.position.name.lowercase().replace('_', ' '),
+                                            color = StudioMuted,
+                                            fontSize = 10.sp,
+                                        )
+                                        Spacer(Modifier.weight(1f))
+                                        TextButton(
+                                            onClick = { removeSelectedClipSticker(index) },
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                        ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = 10.sp) }
+                                    }
+                                }
+                            }
+                            Text(
+                                "Non-destructive • Rendered in preview and MP4 export • Visible for the full clip",
+                                color = StudioMuted,
+                                fontSize = 9.sp,
+                            )
+                        }
                     }
                 }
                 if (activeTool == "Text") {
@@ -2949,6 +3049,7 @@ private fun VyroCutApp() {
                                                 )?.let(videoEffects::add)
                                             }
                                             videoEffects += createClipTextOverlayEffects(clip.allTextOverlays)
+                                            videoEffects += createClipStickerOverlayEffects(clip.allStickerOverlays)
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(
                                                     Effects(
@@ -3328,12 +3429,20 @@ private fun VyroCutApp() {
                                     newSourceStartMs = range.startMs,
                                     newSourceEndMs = range.endMs,
                                 )
+                                val rebasedStickerOverlays = rebaseClipStickerOverlaysForTrim(
+                                    overlays = trimTargetClip.allStickerOverlays,
+                                    oldSourceStartMs = trimTargetClip.sourceStartMs,
+                                    oldSourceEndMs = trimTargetClip.sourceEndMs,
+                                    newSourceStartMs = range.startMs,
+                                    newSourceEndMs = range.endMs,
+                                )
                                 changed(clips.toMutableList().apply {
                                     this[index] = trimTargetClip.copy(
                                         sourceStartMs = range.startMs,
                                         sourceEndMs = range.endMs,
                                         textOverlay = rebasedTextOverlays.firstOrNull(),
                                         additionalTextOverlays = rebasedTextOverlays.drop(1),
+                                        stickerOverlays = rebasedStickerOverlays,
                                     )
                                 })
                                 selectedIndex = index
@@ -3513,6 +3622,17 @@ internal fun encodeProject(clips: List<EditClip>): String {
                 })
             }
         })
+        put("stickerOverlays", JSONArray().apply {
+            clip.allStickerOverlays.forEach { overlay ->
+                put(JSONObject().apply {
+                    put("symbol", overlay.symbol)
+                    put("scale", overlay.scale.toDouble())
+                    put("position", overlay.position.name)
+                    put("startMs", overlay.startMs)
+                    overlay.endMs?.let { put("endMs", it) }
+                })
+            }
+        })
     }) }
     return array.toString()
 }
@@ -3540,7 +3660,7 @@ internal fun encodeProjectBackup(
     )
     return JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 13)
+        put("version", 14)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -3558,7 +3678,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..13) { "Unsupported backup version" }
+    require(version in 1..14) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -3749,6 +3869,41 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     ?: error("A clip has an invalid text overlay")
                 listOf(decodeOverlay(overlayJson))
             }
+            val stickerOverlays = if (item.has("stickerOverlays")) {
+                val overlaysJson = item.optJSONArray("stickerOverlays")
+                    ?: error("A clip has an invalid sticker overlay list")
+                require(overlaysJson.length() <= MAX_CLIP_STICKER_OVERLAYS) {
+                    "A clip contains too many sticker overlays"
+                }
+                buildList {
+                    for (overlayIndex in 0 until overlaysJson.length()) {
+                        val overlayJson = overlaysJson.optJSONObject(overlayIndex)
+                            ?: error("A clip has an invalid sticker overlay")
+                        val overlay = decodeClipStickerOverlay(
+                            raw = overlayJson.optString("symbol", ""),
+                            scale = if (overlayJson.has("scale")) {
+                                overlayJson.optDouble("scale", Double.NaN).toFloat()
+                            } else {
+                                1f
+                            },
+                            position = overlayJson.optString("position", "BOTTOM_RIGHT"),
+                            startMs = if (overlayJson.has("startMs")) {
+                                overlayJson.optLong("startMs", Long.MIN_VALUE)
+                            } else {
+                                0L
+                            },
+                            endMs = if (overlayJson.has("endMs") && !overlayJson.isNull("endMs")) {
+                                overlayJson.optLong("endMs", Long.MIN_VALUE)
+                            } else {
+                                null
+                            },
+                        ) ?: error("A clip has an invalid sticker overlay")
+                        add(overlay)
+                    }
+                }
+            } else {
+                emptyList()
+            }
             add(
                 EditClip(
                     id = id,
@@ -3762,6 +3917,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     visualAdjustments = visualAdjustments,
                     textOverlay = textOverlays.firstOrNull(),
                     additionalTextOverlays = textOverlays.drop(1),
+                    stickerOverlays = stickerOverlays,
                 ),
             )
         }

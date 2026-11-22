@@ -11,16 +11,13 @@ class StudioToolAvailabilityTest {
     }
 
     @Test
-    fun stickersPanelExplainsThatNoProjectOverlayIsCreated() {
-        assertEquals(
-            "Sticker overlays aren't available yet. This tool does not add anything to the project.",
-            unavailableStudioToolMessage("Stickers"),
-        )
+    fun implementedStickerOverlaysDoNotShowAnUnavailableWarning() {
+        assertNull(unavailableStudioToolMessage("Stickers"))
     }
 
     @Test
     fun implementedToolsDoNotShowUnavailableWarnings() {
-        listOf("Edit", "Audio", "Text", "Filters", "Ratio", "Canvas", "Adjust", "Effects").forEach { tool ->
+        listOf("Edit", "Audio", "Text", "Stickers", "Filters", "Ratio", "Canvas", "Adjust", "Effects").forEach { tool ->
             assertNull("$tool should remain available", unavailableStudioToolMessage(tool))
         }
     }

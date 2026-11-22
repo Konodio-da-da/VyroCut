@@ -225,3 +225,12 @@ A control is only considered complete when its operation is connected to the pro
 - Initial project state uses only the primary audio preference for immediate rendering; the validated preference/file recovery selection is applied asynchronously only while the project, clip list, and audio list remain unchanged.
 - The explicit Recover action now performs mirror reads, matching-checkpoint validation, and audio journal decoding on IO before committing the recovered state on Main.
 - Pure JVM selection tests remain independent of Android storage. Device responsiveness and process-death recovery remain physical-device checks.
+
+
+## First persisted sticker-overlay pipeline — 22 November 2026
+- The Stickers tool now adds non-destructive emoji-glyph overlays to the selected video clip, with selectable frame-relative placement and a bounded per-clip layer count.
+- Sticker overlays are rendered through Media3 BitmapOverlay in both preview and Transformer export. Their clip-local visibility intervals use inclusive IN and exclusive OUT boundaries.
+- Project JSON, undo/redo snapshots, recovery journals, and version-14 project backups carry sticker overlay data. Version-13 and older backups remain readable and default to no stickers.
+- Splitting a video clip intersects and rebases each sticker interval onto the two resulting clips. Non-destructive source trimming rebases sticker intervals and drops overlays outside the retained source range.
+- Pure JVM tests cover symbol/scale/timing validation, visibility boundaries, split/trim behaviour, bitmap bounds, frame-relative layout, project round trips, legacy backup defaults, and malformed/excessive payload rejection.
+- Android CI and device validation are required before treating the rendering path as verified. JVM tests cannot prove platform emoji glyph appearance, preview timing, or exported MP4 playback on physical Android devices.
