@@ -3398,8 +3398,6 @@ private fun VyroCutApp() {
                                     } catch (error: Exception) {
                                         outputFile.delete()
                                         exportUiStage = ExportUiStage.FAILED
-                                        exportUiStage = ExportUiStage.FAILED
-
                                         isExporting = false
                                         exportSessionId = null
                                         exportMessage = "Could not initialize export: ${error.message}"
