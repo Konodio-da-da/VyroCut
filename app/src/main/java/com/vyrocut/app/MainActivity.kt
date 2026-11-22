@@ -195,9 +195,8 @@ private fun VyroCutApp() {
     var audioWaveforms by remember(activeProjectId) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
-    var selectedEffect by remember { mutableStateOf("Edge Glow") }
-    var effectIntensity by remember { mutableFloatStateOf(0.65f) }
-    val initialCanvasSettings = remember {
+    var selectedAdjustment by remember { mutableStateOf("Brightness") }
+        val initialCanvasSettings = remember {
         decodeProjectCanvasSettings(
             preferences.getString("project_" + activeProjectId + "_canvas_settings", null)
         ) ?: ProjectCanvasSettings()
@@ -2123,8 +2122,8 @@ private fun VyroCutApp() {
                     activeTool = activeTool,
                     onToolSelected = { tool ->
                         activeTool = tool
-                        if (tool == "Adjust" && selectedEffect !in setOf("Brightness", "Contrast", "Saturation")) {
-                            selectedEffect = "Brightness"
+                        if (tool == "Adjust" && selectedAdjustment !in setOf("Brightness", "Contrast", "Saturation")) {
+                            selectedAdjustment = "Brightness"
                         }
                     }
                 )
@@ -2161,34 +2160,49 @@ private fun VyroCutApp() {
                         }
                     }
                 }
-                if (activeTool == "Effects" || activeTool == "Filters" || activeTool == "Adjust") {
+                if (activeTool == "Effects") {
+                    Column(
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp))
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            "VIDEO EFFECTS",
+                            color = StudioText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp,
+                        )
+                        Text(
+                            unavailableStudioToolMessage(activeTool).orEmpty(),
+                            color = StudioMuted,
+                            fontSize = 10.sp,
+                        )
+                    }
+                } else if (activeTool == "Filters" || activeTool == "Adjust") {
                     Column(
                         Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            when (activeTool) {
-                                "Effects" -> "VIDEO EFFECTS"
-                                "Filters" -> "FILTERS"
-                                else -> "CLIP ADJUSTMENTS"
-                            },
+                            if (activeTool == "Filters") "FILTERS" else "CLIP ADJUSTMENTS",
                             color = StudioText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            val options = when (activeTool) {
-                                "Effects" -> listOf("Edge Glow", "Blur", "Glitch", "Vignette", "Shake")
-                                "Filters" -> ClipVisualPreset.values().map { it.label }
-                                else -> listOf("Brightness", "Contrast", "Saturation")
+                            val options = if (activeTool == "Filters") {
+                                ClipVisualPreset.values().map { it.label }
+                            } else {
+                                listOf("Brightness", "Contrast", "Saturation")
                             }
                             options.forEach { item ->
                                 FilterChip(
                                     selected = if (activeTool == "Filters") {
                                         selectedClip?.visualAdjustments == clipVisualPresetAdjustments(item)
                                     } else {
-                                        selectedEffect == item
+                                        selectedAdjustment == item
                                     },
                                     onClick = {
                                         if (activeTool == "Filters") {
@@ -2204,7 +2218,7 @@ private fun VyroCutApp() {
                                                 )
                                             }
                                         } else {
-                                            selectedEffect = item
+                                            selectedAdjustment = item
                                         }
                                     },
                                     label = { Text(item, fontSize = 11.sp) }
@@ -2215,13 +2229,13 @@ private fun VyroCutApp() {
                             if (selectedClip == null) {
                                 Text("Select a video clip to adjust its colour.", color = StudioMuted, fontSize = 10.sp)
                             } else {
-                                val adjustmentValue = when (selectedEffect) {
+                                val adjustmentValue = when (selectedAdjustment) {
                                     "Contrast" -> clipContrastDraft
                                     "Saturation" -> clipSaturationDraft
                                     else -> clipBrightnessDraft
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(selectedEffect, color = StudioMuted, fontSize = 11.sp)
+                                    Text(selectedAdjustment, color = StudioMuted, fontSize = 11.sp)
                                     Spacer(Modifier.weight(1f))
                                     Text("${adjustmentValue.toInt()}%", color = StudioAccent, fontSize = 11.sp)
                                     TextButton(
@@ -2237,7 +2251,7 @@ private fun VyroCutApp() {
                                 Slider(
                                     value = adjustmentValue.coerceIn(-100f, 100f),
                                     onValueChange = { value ->
-                                        when (selectedEffect) {
+                                        when (selectedAdjustment) {
                                             "Contrast" -> clipContrastDraft = value
                                             "Saturation" -> clipSaturationDraft = value
                                             else -> clipBrightnessDraft = value
@@ -2260,18 +2274,6 @@ private fun VyroCutApp() {
                                     fontSize = 10.sp
                                 )
                             }
-                        } else if (activeTool == "Effects") {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Intensity", color = StudioMuted, fontSize = 11.sp)
-                                Spacer(Modifier.weight(1f))
-                                Text("${(effectIntensity * 100).toInt()}%", color = StudioAccent, fontSize = 11.sp)
-                            }
-                            Slider(
-                                value = effectIntensity,
-                                onValueChange = { effectIntensity = it },
-                                colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
-                            )
-                            Text("Effect rendering is not implemented yet.", color = StudioMuted, fontSize = 10.sp)
                         } else {
                             if (selectedClip == null) {
                                 Text("Select a video clip to apply a tonal preset.", color = StudioMuted, fontSize = 10.sp)
@@ -2579,18 +2581,16 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Stickers") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 10.dp, vertical = 9.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Text("ADD STICKER", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("Emoji", "Shapes", "Decorations", "Arrows").forEach { option ->
-                                Surface(color = VyroCutPalette.SurfaceBadge, shape = RoundedCornerShape(7.dp)) {
-                                    Text(option, color = StudioText, fontSize = 10.sp, modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp))
-                                }
-                            }
-                        }
-                        Text("Sticker rendering is not implemented yet.", color = StudioMuted, fontSize = 9.sp)
+                        Text("STICKERS", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text(
+                            unavailableStudioToolMessage(activeTool).orEmpty(),
+                            color = StudioMuted,
+                            fontSize = 10.sp,
+                        )
                     }
                 }
                 if (activeTool == "Text") {
