@@ -313,3 +313,11 @@ A control is only considered complete when its operation is connected to the pro
 - Pure Kotlin tests cover preference defaults/restoration, exact bits-per-second mappings, Auto no-op behaviour, and truthful requested-target summaries.
 - The setting is stored per project in local preferences; no project JSON or backup schema changes are required. Audio mixing, per-clip volume/fades, source audio, Music/SFX/Voiceover composition, project clock, VFR indexing, export preflight, validation, cancellation, and MediaStore publication are unchanged.
 - Android CI verifies compilation and JVM rules only. Actual encoder acceptance, resulting MP4 audio bitrate, sound quality, and audio/video sync still require physical-device export validation.
+
+
+## Export size estimate and storage preflight — 23 November 2026
+- The Export panel now displays an approximate MP4 size from project duration, the selected video/audio bitrate requests, and a 5% container allowance. Auto uses explicit planning assumptions (Balanced video bitrate and 128 kbps audio) and is labelled as an estimate; actual size may vary with content and device encoders.
+- Before Transformer starts, the app checks free bytes for the app-private temporary output directory and the primary Movies storage volume. When both locations share a volume, preflight budgets for the temporary MP4 and the separate MediaStore publication copy to coexist, plus a 32 MiB reserve. Separate volumes are checked independently with a 16 MiB reserve each.
+- A known insufficient-capacity result stops export before creating the MP4. If storage statistics or the volume relationship cannot be read, the check is reported as unknown and export may continue rather than treating unavailable information as a pass.
+- Pure JVM tests cover bitrate/duration estimates, automatic assumptions, container overhead, rounding and overflow, same/separate-volume capacity checks, unknown capacity, and canonical path-boundary matching.
+- The storage check is a preflight estimate, not a guarantee: concurrent storage use, variable encoder output, filesystem metadata, and device behaviour can change the final space requirement. Physical-device low-storage and MediaStore publication tests remain required.

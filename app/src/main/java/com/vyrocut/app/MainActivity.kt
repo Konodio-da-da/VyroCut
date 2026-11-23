@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Environment
 import android.os.SystemClock
+import android.os.StatFs
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import java.security.MessageDigest
@@ -103,6 +104,25 @@ private val StudioPanel = VyroCutPalette.Surface
 private val StudioAccent = VyroCutPalette.Accent
 private val StudioText = VyroCutPalette.TextPrimary
 private val StudioMuted = VyroCutPalette.TextMuted
+
+private fun inspectExportStorageAvailability(temporaryDirectory: File): ExportStorageAvailability {
+    val temporaryAvailableBytes = runCatching {
+        StatFs(temporaryDirectory.absolutePath).availableBytes
+    }.getOrNull()
+    @Suppress("DEPRECATION")
+    val moviesRoot = Environment.getExternalStorageDirectory()
+    val moviesAvailableBytes = runCatching {
+        StatFs(moviesRoot.absolutePath).availableBytes
+    }.getOrNull()
+    val sameVolume = runCatching {
+        isPathWithinStorageRoot(temporaryDirectory.canonicalPath, moviesRoot.canonicalPath)
+    }.getOrNull()
+    return ExportStorageAvailability(
+        temporaryAvailableBytes = temporaryAvailableBytes,
+        moviesAvailableBytes = moviesAvailableBytes,
+        sameVolume = sameVolume,
+    )
+}
 
 @OptIn(UnstableApi::class)
 private fun media3SeekParametersFor(intent: PreviewSeekIntent): SeekParameters =
@@ -3200,6 +3220,19 @@ private fun VyroCutApp() {
                     val tenthsOfMbps = (targetBps.toLong() + 50_000L) / 100_000L
                     "Requested target: ${tenthsOfMbps / 10}.${tenthsOfMbps % 10} Mbps • device encoder may adjust to a supported value."
                 } ?: "Auto keeps Media3's device-selected video bitrate."
+                val displayedAudioBitrateTargetBps = exportRequestedAudioBitrateBps(exportAudioBitratePreset)
+                val displayedAutomaticVideoBitrateBps = exportTargetVideoBitrateBps(
+                    ExportVideoBitratePreset.BALANCED,
+                    displayedExportSize,
+                    exportFrameRatePreset,
+                )
+                val displayedExportSizeEstimate = estimateExportFileSize(
+                    durationMs = calculateTimelineDurationMs(clips.map { it.durationMs }),
+                    requestedVideoBitrateBps = displayedVideoBitrateTargetBps,
+                    requestedAudioBitrateBps = displayedAudioBitrateTargetBps,
+                    automaticVideoBitrateBps = displayedAutomaticVideoBitrateBps,
+                    automaticAudioBitrateBps = DEFAULT_AUTOMATIC_AUDIO_BITRATE_ESTIMATE_BPS,
+                )
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3327,6 +3360,24 @@ private fun VyroCutApp() {
                     color = StudioMuted,
                     fontSize = 9.sp,
                 )
+                displayedExportSizeEstimate?.let { estimate ->
+                    Text(
+                        "Estimated MP4 size: ${formatExportSizeMiB(estimate.estimatedBytes)}",
+                        color = StudioText,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    val estimateAssumptions = buildList {
+                        if (estimate.usesAutomaticVideoBitrate) add("Auto video assumes Balanced")
+                        if (estimate.usesAutomaticAudioBitrate) add("Auto audio assumes 128 kbps")
+                    }
+                    Text(
+                        (estimateAssumptions + "Approximate; content and device encoders change actual size.")
+                            .joinToString(" • "),
+                        color = StudioMuted,
+                        fontSize = 9.sp,
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
@@ -3456,9 +3507,41 @@ private fun VyroCutApp() {
                                         exportMessage = "Could not create the temporary export directory"
                                         return@exportPreparation
                                     }
+                                    val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
+                                    val automaticVideoBitrateBps = exportTargetVideoBitrateBps(
+                                        ExportVideoBitratePreset.BALANCED,
+                                        exportCanvasSize,
+                                        exportFrameRate,
+                                    )
+                                    val exportSizeEstimate = estimateExportFileSize(
+                                        durationMs = expectedDurationMs,
+                                        requestedVideoBitrateBps = exportVideoBitrateTargetBps,
+                                        requestedAudioBitrateBps = exportAudioBitrateTargetBps,
+                                        automaticVideoBitrateBps = automaticVideoBitrateBps,
+                                        automaticAudioBitrateBps = DEFAULT_AUTOMATIC_AUDIO_BITRATE_ESTIMATE_BPS,
+                                    )
+                                    val storageAvailability = withContext(Dispatchers.IO) {
+                                        inspectExportStorageAvailability(outputDirectory)
+                                    }
+                                    val storageCheck = exportSizeEstimate?.let { estimate ->
+                                        evaluateExportStoragePreflight(estimate, storageAvailability)
+                                    }
+                                    if (storageCheck?.status == ExportStoragePreflightStatus.INSUFFICIENT) {
+                                        exportUiStage = ExportUiStage.FAILED
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Export stopped: ${describeExportStoragePreflight(storageCheck)}"
+                                        return@exportPreparation
+                                    }
+                                    exportMessage = if (storageCheck == null ||
+                                        storageCheck.status == ExportStoragePreflightStatus.UNKNOWN
+                                    ) {
+                                        "Free space could not be verified; continuing with an approximate size estimate."
+                                    } else {
+                                        "Storage preflight passed; preparing MP4…"
+                                    }
                                     val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
                                     val sourceUris = exportClips.map { it.uri } + exportAudioTracks.map { it.uri }
-                                    val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
                                     val exportAudioSegments = AudioTrackType.values().associateWith { type ->
                                         buildAudioTrackTimelineSegments(exportAudioTracks, type, expectedDurationMs)
                                     }
