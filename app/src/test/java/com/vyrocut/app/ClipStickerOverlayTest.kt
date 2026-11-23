@@ -41,6 +41,39 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerScaleUpdatesClampAndPreserveOtherOverlayProperties() {
+        val sticker = ClipStickerOverlay(
+            "🚀",
+            scale = 1.25f,
+            position = ClipStickerPosition.TOP_LEFT,
+            startMs = 1_000L,
+            endMs = 3_500L,
+        )
+
+        assertEquals(
+            sticker.copy(scale = 1.5f),
+            updateClipStickerOverlayScale(sticker, 1.5f),
+        )
+        assertEquals(
+            sticker.copy(scale = MIN_CLIP_STICKER_SCALE),
+            updateClipStickerOverlayScale(sticker, 0.1f),
+        )
+        assertEquals(
+            sticker.copy(scale = MAX_CLIP_STICKER_SCALE),
+            updateClipStickerOverlayScale(sticker, 3f),
+        )
+    }
+
+    @Test
+    fun stickerScaleUpdatesRejectNonFiniteValues() {
+        val sticker = ClipStickerOverlay("🔥")
+
+        assertNull(updateClipStickerOverlayScale(sticker, Float.NaN))
+        assertNull(updateClipStickerOverlayScale(sticker, Float.POSITIVE_INFINITY))
+        assertNull(updateClipStickerOverlayScale(sticker, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
     fun timedStickerUsesInclusiveStartAndExclusiveEnd() {
         val sticker = ClipStickerOverlay("🔥", startMs = 1_000L, endMs = 2_500L)
 
