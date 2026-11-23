@@ -2383,19 +2383,19 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Effects") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp))
+                            .padding(horizontal = VyroCutEffectsPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutEffectsPanelMetrics.VerticalPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutEffectsPanelMetrics.SectionGapDp.dp),
                     ) {
                         Text(
                             "VIDEO EFFECTS",
                             color = StudioText,
-                            fontSize = 11.sp,
+                            fontSize = VyroCutTypography.LabelSp.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
+                            letterSpacing = VyroCutEffectsPanelMetrics.HeaderLetterSpacingSp.sp,
                         )
                         if (selectedClip == null) {
-                            Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = 10.sp)
+                            Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                         } else {
                             ClipCreativeEffectCategory.values().forEach { category ->
                                 val presets = clipCreativeEffectPresetsForCategory(category)
@@ -2403,13 +2403,13 @@ private fun VyroCutApp() {
                                     Text(
                                         category.label,
                                         color = StudioMuted,
-                                        fontSize = 10.sp,
+                                        fontSize = VyroCutTypography.CaptionSp.sp,
                                         fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.8.sp,
+                                        letterSpacing = VyroCutEffectsPanelMetrics.CategoryLetterSpacingSp.sp,
                                     )
                                     Row(
                                         Modifier.horizontalScroll(rememberScrollState()),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp),
                                     ) {
                                         presets.forEach { preset ->
                                             FilterChip(
@@ -2424,7 +2424,7 @@ private fun VyroCutApp() {
                                                         creativeEffectIntensity = clipCreativeEffectIntensityDraft.toInt(),
                                                     )
                                                 },
-                                                label = { Text(preset.label, fontSize = 11.sp) },
+                                                label = { Text(preset.label, fontSize = VyroCutTypography.LabelSp.sp) },
                                             )
                                         }
                                     }
@@ -2433,13 +2433,13 @@ private fun VyroCutApp() {
                             Text(
                                 "Warm and Cool tint RGB channels. Grayscale uses Media3 luminance filtering; Sepia adds a vintage tone; Film Fade lifts shadows and softens contrast; Negative inverts the frame.",
                                 color = StudioMuted,
-                                fontSize = 10.sp,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
                             )
                             if (selectedClip.visualAdjustments.creativeEffectPreset != ClipCreativeEffectPreset.ORIGINAL) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Effect strength", color = StudioMuted, fontSize = 11.sp)
+                                    Text("Effect strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
                                     Spacer(Modifier.weight(1f))
-                                    Text("${clipCreativeEffectIntensityDraft.toInt()}%", color = StudioAccent, fontSize = 11.sp)
+                                    Text("${clipCreativeEffectIntensityDraft.toInt()}%", color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                                     TextButton(
                                         onClick = {
                                             clipCreativeEffectIntensityDraft = DEFAULT_CREATIVE_EFFECT_INTENSITY.toFloat()
@@ -2451,8 +2451,8 @@ private fun VyroCutApp() {
                                                 creativeEffectIntensity = DEFAULT_CREATIVE_EFFECT_INTENSITY,
                                             )
                                         },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                    ) { Text("Reset", fontSize = 10.sp) }
+                                        contentPadding = PaddingValues(horizontal = VyroCutEffectsPanelMetrics.ResetButtonHorizontalPaddingDp.dp, vertical = VyroCutEffectsPanelMetrics.ResetButtonVerticalPaddingDp.dp),
+                                    ) { Text("Reset", fontSize = VyroCutTypography.CaptionSp.sp) }
                                 }
                                 Slider(
                                     value = clipCreativeEffectIntensityDraft.coerceIn(0f, 100f),
@@ -2472,9 +2472,9 @@ private fun VyroCutApp() {
                                 )
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Hue shift", color = StudioMuted, fontSize = 11.sp)
+                                Text("Hue shift", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
                                 Spacer(Modifier.weight(1f))
-                                Text("${clipHueShiftDraft.toInt()}°", color = StudioAccent, fontSize = 11.sp)
+                                Text("${clipHueShiftDraft.toInt()}°", color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                                 TextButton(
                                     onClick = {
                                         clipHueShiftDraft = 0f
@@ -2485,8 +2485,8 @@ private fun VyroCutApp() {
                                             hueShiftDegrees = 0,
                                         )
                                     },
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                ) { Text("Reset", fontSize = 10.sp) }
+                                    contentPadding = PaddingValues(horizontal = VyroCutEffectsPanelMetrics.ResetButtonHorizontalPaddingDp.dp, vertical = VyroCutEffectsPanelMetrics.ResetButtonVerticalPaddingDp.dp),
+                                ) { Text("Reset", fontSize = VyroCutTypography.CaptionSp.sp) }
                             }
                             Slider(
                                 value = clipHueShiftDraft.coerceIn(-180f, 180f),
@@ -2506,7 +2506,7 @@ private fun VyroCutApp() {
                             Text(
                                 "Non-destructive • Applied to this clip in preview and MP4 export",
                                 color = StudioMuted,
-                                fontSize = 10.sp,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
                             )
                         }
                     }
