@@ -392,3 +392,8 @@ A control is only considered complete when its operation is connected to the pro
 - This is styling-only: sticker symbol choices, per-layer size and clip-local IN/OUT controls, selection/removal, non-destructive overlay model, split/trim persistence, undo/redo, preview rendering, and Media3 Transformer export are unchanged.
 - Added a pure JVM exact-value regression test for the sticker-panel metrics and reused shared tokens. Android CI must verify compilation and the unit test; actual glyph rendering and screen fit still require physical-device validation.
 
+## Audio tool panel design-token consolidation — 23 November 2026
+- Added semantic `VyroCutAudioPanelMetrics` for the existing lane/clip-volume panel gaps, chip spacing, clip-card geometry, delete controls, action-button padding, and header tracking.
+- Reused the shared compact shape, small spacing, and typography scale throughout the Audio tool's lane list and selected-video-clip volume/fade panel without changing the existing dp/sp values.
+- This is styling-only: audio import, lane selection, waveform decode/cache/rendering, source IN/OUT, timeline placement, ripple trim/delete, split/duplicate, volume/fades, project clock synchronization, preview mixing, persistence, and Media3 Transformer audio composition are unchanged.
+- Added a pure JVM exact-value regression test for the Audio panel metrics and shared tokens. Android CI must verify compilation and unit tests; actual waveform rendering, audio sync, and screen fit still require physical-device validation.
