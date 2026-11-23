@@ -68,7 +68,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionFourteenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
+    fun versionFifteenBackupPreservesClipAudioVisualAdjustmentsAndTimedTextOverlay() {
         val original = EditClip(
             id = "clip-2",
             uri = "content://media/two",
@@ -88,7 +88,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(14, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         assertEquals("Volume project", restored.name)
         assertEquals(0.2f, restored.clips.single().audioVolume, 0.0001f)
         assertEquals(1_000L, restored.clips.single().fadeInMs)
@@ -103,7 +103,7 @@ class ProjectClipAudioPersistenceTest {
 
 
     @Test
-    fun versionFourteenBackupRoundTripsEverySupportedPreviewSpeed() {
+    fun versionFifteenBackupRoundTripsEverySupportedPreviewSpeed() {
         val video = EditClip(
             id = "video",
             uri = "content://media/video",
@@ -121,14 +121,14 @@ class ProjectClipAudioPersistenceTest {
             )
             val json = org.json.JSONObject(backup)
 
-            assertEquals(14, json.getInt("version"))
+            assertEquals(15, json.getInt("version"))
             assertEquals(speed.toDouble(), json.getDouble("previewPlaybackSpeed"), 0.0001)
             assertEquals(speed, decodeProjectBackup(backup).previewPlaybackSpeed, 0f)
         }
     }
 
     @Test
-    fun versionFourteenBackupRoundTripsPreviewCheckpointByStableClipId() {
+    fun versionFifteenBackupRoundTripsPreviewCheckpointByStableClipId() {
         val clips = listOf(
             EditClip(
                 id = "intro",
@@ -156,7 +156,7 @@ class ProjectClipAudioPersistenceTest {
         val json = org.json.JSONObject(backup)
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(14, json.getInt("version"))
+        assertEquals(15, json.getInt("version"))
         assertEquals("main", json.getString("previewClipId"))
         assertEquals(4_500L, json.getLong("previewSourceTimeMs"))
         assertEquals(1.5f, restored.previewPlaybackSpeed, 0f)
@@ -164,7 +164,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionFourteenBackupOmitsCheckpointThatDoesNotMatchAnExportedClip() {
+    fun versionFifteenBackupOmitsCheckpointThatDoesNotMatchAnExportedClip() {
         val video = EditClip(
             id = "video",
             uri = "content://media/video",
@@ -298,7 +298,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(original.allTextOverlays, restoredProject!!.single().allTextOverlays)
 
         val backup = encodeProjectBackup("Layered project", listOf(original), ProjectCanvasSettings())
-        assertEquals(14, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         val restoredBackup = decodeProjectBackup(backup)
         assertEquals(original.allTextOverlays, restoredBackup.clips.single().allTextOverlays)
     }
@@ -437,7 +437,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun versionFourteenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
+    fun versionFifteenBackupPreservesIndependentMusicSfxAndVoiceoverTracks() {
         val video = EditClip(
             id = "video",
             uri = "content://media/video",
@@ -489,7 +489,7 @@ class ProjectClipAudioPersistenceTest {
         )
         val restored = decodeProjectBackup(backup)
 
-        assertEquals(14, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         assertEquals(tracks, restored.audioTracks)
         assertTrue(validateAudioTrackClips(restored.audioTracks, 12_000L))
     }
@@ -574,7 +574,7 @@ class ProjectClipAudioPersistenceTest {
             clips = original,
             canvasSettings = ProjectCanvasSettings(),
         )
-        assertEquals(14, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         assertEquals(original, decodeProjectBackup(backup).clips)
     }
 
@@ -614,7 +614,7 @@ class ProjectClipAudioPersistenceTest {
         assertEquals(listOf(original), decodeProjectStrict(projectJson))
 
         val backup = encodeProjectBackup("Sticker project", listOf(original), ProjectCanvasSettings())
-        assertEquals(14, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         assertEquals(listOf(original), decodeProjectBackup(backup).clips)
     }
 
@@ -644,6 +644,65 @@ class ProjectClipAudioPersistenceTest {
         }
         val tooMany = """[{"id":"many","uri":"content://media/many","name":"Many","start":0,"end":1000,"stickerOverlays":[$excessive]}]"""
         assertNull(decodeProjectStrict(tooMany))
+    }
+
+    @Test
+    fun perClipCreativeEffectPresetSurvivesProjectAndVersionFifteenBackupSerialization() {
+        val clips = listOf(
+            EditClip(
+                id = "cool-look",
+                uri = "content://media/cool-look",
+                name = "Cool look",
+                sourceStartMs = 0L,
+                sourceEndMs = 2_000L,
+                visualAdjustments = ClipVisualAdjustments(
+                    brightness = 12,
+                    creativeEffectPreset = ClipCreativeEffectPreset.COOL,
+                ),
+            ),
+        )
+
+        val projectJson = encodeProject(clips)
+        val visualJson = org.json.JSONArray(projectJson)
+            .getJSONObject(0)
+            .getJSONObject("visualAdjustments")
+        assertEquals("cool", visualJson.getString("creativeEffectPreset"))
+        assertEquals(clips, decodeProjectStrict(projectJson))
+
+        val backup = encodeProjectBackup(
+            name = "Creative effects",
+            clips = clips,
+            canvasSettings = ProjectCanvasSettings(),
+        )
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(clips, decodeProjectBackup(backup).clips)
+    }
+
+    @Test
+    fun versionFourteenBackupWithoutCreativeEffectDefaultsToOriginal() {
+        val legacy = """{
+            "format":"vyrocut-project",
+            "version":14,
+            "projectName":"Legacy effects",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Legacy","start":0,"end":1000,
+                "visualAdjustments":{"brightness":10,"hueShiftDegrees":45}}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK",
+            "audioTracks":[]
+        }"""
+
+        val restored = decodeProjectBackup(legacy)
+
+        assertEquals(
+            ClipVisualAdjustments(brightness = 10, hueShiftDegrees = 45),
+            restored.clips.single().visualAdjustments,
+        )
+    }
+
+    @Test
+    fun unknownCreativeEffectPresetRejectsProjectPayload() {
+        val invalid = """[{"id":"invalid-effect","uri":"content://media/invalid-effect","name":"Invalid",
+            "start":0,"end":1000,"visualAdjustments":{"creativeEffectPreset":"future-effect"}}]"""
+        assertNull(decodeProjectStrict(invalid))
     }
 
 }
