@@ -661,6 +661,28 @@ class ProjectClipAudioPersistenceTest {
                     creativeEffectIntensity = 42,
                 ),
             ),
+            EditClip(
+                id = "grayscale-look",
+                uri = "content://media/grayscale-look",
+                name = "Grayscale look",
+                sourceStartMs = 0L,
+                sourceEndMs = 2_000L,
+                visualAdjustments = ClipVisualAdjustments(
+                    creativeEffectPreset = ClipCreativeEffectPreset.GRAYSCALE,
+                    creativeEffectIntensity = 65,
+                ),
+            ),
+            EditClip(
+                id = "sepia-look",
+                uri = "content://media/sepia-look",
+                name = "Sepia look",
+                sourceStartMs = 0L,
+                sourceEndMs = 2_000L,
+                visualAdjustments = ClipVisualAdjustments(
+                    creativeEffectPreset = ClipCreativeEffectPreset.SEPIA,
+                    creativeEffectIntensity = 78,
+                ),
+            ),
         )
 
         val projectJson = encodeProject(clips)
@@ -669,6 +691,16 @@ class ProjectClipAudioPersistenceTest {
             .getJSONObject("visualAdjustments")
         assertEquals("cool", visualJson.getString("creativeEffectPreset"))
         assertEquals(42, visualJson.getInt("creativeEffectIntensity"))
+        val grayscaleJson = org.json.JSONArray(projectJson)
+            .getJSONObject(1)
+            .getJSONObject("visualAdjustments")
+        assertEquals("grayscale", grayscaleJson.getString("creativeEffectPreset"))
+        assertEquals(65, grayscaleJson.getInt("creativeEffectIntensity"))
+        val sepiaJson = org.json.JSONArray(projectJson)
+            .getJSONObject(2)
+            .getJSONObject("visualAdjustments")
+        assertEquals("sepia", sepiaJson.getString("creativeEffectPreset"))
+        assertEquals(78, sepiaJson.getInt("creativeEffectIntensity"))
         assertEquals(clips, decodeProjectStrict(projectJson))
 
         val backup = encodeProjectBackup(

@@ -2340,36 +2340,41 @@ private fun VyroCutApp() {
                         if (selectedClip == null) {
                             Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = 10.sp)
                         } else {
-                            Text(
-                                "COLOUR LOOKS",
-                                color = StudioMuted,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.8.sp,
-                            )
-                            Row(
-                                Modifier.horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                ClipCreativeEffectPreset.values().forEach { preset ->
-                                    FilterChip(
-                                        selected = selectedClip.visualAdjustments.creativeEffectPreset == preset,
-                                        onClick = {
-                                            commitSelectedClipVisualAdjustments(
-                                                brightness = clipBrightnessDraft.toInt(),
-                                                contrast = clipContrastDraft.toInt(),
-                                                saturation = clipSaturationDraft.toInt(),
-                                                hueShiftDegrees = clipHueShiftDraft.toInt(),
-                                                creativeEffectPreset = preset,
-                                                creativeEffectIntensity = clipCreativeEffectIntensityDraft.toInt(),
-                                            )
-                                        },
-                                        label = { Text(preset.label, fontSize = 11.sp) },
+                            ClipCreativeEffectCategory.values().forEach { category ->
+                                val presets = clipCreativeEffectPresetsForCategory(category)
+                                if (presets.isNotEmpty()) {
+                                    Text(
+                                        category.label,
+                                        color = StudioMuted,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.8.sp,
                                     )
+                                    Row(
+                                        Modifier.horizontalScroll(rememberScrollState()),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        presets.forEach { preset ->
+                                            FilterChip(
+                                                selected = selectedClip.visualAdjustments.creativeEffectPreset == preset,
+                                                onClick = {
+                                                    commitSelectedClipVisualAdjustments(
+                                                        brightness = clipBrightnessDraft.toInt(),
+                                                        contrast = clipContrastDraft.toInt(),
+                                                        saturation = clipSaturationDraft.toInt(),
+                                                        hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                                        creativeEffectPreset = preset,
+                                                        creativeEffectIntensity = clipCreativeEffectIntensityDraft.toInt(),
+                                                    )
+                                                },
+                                                label = { Text(preset.label, fontSize = 11.sp) },
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             Text(
-                                "Warm and Cool adjust RGB channels; Negative inverts the frame.",
+                                "Warm and Cool tint RGB channels. Grayscale uses Media3 luminance filtering; Sepia adds a vintage tone; Negative inverts the frame.",
                                 color = StudioMuted,
                                 fontSize = 10.sp,
                             )

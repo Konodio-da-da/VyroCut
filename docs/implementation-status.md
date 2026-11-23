@@ -282,3 +282,10 @@ A control is only considered complete when its operation is connected to the pro
 - Warm and Cool interpolate each RGB channel scale from identity to the existing tint values. Negative blends Media3's inverted RGB matrix with the 4×4 identity matrix, so intermediate strengths are genuine partial inversion rather than a preview-only opacity overlay.
 - The same effect-spec builder and Media3 effect construction remain shared by preview and Transformer export. The intensity is stored alongside the stable preset ID in the existing per-clip visual-adjustment JSON; version-15 backups created before this field default to 100% when imported, so no backup version bump is required.
 - Pure JVM tests cover intensity bounds/defaults, zero-strength no-op behaviour, all three preset strengths, and identity/half/full inversion matrix interpolation. Actual preview appearance, HDR output, and exported MP4 colour still require physical-device validation.
+
+
+## Categorized grayscale and sepia effects — 23 November 2026
+- The Effects browser now groups its non-destructive looks into Color, Neutral & Monochrome, and Vintage categories. Existing Original, Warm, Cool, and Negative identifiers remain stable.
+- Added Grayscale using Media3 1.5.1 `RgbFilter.createGrayscaleFilter()`, which selects the library's SDR or HDR luminance matrix. Added Sepia with a dedicated 4×4 RGB matrix. Both use the existing identity-to-effect intensity blending, so the shared 0–100% strength control works consistently.
+- Both effects are added to the same ordered `createClipVisualEffects` builder used by preview and Transformer export. Their stable IDs and strength values use the existing per-clip visual-adjustment JSON; project and version-15 backup formats do not change.
+- Pure JVM tests cover stable IDs, category grouping/order, effect-spec generation, strength bounds/zero-strength no-op, the Sepia matrix coefficients/alpha channel, and project/backup round trips for both new presets. Android CI is required to verify Media3 integration and compilation; visual quality and exported frames still require physical-device validation.

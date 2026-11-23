@@ -34,12 +34,29 @@ internal data class ClipVisualAdjustments(
     }
 }
 
-internal enum class ClipCreativeEffectPreset(val id: String, val label: String) {
-    ORIGINAL("original", "Original"),
-    WARM("warm", "Warm"),
-    COOL("cool", "Cool"),
-    NEGATIVE("negative", "Negative"),
+internal enum class ClipCreativeEffectCategory(val label: String) {
+    COLOR("COLOR"),
+    MONOCHROME("NEUTRAL & MONOCHROME"),
+    VINTAGE("VINTAGE"),
 }
+
+internal enum class ClipCreativeEffectPreset(
+    val id: String,
+    val label: String,
+    val category: ClipCreativeEffectCategory,
+) {
+    ORIGINAL("original", "Original", ClipCreativeEffectCategory.MONOCHROME),
+    WARM("warm", "Warm", ClipCreativeEffectCategory.COLOR),
+    COOL("cool", "Cool", ClipCreativeEffectCategory.COLOR),
+    NEGATIVE("negative", "Negative", ClipCreativeEffectCategory.MONOCHROME),
+    GRAYSCALE("grayscale", "Grayscale", ClipCreativeEffectCategory.MONOCHROME),
+    SEPIA("sepia", "Sepia", ClipCreativeEffectCategory.VINTAGE),
+}
+
+internal fun clipCreativeEffectPresetsForCategory(
+    category: ClipCreativeEffectCategory,
+): List<ClipCreativeEffectPreset> =
+    ClipCreativeEffectPreset.values().filter { it.category == category }
 
 internal fun clipCreativeEffectPresetFromId(id: String?): ClipCreativeEffectPreset? =
     if (id == null) {
@@ -88,6 +105,8 @@ internal enum class ClipVisualEffectType {
     WARM_TINT,
     COOL_TINT,
     INVERTED,
+    GRAYSCALE,
+    SEPIA,
 }
 
 /** Pure description of an effect, safe to exercise in local JVM unit tests. */
@@ -122,6 +141,8 @@ internal fun createClipVisualEffectSpecs(
             ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, intensity))
             ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, intensity))
             ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
+            ClipCreativeEffectPreset.GRAYSCALE -> add(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, intensity))
+            ClipCreativeEffectPreset.SEPIA -> add(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, intensity))
         }
     }
 }
@@ -142,6 +163,20 @@ private class IntensityRgbMatrix(
 ) : RgbMatrix {
     override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray =
         blendRgbMatrixWithIdentity(delegate.getMatrix(presentationTimeUs, useHdr), intensity)
+}
+
+private val SEPIA_MATRIX = floatArrayOf(
+    0.393f, 0.349f, 0.272f, 0f,
+    0.769f, 0.686f, 0.534f, 0f,
+    0.189f, 0.168f, 0.131f, 0f,
+    0f, 0f, 0f, 1f,
+)
+
+internal fun sepiaRgbMatrix(): FloatArray = SEPIA_MATRIX.copyOf()
+
+@OptIn(UnstableApi::class)
+private object SepiaRgbMatrix : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = SEPIA_MATRIX
 }
 
 /**
@@ -176,6 +211,12 @@ internal fun createClipVisualEffects(
             val inverted = RgbFilter.createInvertedFilter()
             if (spec.amount >= 1f) inverted else IntensityRgbMatrix(inverted, spec.amount)
         }
+        ClipVisualEffectType.GRAYSCALE -> {
+            val grayscale = RgbFilter.createGrayscaleFilter()
+            if (spec.amount >= 1f) grayscale else IntensityRgbMatrix(grayscale, spec.amount)
+        }
+        ClipVisualEffectType.SEPIA ->
+            if (spec.amount >= 1f) SepiaRgbMatrix else IntensityRgbMatrix(SepiaRgbMatrix, spec.amount)
     }
 }
 

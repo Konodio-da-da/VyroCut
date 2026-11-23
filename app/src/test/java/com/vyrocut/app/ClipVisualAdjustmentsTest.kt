@@ -102,6 +102,8 @@ class ClipVisualAdjustmentsTest {
         assertEquals(ClipCreativeEffectPreset.WARM, clipCreativeEffectPresetFromId("warm"))
         assertEquals(ClipCreativeEffectPreset.COOL, clipCreativeEffectPresetFromId("cool"))
         assertEquals(ClipCreativeEffectPreset.NEGATIVE, clipCreativeEffectPresetFromId("negative"))
+        assertEquals(ClipCreativeEffectPreset.GRAYSCALE, clipCreativeEffectPresetFromId("grayscale"))
+        assertEquals(ClipCreativeEffectPreset.SEPIA, clipCreativeEffectPresetFromId("sepia"))
         assertNull(clipCreativeEffectPresetFromId("future-effect"))
         assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectPresetId = "future-effect"))
     }
@@ -124,6 +126,18 @@ class ClipVisualAdjustmentsTest {
             listOf(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, 1f)),
             createClipVisualEffectSpecs(
                 ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.NEGATIVE),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.GRAYSCALE),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.SEPIA),
             ),
         )
     }
@@ -167,6 +181,8 @@ class ClipVisualAdjustmentsTest {
             ClipCreativeEffectPreset.WARM to ClipVisualEffectType.WARM_TINT,
             ClipCreativeEffectPreset.COOL to ClipVisualEffectType.COOL_TINT,
             ClipCreativeEffectPreset.NEGATIVE to ClipVisualEffectType.INVERTED,
+            ClipCreativeEffectPreset.GRAYSCALE to ClipVisualEffectType.GRAYSCALE,
+            ClipCreativeEffectPreset.SEPIA to ClipVisualEffectType.SEPIA,
         )
         cases.forEach { (preset, type) ->
             assertEquals(
@@ -188,6 +204,44 @@ class ClipVisualAdjustmentsTest {
                 ),
             )
         }
+    }
+
+    @Test
+    fun effectBrowserGroupsPreserveEveryPresetInStableOrder() {
+        assertEquals(
+            listOf(ClipCreativeEffectPreset.WARM, ClipCreativeEffectPreset.COOL),
+            clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.COLOR),
+        )
+        assertEquals(
+            listOf(
+                ClipCreativeEffectPreset.ORIGINAL,
+                ClipCreativeEffectPreset.NEGATIVE,
+                ClipCreativeEffectPreset.GRAYSCALE,
+            ),
+            clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.MONOCHROME),
+        )
+        assertEquals(
+            listOf(ClipCreativeEffectPreset.SEPIA),
+            clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.VINTAGE),
+        )
+        assertEquals(
+            ClipCreativeEffectPreset.values().toList(),
+            ClipCreativeEffectCategory.values().flatMap(::clipCreativeEffectPresetsForCategory),
+        )
+    }
+
+    @Test
+    fun sepiaMatrixUsesColumnMajorRgbTransformAndPreservesAlpha() {
+        assertArrayEquals(
+            floatArrayOf(
+                0.393f, 0.349f, 0.272f, 0f,
+                0.769f, 0.686f, 0.534f, 0f,
+                0.189f, 0.168f, 0.131f, 0f,
+                0f, 0f, 0f, 1f,
+            ),
+            sepiaRgbMatrix(),
+            0.0001f,
+        )
     }
 
     @Test
