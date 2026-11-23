@@ -136,6 +136,20 @@ internal object VyroCutHomeMetrics {
     const val ProjectBadgeVerticalPaddingDp = 2
 }
 
+/**
+ * Effects-panel layout and tracking metrics. These values intentionally match
+ * the existing editor panel so token adoption does not alter its geometry.
+ */
+internal object VyroCutEffectsPanelMetrics {
+    const val HorizontalPaddingDp = 10
+    const val VerticalPaddingDp = 9
+    const val SectionGapDp = 6
+    const val ResetButtonHorizontalPaddingDp = 6
+    const val ResetButtonVerticalPaddingDp = 0
+    const val HeaderLetterSpacingSp = 1f
+    const val CategoryLetterSpacingSp = 0.8f
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
