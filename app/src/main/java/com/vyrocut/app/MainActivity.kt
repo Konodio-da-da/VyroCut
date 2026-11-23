@@ -4542,6 +4542,7 @@ private fun TimelineEditorStrip(
     }
     var viewportWidthPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    val timelineMetrics = timelineReadabilityMetrics(density.fontScale)
     val pixelsPerSecond = 24f
     val gap = 6f
     val clipWidths = clips.map { (it.durationMs / 1000f * pixelsPerSecond).coerceIn(120f, 320f) }
@@ -4627,14 +4628,14 @@ private fun TimelineEditorStrip(
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
             Text("VIDEO", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Main track", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+            Text("Main track", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
             Spacer(Modifier.weight(1f))
-            Text("Tap to seek • hold to scrub", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+            Text("Tap to seek • hold to scrub", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
         }
 
         // Ruler ticks share the playhead's absolute project-time mapping, so
         // fractional clip lengths do not reset or drift the time labels.
-        Box(Modifier.width(totalWidth).height(TIMELINE_RULER_HEIGHT_DP.dp)) {
+        Box(Modifier.width(totalWidth).height(timelineMetrics.rulerHeightDp.dp)) {
             timelineRulerTicks.forEach { tick ->
                 Column(
                     Modifier.offset(x = tick.offsetPx.dp).fillMaxHeight(),
@@ -4652,7 +4653,7 @@ private fun TimelineEditorStrip(
             }
         }
 
-        Box(Modifier.width(totalWidth).height(TIMELINE_VIDEO_TRACK_HEIGHT_DP.dp)) {
+        Box(Modifier.width(totalWidth).height(timelineMetrics.videoTrackHeightDp.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
                     Column(
@@ -4663,7 +4664,7 @@ private fun TimelineEditorStrip(
                         Box(Modifier.fillMaxWidth().height(TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP.dp)) {
                             ClipThumbnail(clip, Modifier.fillMaxSize())
                             Text(
-                                "V" + (index + 1), color = VyroCutPalette.MediaOverlayText, fontSize = 9.sp, fontWeight = FontWeight.Bold,
+                                "V" + (index + 1), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp, fontWeight = FontWeight.Bold,
                                 modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                             Text(
@@ -4675,7 +4676,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
-            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(TIMELINE_VIDEO_TRACK_HEIGHT_DP.dp).background(StudioAccent))
+            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(timelineMetrics.videoTrackHeightDp.dp).background(StudioAccent))
             Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
             // The overlay is a child inside horizontalScroll, so pointer positions
             // are already expressed in scrolled content coordinates. Adding
@@ -4726,11 +4727,11 @@ private fun TimelineEditorStrip(
             1,
             clips.maxOfOrNull { it.allTextOverlays.size } ?: 0,
         ).coerceAtMost(MAX_CLIP_TEXT_OVERLAYS)
-        val textTrackHeight = timelineTextTrackHeightDp(textLayerCount).dp
+        val textTrackHeight = timelineTextTrackHeightDp(textLayerCount, timelineMetrics.textRowHeightDp).dp
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
             Text("TEXT", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Timed layers • tap a row to edit its in/out points", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+            Text("Timed layers • tap a row to edit its in/out points", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
         }
         Box(Modifier.width(totalWidth).height(textTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
@@ -4740,7 +4741,7 @@ private fun TimelineEditorStrip(
                             val overlay = clip.allTextOverlays.getOrNull(layerIndex)
                             Box(
                                 Modifier.fillMaxWidth()
-                                    .height(TIMELINE_TEXT_ROW_HEIGHT_DP.dp)
+                                    .height(timelineMetrics.textRowHeightDp.dp)
                                     .background(VyroCutPalette.HeroGradientStart, RoundedCornerShape(4.dp))
                                     .clickable {
                                         if (overlay != null || layerIndex == clip.allTextOverlays.size) {
@@ -4753,7 +4754,7 @@ private fun TimelineEditorStrip(
                                         Text(
                                             "+ Add layer",
                                             color = StudioMuted,
-                                            fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
+                                            fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
                                             maxLines = 1,
                                             modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 6.dp),
                                         )
@@ -4800,11 +4801,11 @@ private fun TimelineEditorStrip(
             1,
             clips.maxOfOrNull { it.allStickerOverlays.size } ?: 0,
         ).coerceAtMost(MAX_CLIP_STICKER_OVERLAYS)
-        val stickerTrackHeight = timelineStickerTrackHeightDp(stickerLayerCount).dp
+        val stickerTrackHeight = timelineStickerTrackHeightDp(stickerLayerCount, timelineMetrics.stickerRowHeightDp).dp
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
             Text("STICKERS", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Timed emoji overlays • tap a segment to edit its timing", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+            Text("Timed emoji overlays • tap a segment to edit its timing", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
         }
         Box(Modifier.width(totalWidth).height(stickerTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
@@ -4814,7 +4815,7 @@ private fun TimelineEditorStrip(
                             val overlay = clip.allStickerOverlays.getOrNull(layerIndex)
                             Box(
                                 Modifier.fillMaxWidth()
-                                    .height(TIMELINE_STICKER_ROW_HEIGHT_DP.dp)
+                                    .height(timelineMetrics.stickerRowHeightDp.dp)
                                     .background(VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp)),
                             ) {
                                 if (overlay == null) {
@@ -4825,7 +4826,7 @@ private fun TimelineEditorStrip(
                                         Text(
                                             "+ Add sticker",
                                             color = StudioMuted,
-                                            fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
+                                            fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
                                             maxLines = 1,
                                             modifier = Modifier.fillMaxSize()
                                                 .clickable { onSelectSticker(index, layerIndex) }
@@ -4854,7 +4855,7 @@ private fun TimelineEditorStrip(
                                             Text(
                                                 overlay.symbol,
                                                 color = StudioAccent,
-                                                fontSize = 12.sp,
+                                                fontSize = TIMELINE_STICKER_SYMBOL_FONT_SP.sp,
                                                 maxLines = 1,
                                             )
                                         }
@@ -4876,17 +4877,17 @@ private fun TimelineEditorStrip(
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
             Text("SOURCE", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.width(8.dp))
-            Text("Original clip audio", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
+            Text("Original clip audio", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
         }
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
             clips.forEachIndexed { index, clip ->
                 Box(
-                    Modifier.width(clipWidths[index].dp).height(TIMELINE_SOURCE_TRACK_HEIGHT_DP.dp)
+                    Modifier.width(clipWidths[index].dp).height(timelineMetrics.sourceTrackHeightDp.dp)
                         .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp))
                         .padding(horizontal = 5.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    AudioWaveform(clip, Modifier.fillMaxWidth().height(22.dp))
+                    AudioWaveform(clip, Modifier.fillMaxWidth().height(timelineMetrics.sourceWaveformHeightDp.dp))
                 }
             }
         }
@@ -4902,10 +4903,10 @@ private fun TimelineEditorStrip(
                         AudioTrackType.VOICEOVER -> "Voiceover"
                     },
                     color = StudioMuted,
-                    fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
+                    fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
                 )
             }
-            Box(Modifier.width(totalWidth).height(TIMELINE_AUDIO_LANE_HEIGHT_DP.dp)) {
+            Box(Modifier.width(totalWidth).height(timelineMetrics.audioLaneHeightDp.dp)) {
                 laneClips.forEach { trackClip ->
                     val startPx = calculateTimelinePlayheadOffsetPx(
                         timelineClipDurationsMs,
@@ -4947,7 +4948,7 @@ private fun TimelineEditorStrip(
                             AudioWaveformStrip(
                                 amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
                                 color = VyroCutPalette.WaveformForeground,
-                                height = TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP.dp,
+                                height = timelineMetrics.audioWaveformHeightDp.dp,
                             )
                         }
                     }
@@ -4956,8 +4957,8 @@ private fun TimelineEditorStrip(
             }
         }
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("00:00", color = StudioMuted, fontSize = 9.sp)
-            Text(formatTime(totalDuration), color = StudioMuted, fontSize = 9.sp)
+            Text("00:00", color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
+            Text(formatTime(totalDuration), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
         }
     }
 }

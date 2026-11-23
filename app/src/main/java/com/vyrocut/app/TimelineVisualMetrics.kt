@@ -1,30 +1,110 @@
 package com.vyrocut.app
 
-internal const val TIMELINE_RULER_HEIGHT_DP = 26
-internal const val TIMELINE_VIDEO_TRACK_HEIGHT_DP = 70
-internal const val TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP = 42
-internal const val TIMELINE_TEXT_ROW_HEIGHT_DP = 28
-internal const val TIMELINE_STICKER_ROW_HEIGHT_DP = 28
-internal const val TIMELINE_SOURCE_TRACK_HEIGHT_DP = 30
-internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = 32
-internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 12
+import kotlin.math.ceil
 
-internal const val TIMELINE_TRACK_LABEL_FONT_SP = 10
-internal const val TIMELINE_RULER_LABEL_FONT_SP = 9
-internal const val TIMELINE_CLIP_LABEL_FONT_SP = 10
-internal const val TIMELINE_CLIP_META_FONT_SP = 9
+internal const val TIMELINE_RULER_HEIGHT_DP = 28
+internal const val TIMELINE_VIDEO_TRACK_HEIGHT_DP = 72
+internal const val TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP = 42
+internal const val TIMELINE_TEXT_ROW_HEIGHT_DP = 30
+internal const val TIMELINE_STICKER_ROW_HEIGHT_DP = 30
+internal const val TIMELINE_SOURCE_TRACK_HEIGHT_DP = 32
+internal const val TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP = 22
+internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = 36
+internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 14
+
+internal const val TIMELINE_TRACK_LABEL_FONT_SP = 11
+internal const val TIMELINE_TRACK_DETAIL_FONT_SP = 10
+internal const val TIMELINE_RULER_LABEL_FONT_SP = 10
+internal const val TIMELINE_CLIP_LABEL_FONT_SP = 11
+internal const val TIMELINE_CLIP_META_FONT_SP = 10
+internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = 14
+
+/**
+ * Fixed timeline rows grow with the user's system font scale so labels and
+ * waveforms do not get clipped inside dp-sized tracks.
+ *
+ * Compose scales sp text automatically; these values scale the surrounding dp
+ * geometry to preserve enough vertical room. The scale is bounded to avoid an
+ * accidental malformed configuration producing unbounded timeline height.
+ */
+internal data class TimelineReadabilityMetrics(
+    val rulerHeightDp: Int,
+    val videoTrackHeightDp: Int,
+    val textRowHeightDp: Int,
+    val stickerRowHeightDp: Int,
+    val sourceTrackHeightDp: Int,
+    val sourceWaveformHeightDp: Int,
+    val audioLaneHeightDp: Int,
+    val audioWaveformHeightDp: Int,
+)
+
+internal fun timelineReadabilityMetrics(fontScale: Float): TimelineReadabilityMetrics {
+    val safeScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+
+    fun scaledHeight(baseHeightDp: Int, contentHeightDp: Float, extraPaddingDp: Int): Int =
+        maxOf(baseHeightDp, ceil(contentHeightDp * safeScale).toInt() + extraPaddingDp)
+
+    return TimelineReadabilityMetrics(
+        rulerHeightDp = scaledHeight(
+            TIMELINE_RULER_HEIGHT_DP,
+            TIMELINE_RULER_LABEL_FONT_SP * 1.4f,
+            12,
+        ),
+        videoTrackHeightDp = scaledHeight(
+            TIMELINE_VIDEO_TRACK_HEIGHT_DP,
+            TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP + TIMELINE_CLIP_LABEL_FONT_SP * 1.35f,
+            12,
+        ),
+        textRowHeightDp = scaledHeight(
+            TIMELINE_TEXT_ROW_HEIGHT_DP,
+            TIMELINE_CLIP_LABEL_FONT_SP * 1.35f,
+            8,
+        ),
+        stickerRowHeightDp = scaledHeight(
+            TIMELINE_STICKER_ROW_HEIGHT_DP,
+            TIMELINE_STICKER_SYMBOL_FONT_SP * 1.35f,
+            8,
+        ),
+        sourceTrackHeightDp = scaledHeight(
+            TIMELINE_SOURCE_TRACK_HEIGHT_DP,
+            TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP.toFloat(),
+            8,
+        ),
+        sourceWaveformHeightDp = ceil(TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP * safeScale).toInt(),
+        audioLaneHeightDp = scaledHeight(
+            TIMELINE_AUDIO_LANE_HEIGHT_DP,
+            TIMELINE_CLIP_LABEL_FONT_SP * 1.35f + TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP,
+            6,
+        ),
+        audioWaveformHeightDp = ceil(TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP * safeScale).toInt(),
+    )
+}
+
+private fun boundedTimelineTrackHeight(layerCount: Int, rowHeightDp: Int, maximumLayers: Int): Int {
+    val rows = layerCount.coerceIn(1, maximumLayers)
+    val safeRowHeight = rowHeightDp.coerceAtLeast(1)
+    return (rows.toLong() * safeRowHeight.toLong())
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
+}
 
 /**
  * Returns the vertical space needed by the visible text-overlay rows.
  * Keep the calculation bounded by the same overlay limit used by editing.
  */
-internal fun timelineTextTrackHeightDp(layerCount: Int): Int =
-    layerCount.coerceIn(1, MAX_CLIP_TEXT_OVERLAYS) * TIMELINE_TEXT_ROW_HEIGHT_DP
-
+internal fun timelineTextTrackHeightDp(
+    layerCount: Int,
+    rowHeightDp: Int = TIMELINE_TEXT_ROW_HEIGHT_DP,
+): Int = boundedTimelineTrackHeight(layerCount, rowHeightDp, MAX_CLIP_TEXT_OVERLAYS)
 
 /**
  * Returns the vertical space needed by the visible sticker-overlay rows.
  * Keep the calculation bounded by the same overlay limit used by editing.
  */
-internal fun timelineStickerTrackHeightDp(layerCount: Int): Int =
-    layerCount.coerceIn(1, MAX_CLIP_STICKER_OVERLAYS) * TIMELINE_STICKER_ROW_HEIGHT_DP
+internal fun timelineStickerTrackHeightDp(
+    layerCount: Int,
+    rowHeightDp: Int = TIMELINE_STICKER_ROW_HEIGHT_DP,
+): Int = boundedTimelineTrackHeight(layerCount, rowHeightDp, MAX_CLIP_STICKER_OVERLAYS)
