@@ -10,6 +10,11 @@ import android.media.MediaFormat
 import java.io.File
 import java.io.FileInputStream
 
+internal data class VerifiedExportMedia(
+    val fingerprint: ExportFileFingerprint,
+    val trackSummary: ExportTrackSummary,
+)
+
 /** Demuxes the complete exported file so a truncated tail is less likely to pass validation. */
 internal fun verifyExportedMp4(
     context: Context,
@@ -20,7 +25,7 @@ internal fun verifyExportedMp4(
     expectedCanvasSize: ExportCanvasSize? = null,
     canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
     expectedBackgroundArgb: Int? = null,
-): ExportFileFingerprint {
+): VerifiedExportMedia {
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
     val extractor = MediaExtractor()
@@ -29,15 +34,24 @@ internal fun verifyExportedMp4(
         val videoTracks = mutableSetOf<Int>()
         val audioTracks = mutableSetOf<Int>()
         var videoFormat: MediaFormat? = null
+        var videoMimeType: String? = null
+        var audioMimeType: String? = null
 
         for (index in 0 until extractor.trackCount) {
             val format = extractor.getTrackFormat(index)
-            when (format.getString(MediaFormat.KEY_MIME)?.substringBefore('/')) {
+            val mimeType = format.getString(MediaFormat.KEY_MIME)
+            when (mimeType?.substringBefore('/')) {
                 "video" -> {
                     videoTracks += index
-                    if (videoFormat == null) videoFormat = format
+                    if (videoFormat == null) {
+                        videoFormat = format
+                        videoMimeType = mimeType
+                    }
                 }
-                "audio" -> audioTracks += index
+                "audio" -> {
+                    audioTracks += index
+                    if (audioMimeType == null) audioMimeType = mimeType
+                }
             }
         }
         check(videoTracks.isNotEmpty()) { "The exported MP4 contains no video track" }
@@ -75,7 +89,15 @@ internal fun verifyExportedMp4(
         } else {
             (lastVideoSampleTimeUs / 1_000L).coerceAtLeast(0L)
         }
-        ExportTrackSummary(videoSamples, audioSamples, measuredDurationMs, videoWidthPx, videoHeightPx)
+        ExportTrackSummary(
+            videoSampleCount = videoSamples,
+            audioSampleCount = audioSamples,
+            videoDurationMs = measuredDurationMs,
+            videoWidthPx = videoWidthPx,
+            videoHeightPx = videoHeightPx,
+            videoMimeType = videoMimeType,
+            audioMimeType = audioMimeType,
+        )
     } finally {
         extractor.release()
     }
@@ -118,7 +140,12 @@ internal fun verifyExportedMp4(
     }
 
     // Bind publication to the exact bytes that passed demux and decoder validation.
-    return FileInputStream(file).use(::fingerprintExportStream)
+    // Return the measured track metadata with the fingerprint so the completion
+    // UI reports the output that was actually verified, not the requested settings.
+    return VerifiedExportMedia(
+        fingerprint = FileInputStream(file).use(::fingerprintExportStream),
+        trackSummary = summary,
+    )
 }
 
 /** Publishes only a fully verified export; a failed or altered copy removes its pending MediaStore row. */

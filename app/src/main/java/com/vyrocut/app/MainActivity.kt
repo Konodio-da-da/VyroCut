@@ -3753,7 +3753,7 @@ private fun VyroCutApp() {
                                                     exportScope.launch exportPublishing@ {
                                                         val publishResult = runCatching {
                                                             withContext(Dispatchers.IO) {
-                                                                val verifiedFingerprint = verifyExportedMp4(
+                                                                val verifiedMedia = verifyExportedMp4(
                                                                     context = context,
                                                                     file = outputFile,
                                                                     sourceUris = sourceUris,
@@ -3763,11 +3763,16 @@ private fun VyroCutApp() {
                                                                     canvasVisualClips = canvasVisualClips,
                                                                     expectedBackgroundArgb = expectedBackgroundForVerification,
                                                                 )
-                                                                publishExportToMovies(context, outputFile, verifiedFingerprint)
+                                                                val uri = publishExportToMovies(
+                                                                    context,
+                                                                    outputFile,
+                                                                    verifiedMedia.fingerprint,
+                                                                )
+                                                                uri to verifiedMedia
                                                             }
                                                         }
                                                         if (exportSessionId != exportSession) {
-                                                            publishResult.getOrNull()?.let { uri ->
+                                                            publishResult.getOrNull()?.first?.let { uri ->
                                                                 withContext(Dispatchers.IO) {
                                                                     runCatching { context.contentResolver.delete(uri, null, null) }
                                                                 }
@@ -3779,9 +3784,20 @@ private fun VyroCutApp() {
                                                         activeTransformer = null
                                                         activeExportFile = null
                                                         exportSessionId = null
-                                                        publishResult.onSuccess { uri ->
+                                                        publishResult.onSuccess { (uri, verifiedMedia) ->
                                                             exportedUri = uri
-                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • ${exportVideoBitrate.summaryLabel} • ${exportAudioBitrate.summaryLabel} • MP4"
+                                                            val measuredOutputSummary = formatVerifiedExportOutputSummary(
+                                                                verifiedMedia.trackSummary,
+                                                                verifiedMedia.fingerprint.byteCount,
+                                                            )
+                                                            completedExportSummary = listOfNotNull(
+                                                                measuredOutputSummary,
+                                                                exportResolution.label,
+                                                                exportFrameRate.summaryLabel,
+                                                                exportVideoBitrate.summaryLabel,
+                                                                exportAudioBitrate.summaryLabel,
+                                                                "MP4",
+                                                            ).joinToString(" • ")
                                                             exportUiStage = ExportUiStage.COMPLETE
                                                             exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {

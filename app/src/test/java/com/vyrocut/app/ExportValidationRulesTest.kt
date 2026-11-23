@@ -87,7 +87,7 @@ class ExportValidationRulesTest {
     fun acceptsVideoAndAudioSamplesWhenSourceContainsAudio() {
         assertNull(
             validateExportTrackSummary(
-                ExportTrackSummary(videoSampleCount = 120L, audioSampleCount = 480L, videoDurationMs = 4_000L),
+                ExportTrackSummary(videoSampleCount = 120L, audioSampleCount = 480L, videoDurationMs = 4_000L, videoWidthPx = 1_920, videoHeightPx = 1_080, videoMimeType = "video/avc", audioMimeType = "audio/mp4a-latm"),
                 expectedDurationMs = 4_000L,
                 sourceHasAudio = true,
             ),
@@ -98,7 +98,7 @@ class ExportValidationRulesTest {
     fun acceptsVideoOnlyExportWhenSourcesHaveNoAudio() {
         assertNull(
             validateExportTrackSummary(
-                ExportTrackSummary(videoSampleCount = 24L, audioSampleCount = 0L, videoDurationMs = 1_000L),
+                ExportTrackSummary(videoSampleCount = 24L, audioSampleCount = 0L, videoDurationMs = 1_000L, videoWidthPx = 1_920, videoHeightPx = 1_080, videoMimeType = "video/avc"),
                 expectedDurationMs = 1_000L,
                 sourceHasAudio = false,
             ),
@@ -122,7 +122,7 @@ class ExportValidationRulesTest {
         assertEquals(
             "The source clips contain audio, but the exported MP4 has no readable audio samples",
             validateExportTrackSummary(
-                ExportTrackSummary(24L, 0L, 1_000L),
+                ExportTrackSummary(24L, 0L, 1_000L, 1_920, 1_080, "video/avc", "audio/mp4a-latm"),
                 expectedDurationMs = 1_000L,
                 sourceHasAudio = true,
             ),
@@ -134,7 +134,7 @@ class ExportValidationRulesTest {
         assertEquals(
             "Export duration 2000ms does not match the 4000ms timeline",
             validateExportTrackSummary(
-                ExportTrackSummary(24L, 0L, 2_000L),
+                ExportTrackSummary(24L, 0L, 2_000L, 1_920, 1_080, "video/avc"),
                 expectedDurationMs = 4_000L,
                 sourceHasAudio = false,
             ),
@@ -142,7 +142,7 @@ class ExportValidationRulesTest {
         assertEquals(
             "Export duration 5000ms does not match the 4000ms timeline",
             validateExportTrackSummary(
-                ExportTrackSummary(24L, 0L, 5_000L),
+                ExportTrackSummary(24L, 0L, 5_000L, 1_920, 1_080, "video/avc"),
                 expectedDurationMs = 4_000L,
                 sourceHasAudio = false,
             ),
@@ -165,10 +165,102 @@ class ExportValidationRulesTest {
     fun allowsSmallFrameBoundaryDurationDifferences() {
         assertNull(
             validateExportTrackSummary(
-                ExportTrackSummary(24L, 0L, 3_950L),
+                ExportTrackSummary(24L, 0L, 3_950L, 1_920, 1_080, "video/avc"),
                 expectedDurationMs = 4_000L,
                 sourceHasAudio = false,
             ),
         )
     }
+
+    @Test
+    fun rejectsMissingOrNonPositiveEncodedVideoDimensions() {
+        assertEquals(
+            "The exported MP4 has invalid video dimensions",
+            validateExportTrackSummary(
+                ExportTrackSummary(24L, 0L, 1_000L, 0, 1_080),
+                expectedDurationMs = 1_000L,
+                sourceHasAudio = false,
+            ),
+        )
+        assertEquals(
+            "The exported MP4 has invalid video dimensions",
+            validateExportTrackSummary(
+                ExportTrackSummary(24L, 0L, 1_000L, 1_920, -1),
+                expectedDurationMs = 1_000L,
+                sourceHasAudio = false,
+            ),
+        )
+    }
+
+    @Test
+    fun formatsVerifiedOutputUsingActualMetadataAndFingerprintedByteCount() {
+        val summary = ExportTrackSummary(
+            videoSampleCount = 240L,
+            audioSampleCount = 480L,
+            videoDurationMs = 10_000L,
+            videoWidthPx = 1_920,
+            videoHeightPx = 1_080,
+            videoMimeType = "video/avc",
+            audioMimeType = "audio/mp4a-latm",
+        )
+
+        assertEquals(
+            "1920 × 1080 • 00:10 • 1.0 MiB actual • H.264 + AAC",
+            formatVerifiedExportOutputSummary(summary, 1_048_576L),
+        )
+    }
+
+    @Test
+    fun formatsVideoOnlyOutputWithoutInventingAnAudioCodec() {
+        val summary = ExportTrackSummary(
+            videoSampleCount = 24L,
+            audioSampleCount = 0L,
+            videoDurationMs = 3_661_000L,
+            videoWidthPx = 1_280,
+            videoHeightPx = 720,
+            videoMimeType = "video/hevc",
+            audioMimeType = "audio/mp4a-latm",
+        )
+
+        assertEquals(
+            "1280 × 720 • 1:01:01 • 2.0 MiB actual • HEVC",
+            formatVerifiedExportOutputSummary(summary, 2_097_152L),
+        )
+    }
+
+    @Test
+    fun rejectsIncompleteMeasuredOutputMetadataInsteadOfShowingAnEstimateAsActual() {
+        val valid = ExportTrackSummary(
+            videoSampleCount = 24L,
+            audioSampleCount = 0L,
+            videoDurationMs = 1_000L,
+            videoWidthPx = 1_920,
+            videoHeightPx = 1_080,
+            videoMimeType = "video/avc",
+        )
+
+        assertNull(formatVerifiedExportOutputSummary(valid.copy(videoWidthPx = 0), 1_048_576L))
+        assertNull(formatVerifiedExportOutputSummary(valid.copy(videoDurationMs = 0L), 1_048_576L))
+        assertNull(formatVerifiedExportOutputSummary(valid, 0L))
+        assertNull(formatActualExportFileSize(-1L))
+        assertNull(formatVerifiedExportDuration(0L))
+    }
+
+    @Test
+    fun preservesUnknownCodecNamesWithoutGuessingAStandardCodec() {
+        val summary = ExportTrackSummary(
+            videoSampleCount = 24L,
+            audioSampleCount = 0L,
+            videoDurationMs = 1_000L,
+            videoWidthPx = 640,
+            videoHeightPx = 360,
+            videoMimeType = "video/x-custom",
+        )
+
+        assertEquals(
+            "640 × 360 • 00:01 • 1.0 MiB actual • X-CUSTOM",
+            formatVerifiedExportOutputSummary(summary, 1_048_576L),
+        )
+    }
+
 }

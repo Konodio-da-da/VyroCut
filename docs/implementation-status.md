@@ -336,3 +336,10 @@ A control is only considered complete when its operation is connected to the pro
 - User-facing guidance is stage-aware and does not echo raw exception messages, filesystem paths, or content URIs. Unknown failures retain a conservative stage-specific retry/check message rather than guessing a cause.
 - JVM regression tests cover nested causes, each recognized category, stage-specific fallback guidance, and suppression of private paths/URIs from the displayed message. Actual encoder/provider failure wording still needs device testing.
 
+
+
+## Verified export output metadata — 23 November 2026
+- Successful export verification now returns the measured video track summary together with the SHA-256/byte-count fingerprint used for MediaStore publication. The completion card reports actual encoded width/height, container-reported video duration, exact fingerprinted MP4 byte count formatted in MiB, and codec names when the track MIME types are available.
+- Requested resolution/FPS/bitrate preset labels remain separate from the measured output fields. The actual file-size label is sourced from the bytes that passed verification and were copied/read back for publication; it is not the preflight estimate or a claimed measured stream bitrate.
+- Export track validation now rejects missing or non-positive video dimensions even when no expected canvas size is supplied. Existing exact selected-canvas checks, duration tolerance, decoded video/audio verification, cancellation, fingerprint comparison, and MediaStore publication remain unchanged.
+- Pure JVM tests cover invalid dimensions, measured-size formatting, duration formatting, video-only versus audio/video codec reporting, unknown codec preservation, and incomplete metadata rejection. Android CI verifies compilation and JVM rules only; actual encoder metadata and exported playback still require physical-device validation.
