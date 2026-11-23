@@ -268,3 +268,11 @@ A control is only considered complete when its operation is connected to the pro
 - The existing ClipStickerOverlay scale value remains the single source for preview and Media3 export rendering; project serialization and undo/redo continue to store the same overlay model without a schema change.
 - Pure JVM tests cover normal scale updates, lower/upper clamping, non-finite rejection, and preservation of the other overlay properties.
 - The control is wired to the existing preview/export renderer. Emoji glyph appearance and perceived size still require physical-device and exported-video validation.
+
+
+## Non-destructive creative colour looks — 23 November 2026
+- The Effects tool now exposes Original, Warm, Cool, and Negative looks for the selected clip. Warm and Cool use Media3 1.5.1 `RgbAdjustment` channel scaling; Negative uses `RgbFilter.createInvertedFilter()`. These are real frame effects, not decorative preview-only cards.
+- The selected look is stored as a stable ID inside the existing per-clip visual-adjustment payload. Local project saves, recovery journals, undo/redo snapshots, and JSON backups therefore use the same clip model; backup writer version 15 records the new optional field. Older backups without the field default to Original, while unknown effect IDs reject the malformed clip payload.
+- The Effects panel retains the existing hue-shift control. Applying a look updates the active preview player's video-effect list while preserving that clip's text and sticker overlays. The same `createClipVisualEffects` builder is used by Transformer export.
+- Pure JVM tests cover stable preset IDs, unknown-ID rejection, deterministic effect-spec ordering, local project serialization, version-15 backup round trips, and version-14 backward compatibility.
+- The previous feature head `6319016d0ee2c1522b1ba64e667608dc415ab9a9` passed Android compilation, JVM tests, and APK upload in [Android build #539](https://github.com/Konodio-da-da/VyroCut/actions/runs/45105934523). This effect change requires its own Actions result. Visual colour quality, preview appearance, and exported-frame appearance still require physical-device and MP4 validation.
