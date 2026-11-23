@@ -29,7 +29,7 @@ class ExportVideoBitrateRulesTest {
     }
 
     @Test
-    fun 1080pThirtyFpsTargetsUseDocumentedBitsPerPixelPerFrameValues() {
+    fun bitrateTargetsFor1080pThirtyFpsUseDocumentedBitsPerPixelPerFrameValues() {
         assertEquals(
             6_220_800,
             exportTargetVideoBitrateBps(
