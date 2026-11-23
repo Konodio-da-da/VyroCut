@@ -72,6 +72,7 @@ internal object VyroCutSpacing {
 /** Shared corner radii; the tool item keeps its existing 9 dp shape. */
 internal object VyroCutShapes {
     const val SmallCornerDp = 8
+    const val CompactPanelCornerDp = 10
     const val ToolItemCornerDp = 9
     const val MediumCornerDp = 12
     const val LargeCornerDp = 16
@@ -171,6 +172,22 @@ internal object VyroCutCanvasPanelMetrics {
     const val HorizontalPaddingDp = 10
     const val VerticalPaddingDp = 7
     const val SectionGapDp = 8
+}
+
+/**
+ * Text-overlay panel geometry and typography. Values preserve the current
+ * editor panel while moving repeated styling literals into shared tokens.
+ */
+internal object VyroCutTextPanelMetrics {
+    const val HorizontalPaddingDp = 10
+    const val VerticalPaddingDp = 8
+    const val SectionGapDp = 7
+    const val HeaderFontSizeSp = 10
+    const val HeaderLetterSpacingSp = 1f
+    const val HelperFontSizeSp = 10
+    const val CaptionFontSizeSp = 9
+    const val ChipGapDp = 6
+    const val ChipLabelFontSizeSp = 10
 }
 
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(

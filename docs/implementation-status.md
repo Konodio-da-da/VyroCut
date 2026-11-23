@@ -379,3 +379,10 @@ A control is only considered complete when its operation is connected to the pro
 - Replaced the panel's hardcoded corner radius, padding, heading size, and option spacing with shared shape, spacing, typography, and panel tokens while preserving the existing numeric dimensions.
 - The change is styling-only: aspect-ratio selection, canvas-background selection, project settings persistence, preview rendering, and export canvas composition are unchanged.
 - Added a pure JVM exact-value regression test for the new panel metrics and shared tokens. Physical-device layout fit remains unverified.
+
+
+## Text overlay panel design-token consolidation — 23 November 2026
+- Added semantic `VyroCutTextPanelMetrics` for the Text panel's existing padding, section spacing, header tracking, helper/caption/chip typography, and chip spacing. Added a reusable 10 dp compact-panel corner token.
+- Replaced the Text panel's repeated dp/sp literals with shared design-system tokens while preserving its existing numeric dimensions.
+- This is styling-only: text content limits, layer selection, size/position choices, overlay timing, apply/remove actions, split/trim persistence, preview rendering, and MP4 export are unchanged.
+- Added a pure JVM exact-value regression test for the Text panel metrics and shared shape/spacing tokens. Physical-device layout fit and text-entry usability remain unverified.

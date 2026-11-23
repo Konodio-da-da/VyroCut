@@ -219,6 +219,26 @@ class VyroCutDesignSystemTest {
         assertEquals(11, VyroCutTypography.LabelSp)
     }
 
+    @Test
+    fun textPanelMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(10, 8, 7, 6),
+            listOf(
+                VyroCutTextPanelMetrics.HorizontalPaddingDp,
+                VyroCutTextPanelMetrics.VerticalPaddingDp,
+                VyroCutTextPanelMetrics.SectionGapDp,
+                VyroCutTextPanelMetrics.ChipGapDp,
+            ),
+        )
+        assertEquals(10, VyroCutShapes.CompactPanelCornerDp)
+        assertEquals(10, VyroCutTextPanelMetrics.HeaderFontSizeSp)
+        assertEquals(1f, VyroCutTextPanelMetrics.HeaderLetterSpacingSp, 0f)
+        assertEquals(10, VyroCutTextPanelMetrics.HelperFontSizeSp)
+        assertEquals(9, VyroCutTextPanelMetrics.CaptionFontSizeSp)
+        assertEquals(10, VyroCutTextPanelMetrics.ChipLabelFontSizeSp)
+        assertEquals(8, VyroCutSpacing.SmallDp)
+    }
+
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
         val secondLuminance = relativeLuminance(second)

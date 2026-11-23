@@ -3080,30 +3080,30 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Text") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.CompactPanelCornerDp.dp)).padding(horizontal = VyroCutTextPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutTextPanelMetrics.VerticalPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.SectionGapDp.dp),
                     ) {
-                        Text("TEXT LAYERS", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("TEXT LAYERS", color = StudioText, fontSize = VyroCutTextPanelMetrics.HeaderFontSizeSp.sp, fontWeight = FontWeight.Bold, letterSpacing = VyroCutTextPanelMetrics.HeaderLetterSpacingSp.sp)
                         if (selectedClip == null) {
-                            Text("Select a video clip before adding text.", color = StudioMuted, fontSize = 10.sp)
+                            Text("Select a video clip before adding text.", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.HelperFontSizeSp.sp)
                         } else {
                             Row(
                                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.ChipGapDp.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 selectedClip.allTextOverlays.forEachIndexed { index, _ ->
                                     FilterChip(
                                         selected = selectedTextLayerIndex == index,
                                         onClick = { selectedTextLayerIndex = index },
-                                        label = { Text("Layer " + (index + 1), fontSize = 10.sp) },
+                                        label = { Text("Layer " + (index + 1), fontSize = VyroCutTextPanelMetrics.ChipLabelFontSizeSp.sp) },
                                     )
                                 }
                                 if (selectedClip.allTextOverlays.size < MAX_CLIP_TEXT_OVERLAYS) {
                                     FilterChip(
                                         selected = selectedTextLayerIndex == selectedClip.allTextOverlays.size,
                                         onClick = { selectedTextLayerIndex = selectedClip.allTextOverlays.size },
-                                        label = { Text("+ Add layer", fontSize = 10.sp) },
+                                        label = { Text("+ Add layer", fontSize = VyroCutTextPanelMetrics.ChipLabelFontSizeSp.sp) },
                                     )
                                 }
                             }
@@ -3126,27 +3126,27 @@ private fun VyroCutApp() {
                                 },
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("SIZE", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("SIZE", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.width(8.dp))
-                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.ChipGapDp.dp)) {
                                     listOf("Small" to 0.8f, "Medium" to 1f, "Large" to 1.25f).forEach { (label, scale) ->
                                         FilterChip(
                                             selected = clipTextScaleDraft == scale,
                                             onClick = { clipTextScaleDraft = scale },
-                                            label = { Text(label, fontSize = 10.sp) },
+                                            label = { Text(label, fontSize = VyroCutTextPanelMetrics.ChipLabelFontSizeSp.sp) },
                                         )
                                     }
                                 }
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("POSITION", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("POSITION", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.width(8.dp))
-                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.ChipGapDp.dp)) {
                                     ClipTextPosition.values().forEach { position ->
                                         FilterChip(
                                             selected = clipTextPositionDraft == position,
                                             onClick = { clipTextPositionDraft = position },
-                                            label = { Text(position.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 10.sp) },
+                                            label = { Text(position.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = VyroCutTextPanelMetrics.ChipLabelFontSizeSp.sp) },
                                         )
                                     }
                                 }
@@ -3161,11 +3161,11 @@ private fun VyroCutApp() {
                                 Text(
                                     "TIMING • ${formatTime(safeStartMs.toLong())} – ${formatTime(safeEndMs.toLong())}",
                                     color = StudioMuted,
-                                    fontSize = 9.sp,
+                                    fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("IN", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text("IN", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
                                     Slider(
                                         value = safeStartMs,
                                         onValueChange = { value ->
@@ -3180,7 +3180,7 @@ private fun VyroCutApp() {
                                     )
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("OUT", color = StudioMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text("OUT", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
                                     Slider(
                                         value = safeEndMs,
                                         onValueChange = { value ->
@@ -3195,10 +3195,10 @@ private fun VyroCutApp() {
                                 Text(
                                     "This short clip uses full-clip text timing.",
                                     color = StudioMuted,
-                                    fontSize = 9.sp,
+                                    fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp,
                                 )
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Button(
                                     onClick = {
                                         commitSelectedClipTextOverlay(
@@ -3232,7 +3232,7 @@ private fun VyroCutApp() {
                             Text(
                                 "Non-destructive • Timed overlay is shared by preview and MP4 export",
                                 color = StudioMuted,
-                                fontSize = 9.sp,
+                                fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp,
                             )
                         }
                     }
