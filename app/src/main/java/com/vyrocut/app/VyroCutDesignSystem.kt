@@ -205,6 +205,25 @@ internal object VyroCutStickerPanelMetrics {
     const val RemoveButtonHorizontalPaddingDp = 6
 }
 
+/**
+ * Audio tool panel metrics. Shared shape, spacing, and typography scales are
+ * reused where possible; these values preserve the current Audio panel geometry.
+ */
+internal object VyroCutAudioPanelMetrics {
+    const val PanelHorizontalPaddingDp = 10
+    const val LaneSectionGapDp = 7
+    const val LaneChipGapDp = 6
+    const val ClipCardCornerDp = 6
+    const val ClipCardVerticalPaddingDp = 6
+    const val DeleteButtonSizeDp = 32
+    const val DeleteIconSizeDp = 17
+    const val ClipVolumePanelVerticalPaddingDp = 7
+    const val ClipVolumeSectionGapDp = 5
+    const val MuteButtonHorizontalPaddingDp = 6
+    const val ActionButtonHorizontalPaddingDp = 4
+    const val HeaderLetterSpacingSp = 1f
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
