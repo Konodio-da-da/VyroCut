@@ -1558,6 +1558,17 @@ private fun VyroCutApp() {
             "Sticker timing updated",
         )
     }
+    fun updateSelectedClipStickerScale(overlayIndex: Int, scale: Float) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val sticker = clip.allStickerOverlays.getOrNull(overlayIndex) ?: return
+        val updated = updateClipStickerOverlayScale(sticker, scale) ?: return
+        if (updated == sticker) return
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
+            "Sticker size updated",
+        )
+    }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
         trimTargetClipId = clip.id
@@ -2806,6 +2817,9 @@ private fun VyroCutApp() {
                                     var endSeconds by remember(selectedClip.id, sticker) {
                                         mutableFloatStateOf(safeEndMs / 1_000f)
                                     }
+                                    var scaleDraft by remember(selectedClip.id, sticker) {
+                                        mutableFloatStateOf(sticker.scale)
+                                    }
                                     Column(
                                         Modifier.fillMaxWidth()
                                             .background(
@@ -2833,6 +2847,28 @@ private fun VyroCutApp() {
                                                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                                             ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = 10.sp) }
                                         }
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Text(
+                                                "SIZE ${String.format(java.util.Locale.US, "%.1f", scaleDraft)}×",
+                                                color = StudioMuted,
+                                                fontSize = 9.sp,
+                                            )
+                                            Spacer(Modifier.weight(1f))
+                                            Text(
+                                                "${MIN_CLIP_STICKER_SCALE}× – ${MAX_CLIP_STICKER_SCALE}×",
+                                                color = StudioMuted,
+                                                fontSize = 9.sp,
+                                            )
+                                        }
+                                        Slider(
+                                            value = scaleDraft.coerceIn(MIN_CLIP_STICKER_SCALE, MAX_CLIP_STICKER_SCALE),
+                                            onValueChange = { scaleDraft = it },
+                                            valueRange = MIN_CLIP_STICKER_SCALE..MAX_CLIP_STICKER_SCALE,
+                                            steps = 14,
+                                            onValueChangeFinished = {
+                                                updateSelectedClipStickerScale(index, scaleDraft)
+                                            },
+                                        )
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "IN ${String.format(java.util.Locale.US, "%.1f", startSeconds)}s",
