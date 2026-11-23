@@ -1417,14 +1417,29 @@ private fun VyroCutApp() {
         contrast: Int,
         saturation: Int,
         hueShiftDegrees: Int = selectedClip?.visualAdjustments?.hueShiftDegrees ?: 0,
+        creativeEffectPreset: ClipCreativeEffectPreset =
+            selectedClip?.visualAdjustments?.creativeEffectPreset ?: ClipCreativeEffectPreset.ORIGINAL,
     ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
-        val next = decodeClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees) ?: return
+        val next = decodeClipVisualAdjustments(
+            brightness = brightness,
+            contrast = contrast,
+            saturation = saturation,
+            hueShiftDegrees = hueShiftDegrees,
+            creativeEffectPresetId = creativeEffectPreset.id,
+        ) ?: return
         if (clip.visualAdjustments == next) return
         changed(clips.toMutableList().apply {
             this[selectedIndex] = clip.copy(visualAdjustments = next)
         })
-        exportMessage = "Clip colour adjustments updated"
+        if (player.currentMediaItem?.mediaId == clip.id) {
+            player.setVideoEffects(
+                createClipVisualEffects(next) +
+                    createClipTextOverlayEffects(clip.allTextOverlays) +
+                    createClipStickerOverlayEffects(clip.allStickerOverlays),
+            )
+        }
+        exportMessage = "Clip visual effects updated"
     }
     fun commitSelectedClipTextOverlay(
         layerIndex: Int,
@@ -2319,6 +2334,38 @@ private fun VyroCutApp() {
                         if (selectedClip == null) {
                             Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = 10.sp)
                         } else {
+                            Text(
+                                "COLOUR LOOKS",
+                                color = StudioMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            )
+                            Row(
+                                Modifier.horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                ClipCreativeEffectPreset.values().forEach { preset ->
+                                    FilterChip(
+                                        selected = selectedClip.visualAdjustments.creativeEffectPreset == preset,
+                                        onClick = {
+                                            commitSelectedClipVisualAdjustments(
+                                                brightness = clipBrightnessDraft.toInt(),
+                                                contrast = clipContrastDraft.toInt(),
+                                                saturation = clipSaturationDraft.toInt(),
+                                                hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                                creativeEffectPreset = preset,
+                                            )
+                                        },
+                                        label = { Text(preset.label, fontSize = 11.sp) },
+                                    )
+                                }
+                            }
+                            Text(
+                                "Warm and Cool adjust RGB channels; Negative inverts the frame.",
+                                color = StudioMuted,
+                                fontSize = 10.sp,
+                            )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Hue shift", color = StudioMuted, fontSize = 11.sp)
                                 Spacer(Modifier.weight(1f))
@@ -3996,6 +4043,7 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("contrast", clip.visualAdjustments.contrast)
             put("saturation", clip.visualAdjustments.saturation)
             put("hueShiftDegrees", clip.visualAdjustments.hueShiftDegrees)
+            put("creativeEffectPreset", clip.visualAdjustments.creativeEffectPreset.id)
         })
         put("textOverlays", JSONArray().apply {
             clip.allTextOverlays.forEach { overlay ->
@@ -4046,7 +4094,7 @@ internal fun encodeProjectBackup(
     )
     return JSONObject().apply {
         put("format", "vyrocut-project")
-        put("version", 14)
+        put("version", 15)
         put("projectName", name)
         put("createdAt", System.currentTimeMillis())
         put("clips", JSONArray(encodeProject(clips)))
@@ -4064,7 +4112,7 @@ internal fun decodeProjectBackup(raw: String): ProjectBackup {
     val root = JSONObject(raw)
     require(root.getString("format") == "vyrocut-project") { "This is not a VyroCut project backup" }
     val version = root.getInt("version")
-    require(version in 1..14) { "Unsupported backup version" }
+    require(version in 1..15) { "Unsupported backup version" }
     val name = root.optString("projectName", "Restored project").ifBlank { "Restored project" }
     val clipsJson = root.getJSONArray("clips")
     val clips = decodeProject(clipsJson.toString())
@@ -4221,6 +4269,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                 contrast = if (visualJson?.has("contrast") == true) visualJson.optInt("contrast", Int.MIN_VALUE) else 0,
                 saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
                 hueShiftDegrees = if (visualJson?.has("hueShiftDegrees") == true) visualJson.optInt("hueShiftDegrees", Int.MIN_VALUE) else 0,
+                creativeEffectPresetId = visualJson?.takeIf { it.has("creativeEffectPreset") }?.optString("creativeEffectPreset"),
             ) ?: error("A clip has invalid visual adjustments")
             fun decodeOverlay(overlayJson: JSONObject): ClipTextOverlay =
                 decodeClipTextOverlay(
