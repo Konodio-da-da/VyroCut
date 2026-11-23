@@ -222,7 +222,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
-    val editorMetrics = editorLayoutMetrics(LocalConfiguration.current.screenHeightDp)
+    val windowConfiguration = LocalConfiguration.current
+    val editorMetrics = editorLayoutMetrics(
+        windowHeightDp = windowConfiguration.screenHeightDp,
+        windowWidthDp = windowConfiguration.screenWidthDp,
+    )
     val exportScope = rememberCoroutineScope()
     val previewScope = rememberCoroutineScope()
     val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
@@ -2015,29 +2019,45 @@ private fun VyroCutApp() {
                         )
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text(selectedClip?.name ?: "No media selected", color = StudioText, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val sourceMissing = selectedClip?.uri?.let { it in missingMediaUris } == true
-                        Text(
-                            when {
-                                selectedClip == null -> "Your project is stored locally"
-                                sourceMissing -> "Source unavailable • Relink to keep this edit"
-                                else -> "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}"
-                            },
-                            color = if (sourceMissing) VyroCutPalette.Danger else StudioMuted,
-                            fontSize = 11.sp
-                        )
+                val previewSourceMissing = selectedClip?.uri?.let { it in missingMediaUris } == true
+                val previewSubtitle = when {
+                    selectedClip == null -> "Your project is stored locally"
+                    previewSourceMissing -> "Source unavailable • Relink to keep this edit"
+                    else -> "Segment ${selectedIndex + 1} of ${clips.size} • ${formatTime(selectedClip.durationMs)}"
+                }
+                val previewRelinkAction: (() -> Unit)? = selectedClip
+                    ?.takeIf { it.uri in missingMediaUris }
+                    ?.let { missingClip ->
+                        {
+                            relinkTargetClipId = missingClip.id
+                            mediaPicker.launch(arrayOf("video/*"))
+                        }
                     }
-                    if (selectedClip != null && selectedClip.uri in missingMediaUris) {
-                        TextButton(
-                            onClick = {
-                                relinkTargetClipId = selectedClip.id
-                                mediaPicker.launch(arrayOf("video/*"))
-                            },
-                            enabled = !isReadingMedia,
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
-                        ) { Text(if (isReadingMedia) "Reading…" else "Relink", fontSize = 11.sp) }
+                val previewRelinkLabel = previewRelinkAction?.let {
+                    if (isReadingMedia) "Reading…" else "Relink"
+                }
+                if (editorMetrics.stackPreviewMetadataAboveTransportControls) {
+                    EditorPreviewMetadata(
+                        title = selectedClip?.name ?: "No media selected",
+                        subtitle = previewSubtitle,
+                        subtitleColor = if (previewSourceMissing) VyroCutPalette.Danger else StudioMuted,
+                        relinkLabel = previewRelinkLabel,
+                        relinkEnabled = !isReadingMedia,
+                        onRelink = previewRelinkAction,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (!editorMetrics.stackPreviewMetadataAboveTransportControls) {
+                        EditorPreviewMetadata(
+                            title = selectedClip?.name ?: "No media selected",
+                            subtitle = previewSubtitle,
+                            subtitleColor = if (previewSourceMissing) VyroCutPalette.Danger else StudioMuted,
+                            relinkLabel = previewRelinkLabel,
+                            relinkEnabled = !isReadingMedia,
+                            onRelink = previewRelinkAction,
+                            modifier = Modifier.weight(1f),
+                        )
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
@@ -5433,6 +5453,46 @@ private fun TimelineEditorStrip(
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("00:00", color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
             Text(formatTime(totalDuration), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
+        }
+    }
+}
+
+@Composable
+private fun EditorPreviewMetadata(
+    title: String,
+    subtitle: String,
+    subtitleColor: Color,
+    modifier: Modifier = Modifier,
+    relinkLabel: String? = null,
+    relinkEnabled: Boolean = true,
+    onRelink: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = StudioText,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                subtitle,
+                color = subtitleColor,
+                fontSize = 11.sp,
+            )
+        }
+        if (relinkLabel != null && onRelink != null) {
+            TextButton(
+                onClick = onRelink,
+                enabled = relinkEnabled,
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+            ) {
+                Text(relinkLabel, fontSize = 11.sp)
+            }
         }
     }
 }

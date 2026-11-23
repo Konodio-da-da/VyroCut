@@ -397,3 +397,9 @@ A control is only considered complete when its operation is connected to the pro
 - Reused the shared compact shape, small spacing, and typography scale throughout the Audio tool's lane list and selected-video-clip volume/fade panel without changing the existing dp/sp values.
 - This is styling-only: audio import, lane selection, waveform decode/cache/rendering, source IN/OUT, timeline placement, ripple trim/delete, split/duplicate, volume/fades, project clock synchronization, preview mixing, persistence, and Media3 Transformer audio composition are unchanged.
 - Added a pure JVM exact-value regression test for the Audio panel metrics and shared tokens. Android CI must verify compilation and unit tests; actual waveform rendering, audio sync, and screen fit still require physical-device validation.
+
+## Compact-width preview transport layout — 23 November 2026
+- Extended the pure editor layout rules with a 400 dp compact-width breakpoint. On narrower app windows, clip name/status and any missing-source relink action move above the preview transport controls instead of competing for the same horizontal row.
+- The wide layout retains the existing single-row arrangement. Preview transport actions, Media3 player state, frame stepping, project-clock seeking, playback speed, and source relinking behaviour are unchanged.
+- The breakpoint uses the current Compose window configuration width, so resized and split-screen windows can receive the compact arrangement. Existing height-based preview sizing and vertical scrolling remain unchanged.
+- Added JVM tests for the width breakpoint and invalid-width fallback. Android CI verifies compilation and pure logic only; physical-device layout fit and touch usability still require device validation.

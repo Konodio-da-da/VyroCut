@@ -37,6 +37,33 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun compactWidthStacksPreviewMetadataAboveTransportControls() {
+        assertEquals(
+            true,
+            editorLayoutMetrics(640, EDITOR_COMPACT_WINDOW_WIDTH_DP - 1)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            false,
+            editorLayoutMetrics(640, EDITOR_COMPACT_WINDOW_WIDTH_DP)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            false,
+            editorLayoutMetrics(640, 600)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+    }
+
+    @Test
+    fun invalidWindowWidthUsesSafeWideFallback() {
+        val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
+
+        assertEquals(expected, editorLayoutMetrics(640, 0))
+        assertEquals(expected, editorLayoutMetrics(640, -1))
+    }
+
+    @Test
     fun invalidWindowHeightUsesSafeFallback() {
         val expected = editorLayoutMetrics(EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP)
 
