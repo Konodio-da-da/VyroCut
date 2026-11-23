@@ -86,8 +86,10 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
+import androidx.media3.transformer.VideoEncoderSettings
 import org.json.JSONArray
 import org.json.JSONObject
 import kotlinx.coroutines.delay
@@ -230,6 +232,13 @@ private fun VyroCutApp() {
         mutableStateOf(
             ExportFrameRatePreset.fromId(
                 preferences.getString("project_${activeProjectId}_export_frame_rate", null),
+            ),
+        )
+    }
+    var exportVideoBitratePreset by remember(activeProjectId) {
+        mutableStateOf(
+            ExportVideoBitratePreset.fromId(
+                preferences.getString("project_${activeProjectId}_export_video_bitrate", null),
             ),
         )
     }
@@ -3174,6 +3183,15 @@ private fun VyroCutApp() {
                     exportSettingsForDisplay.aspectRatioPreset,
                     exportResolutionPreset,
                 )
+                val displayedVideoBitrateTargetBps = exportTargetVideoBitrateBps(
+                    exportVideoBitratePreset,
+                    displayedExportSize,
+                    exportFrameRatePreset,
+                )
+                val displayedVideoBitrateSummary = displayedVideoBitrateTargetBps?.let { targetBps ->
+                    val tenthsOfMbps = (targetBps.toLong() + 50_000L) / 100_000L
+                    "Requested target: ${tenthsOfMbps / 10}.${tenthsOfMbps % 10} Mbps • device encoder may adjust to a supported value."
+                } ?: "Auto keeps Media3's device-selected video bitrate."
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3243,6 +3261,35 @@ private fun VyroCutApp() {
                     color = StudioMuted,
                     fontSize = 9.sp,
                 )
+                Text(
+                    "VIDEO BITRATE",
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    ExportVideoBitratePreset.values().forEach { preset ->
+                        FilterChip(
+                            selected = exportVideoBitratePreset == preset,
+                            onClick = {
+                                exportVideoBitratePreset = preset
+                                preferences.edit()
+                                    .putString("project_${activeProjectId}_export_video_bitrate", preset.id)
+                                    .apply()
+                            },
+                            enabled = !isExporting && !isReadingMedia,
+                            label = { Text(preset.label, fontSize = 10.sp) },
+                        )
+                    }
+                }
+                Text(
+                    displayedVideoBitrateSummary,
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
@@ -3253,10 +3300,16 @@ private fun VyroCutApp() {
                                 val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
                                 val exportResolution = exportResolutionPreset
                                 val exportFrameRate = exportFrameRatePreset
+                                val exportVideoBitrate = exportVideoBitratePreset
                                 val exportFrameDropTargetFps = exportFrameDropTargetRate(exportFrameRate)
                                 val exportCanvasSize = exportCanvasSizeForPreset(
                                     exportCanvasSettings.aspectRatioPreset,
                                     exportResolution,
+                                )
+                                val exportVideoBitrateTargetBps = exportTargetVideoBitrateBps(
+                                    exportVideoBitrate,
+                                    exportCanvasSize,
+                                    exportFrameRate,
                                 )
                                 val exportBackgroundArgb = exportCanvasBackgroundArgbForPreset(
                                     exportCanvasSettings.backgroundPreset,
@@ -3502,7 +3555,21 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
                                     val transformer = try {
-                                        Transformer.Builder(context)
+                                        val transformerBuilder = Transformer.Builder(context)
+                                        exportVideoBitrateTargetBps?.let { targetBitrateBps ->
+                                            val encoderFactory = DefaultEncoderFactory.Builder(context)
+                                                .setRequestedVideoEncoderSettings(
+                                                    VideoEncoderSettings.Builder()
+                                                        .setBitrate(targetBitrateBps)
+                                                        .build(),
+                                                )
+                                                // Retain Media3's supported-format fallback on devices
+                                                // that cannot use the requested bitrate exactly.
+                                                .setEnableFallback(true)
+                                                .build()
+                                            transformerBuilder.setEncoderFactory(encoderFactory)
+                                        }
+                                        transformerBuilder
                                             .addListener(object : Transformer.Listener {
                                                 override fun onCompleted(composition: Composition, result: ExportResult) {
                                                     if (exportSessionId != exportSession) {
@@ -3543,7 +3610,7 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • MP4"
+                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • ${exportVideoBitrate.summaryLabel} • MP4"
                                                             exportUiStage = ExportUiStage.COMPLETE
                                                             exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {

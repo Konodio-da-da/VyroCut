@@ -296,3 +296,11 @@ A control is only considered complete when its operation is connected to the pro
 - The stable `film-fade` identifier is stored in the existing per-clip visual-adjustment payload and uses the same `createClipVisualEffects` builder for preview and Transformer export. No project or version-15 backup schema change is required.
 - Pure JVM tests cover the effect specification, category ordering, intensity mapping, matrix coefficients, shadow lift, contrast reduction, alpha preservation, defensive matrix copies, and project/version-15 backup round trips.
 - This validates the deterministic matrix and Android compilation only. Perceived film rendering, preview appearance, HDR handling, and exported MP4 output still require physical-device validation.
+
+
+## Export video bitrate targets — 23 November 2026
+- The Export panel now offers per-project Auto, Balanced, High, and Very high video-bitrate choices. Auto remains the default for existing projects and leaves Media3's encoder selection unchanged.
+- Manual targets are estimated from output pixel rate and the selected target FPS using bounded bits-per-pixel-per-frame factors. When Source FPS is selected, 30 FPS is used only for the bitrate estimate; source cadence and VFR indexing are not changed.
+- Manual modes configure Media3 1.5.1 `DefaultEncoderFactory` with `VideoEncoderSettings.setBitrate` and format fallback enabled. The requested bitrate is best-effort: device encoders may clamp or ignore it to select a supported format. The completion summary reports the selected target preset, not a measured MP4 bitrate.
+- Pure Kotlin tests cover preference restoration, Auto no-op behaviour, 720p/1080p estimates, target-FPS scaling, Source-FPS estimation, lower/upper bounds, and truthful completion labels.
+- The encoder target is video-only. Existing audio encoding, Media3 composition timing, project clock, VFR frame indexing, preflight, decoded-media validation, cancellation, and MediaStore publication are unchanged. Actual device encoder selection, file size, bitrate, playback quality, and audio continuity still require physical-device export validation.
