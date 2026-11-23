@@ -2631,22 +2631,22 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Audio" && selectedClip != null) {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(5.dp)
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.CompactPanelCornerDp.dp)).padding(horizontal = VyroCutAudioPanelMetrics.PanelHorizontalPaddingDp.dp, vertical = VyroCutAudioPanelMetrics.ClipVolumePanelVerticalPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutAudioPanelMetrics.ClipVolumeSectionGapDp.dp)
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("CLIP VOLUME", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("CLIP VOLUME", color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, fontWeight = FontWeight.Bold, letterSpacing = VyroCutAudioPanelMetrics.HeaderLetterSpacingSp.sp)
                             Spacer(Modifier.weight(1f))
-                            Text("${clipAudioVolumePercent(clipVolumeDraft)}%", color = StudioAccent, fontSize = 11.sp)
+                            Text("${clipAudioVolumePercent(clipVolumeDraft)}%", color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                             TextButton(
                                 onClick = {
                                     val nextVolume = if (clipVolumeDraft == 0f) 1f else 0f
                                     clipVolumeDraft = nextVolume
                                     commitSelectedClipAudioVolume(nextVolume)
                                 },
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.MuteButtonHorizontalPaddingDp.dp, vertical = 0.dp),
                             ) {
-                                Text(if (clipVolumeDraft == 0f) "Unmute" else "Mute", fontSize = 10.sp)
+                                Text(if (clipVolumeDraft == 0f) "Unmute" else "Mute", fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                         }
                         Slider(
@@ -2659,9 +2659,9 @@ private fun VyroCutApp() {
                         )
                         val fadeRangeMaxMs = selectedClip.durationMs.toFloat().coerceAtLeast(1f)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("FADE IN", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("FADE IN", color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, fontWeight = FontWeight.Bold, letterSpacing = VyroCutAudioPanelMetrics.HeaderLetterSpacingSp.sp)
                             Spacer(Modifier.weight(1f))
-                            Text(String.format("%.1fs", clipFadeInDraft / 1_000f), color = StudioAccent, fontSize = 11.sp)
+                            Text(String.format("%.1fs", clipFadeInDraft / 1_000f), color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                         }
                         Slider(
                             value = clipFadeInDraft.coerceIn(0f, fadeRangeMaxMs),
@@ -2673,9 +2673,9 @@ private fun VyroCutApp() {
                             colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("FADE OUT", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("FADE OUT", color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, fontWeight = FontWeight.Bold, letterSpacing = VyroCutAudioPanelMetrics.HeaderLetterSpacingSp.sp)
                             Spacer(Modifier.weight(1f))
-                            Text(String.format("%.1fs", clipFadeOutDraft / 1_000f), color = StudioAccent, fontSize = 11.sp)
+                            Text(String.format("%.1fs", clipFadeOutDraft / 1_000f), color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                         }
                         Slider(
                             value = clipFadeOutDraft.coerceIn(0f, fadeRangeMaxMs),
@@ -2686,28 +2686,28 @@ private fun VyroCutApp() {
                             valueRange = 0f..fadeRangeMaxMs,
                             colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                         )
-                        Text("Non-destructive • Smooth fades apply to preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
+                        Text("Non-destructive • Smooth fades apply to preview and MP4 export", color = StudioMuted, fontSize = VyroCutTypography.ToolLabelSp.sp)
                     }
                 }
                 if (activeTool == "Audio") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp)).padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.CompactPanelCornerDp.dp)).padding(horizontal = VyroCutAudioPanelMetrics.PanelHorizontalPaddingDp.dp, vertical = VyroCutSpacing.SmallDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutAudioPanelMetrics.LaneSectionGapDp.dp),
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("AUDIO LANES", color = StudioText, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                            Text("AUDIO LANES", color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, fontWeight = FontWeight.Bold, letterSpacing = VyroCutAudioPanelMetrics.HeaderLetterSpacingSp.sp)
                             Spacer(Modifier.weight(1f))
-                            Text("${audioTrackClips.size}/${MAX_AUDIO_TRACK_CLIPS} clips", color = StudioMuted, fontSize = 9.sp)
+                            Text("${audioTrackClips.size}/${MAX_AUDIO_TRACK_CLIPS} clips", color = StudioMuted, fontSize = VyroCutTypography.ToolLabelSp.sp)
                         }
                         Row(
                             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalArrangement = Arrangement.spacedBy(VyroCutAudioPanelMetrics.LaneChipGapDp.dp),
                         ) {
                             AudioTrackType.values().forEach { type ->
                                 FilterChip(
                                     selected = selectedAudioTrackType == type,
                                     onClick = { selectedAudioTrackType = type },
-                                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = 10.sp) },
+                                    label = { Text(type.name.lowercase().replaceFirstChar { it.uppercase() }, fontSize = VyroCutTypography.CaptionSp.sp) },
                                 )
                             }
                         }
@@ -2722,20 +2722,20 @@ private fun VyroCutApp() {
                         }
                         val laneClips = audioTrackClips.filter { it.type == selectedAudioTrackType }.sortedBy { it.startMs }
                         if (laneClips.isEmpty()) {
-                            Text("No ${selectedAudioTrackType.name.lowercase()} clips yet. Imported audio stays local to this project.", color = StudioMuted, fontSize = 9.sp)
+                            Text("No ${selectedAudioTrackType.name.lowercase()} clips yet. Imported audio stays local to this project.", color = StudioMuted, fontSize = VyroCutTypography.ToolLabelSp.sp)
                         } else {
                             laneClips.forEach { trackClip ->
                                 Row(
                                     Modifier.fillMaxWidth()
                                         .background(
                                             if (trackClip.id == selectedAudioTrackId) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip,
-                                            RoundedCornerShape(6.dp),
+                                            RoundedCornerShape(VyroCutAudioPanelMetrics.ClipCardCornerDp.dp),
                                         )
                                         .clickable { selectedAudioTrackId = trackClip.id },
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Column(Modifier.weight(1f).padding(horizontal = 8.dp, vertical = 6.dp)) {
-                                        Text(trackClip.name, color = StudioText, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Column(Modifier.weight(1f).padding(horizontal = VyroCutSpacing.SmallDp.dp, vertical = VyroCutAudioPanelMetrics.ClipCardVerticalPaddingDp.dp)) {
+                                        Text(trackClip.name, color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         AudioWaveformStrip(
                                             amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
                                             color = if (trackClip.id == selectedAudioTrackId) StudioAccent else VyroCutPalette.TextSubtle,
@@ -2743,23 +2743,23 @@ private fun VyroCutApp() {
                                         Text(
                                             "${formatTime(trackClip.startMs)} – ${formatTime(trackClip.endMs)} • ${(trackClip.volume * 100f).toInt()}%",
                                             color = StudioMuted,
-                                            fontSize = 8.sp,
+                                            fontSize = VyroCutTypography.BadgeSp.sp,
                                         )
                                     }
                                     IconButton(
                                         onClick = { changedAudioTracks(audioTrackClips.filterNot { it.id == trackClip.id }) },
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(VyroCutAudioPanelMetrics.DeleteButtonSizeDp.dp),
                                     ) {
-                                        Icon(Icons.Default.Delete, "Remove audio clip", tint = VyroCutPalette.Danger, modifier = Modifier.size(17.dp))
+                                        Icon(Icons.Default.Delete, "Remove audio clip", tint = VyroCutPalette.Danger, modifier = Modifier.size(VyroCutAudioPanelMetrics.DeleteIconSizeDp.dp))
                                     }
                                 }
                             }
                         }
                         if (selectedAudioTrack != null && selectedAudioTrack.type == selectedAudioTrackType) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("TRACK VOLUME", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("TRACK VOLUME", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text("${(audioTrackVolumeDraft * 100f).toInt()}%", color = StudioAccent, fontSize = 10.sp)
+                                Text("${(audioTrackVolumeDraft * 100f).toInt()}%", color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             Slider(
                                 value = audioTrackVolumeDraft.coerceIn(0f, 1f),
@@ -2773,9 +2773,9 @@ private fun VyroCutApp() {
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("FADE IN", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("FADE IN", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text(String.format("%.1fs", audioTrackFadeInDraft / 1_000f), color = StudioAccent, fontSize = 10.sp)
+                                Text(String.format("%.1fs", audioTrackFadeInDraft / 1_000f), color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             Slider(
                                 value = audioTrackFadeInDraft.coerceIn(0f, selectedAudioTrack.durationMs.toFloat()),
@@ -2792,9 +2792,9 @@ private fun VyroCutApp() {
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("FADE OUT", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("FADE OUT", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text(String.format("%.1fs", audioTrackFadeOutDraft / 1_000f), color = StudioAccent, fontSize = 10.sp)
+                                Text(String.format("%.1fs", audioTrackFadeOutDraft / 1_000f), color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             Slider(
                                 value = audioTrackFadeOutDraft.coerceIn(0f, selectedAudioTrack.durationMs.toFloat()),
@@ -2814,23 +2814,23 @@ private fun VyroCutApp() {
                             val projectDurationMs = calculateTimelineDurationMs(clips.map { it.durationMs })
                             val maximumTimelineStartMs = (projectDurationMs - selectedAudioTrack.durationMs).coerceAtLeast(0L)
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("TRIM MODE", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("TRIM MODE", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
                                 FilterChip(
                                     selected = !rippleAudioTrimEnabled,
                                     onClick = { rippleAudioTrimEnabled = false },
-                                    label = { Text("Normal", fontSize = 9.sp) },
+                                    label = { Text("Normal", fontSize = VyroCutTypography.ToolLabelSp.sp) },
                                 )
                                 FilterChip(
                                     selected = rippleAudioTrimEnabled,
                                     onClick = { rippleAudioTrimEnabled = true },
-                                    label = { Text("Ripple", fontSize = 9.sp) },
+                                    label = { Text("Ripple", fontSize = VyroCutTypography.ToolLabelSp.sp) },
                                 )
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("SOURCE IN", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("SOURCE IN", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text(formatTime(audioTrackSourceStartDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                                Text(formatTime(audioTrackSourceStartDraft.toLong()), color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             Slider(
                                 value = audioTrackSourceStartDraft.coerceIn(
@@ -2850,9 +2850,9 @@ private fun VyroCutApp() {
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("SOURCE OUT", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("SOURCE OUT", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text(formatTime(audioTrackSourceEndDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                                Text(formatTime(audioTrackSourceEndDraft.toLong()), color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             val minimumSourceEndMs = (audioTrackSourceStartDraft.toLong() + MIN_AUDIO_TRACK_CLIP_DURATION_MS)
                                 .coerceAtMost(sourceDurationMs)
@@ -2872,9 +2872,9 @@ private fun VyroCutApp() {
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("TIMELINE START", color = StudioText, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("TIMELINE START", color = StudioText, fontSize = VyroCutTypography.ToolLabelSp.sp, fontWeight = FontWeight.Bold)
                                 Spacer(Modifier.weight(1f))
-                                Text(formatTime(audioTrackStartDraft.toLong()), color = StudioAccent, fontSize = 10.sp)
+                                Text(formatTime(audioTrackStartDraft.toLong()), color = StudioAccent, fontSize = VyroCutTypography.CaptionSp.sp)
                             }
                             Slider(
                                 value = audioTrackStartDraft.coerceIn(0f, maximumTimelineStartMs.toFloat()),
@@ -2884,40 +2884,40 @@ private fun VyroCutApp() {
                                 enabled = maximumTimelineStartMs > 0L,
                                 colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
                             )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                                 TextButton(
                                     onClick = { moveSelectedAudioTrack(timelinePositionMs.toLong()) },
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                ) { Text("Move to playhead", fontSize = 10.sp) }
+                                    contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp.dp, vertical = 0.dp),
+                                ) { Text("Move to playhead", fontSize = VyroCutTypography.CaptionSp.sp) }
                                 TextButton(
                                     onClick = { splitSelectedAudioTrackAtPlayhead() },
                                     enabled = timelinePositionMs.toLong() > selectedAudioTrack.startMs &&
                                         timelinePositionMs.toLong() < selectedAudioTrack.endMs &&
                                         audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                ) { Text("Split at playhead", fontSize = 10.sp) }
+                                    contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp.dp, vertical = 0.dp),
+                                ) { Text("Split at playhead", fontSize = VyroCutTypography.CaptionSp.sp) }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                                 TextButton(
                                     onClick = { duplicateSelectedAudioTrack() },
                                     enabled = audioTrackClips.size < MAX_AUDIO_TRACK_CLIPS,
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                ) { Text("Duplicate", fontSize = 10.sp) }
+                                    contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp.dp, vertical = 0.dp),
+                                ) { Text("Duplicate", fontSize = VyroCutTypography.CaptionSp.sp) }
                                 TextButton(
                                     onClick = { applySelectedAudioTrackTrim(0L, sourceDurationMs) },
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                                ) { Text("Restore full source", fontSize = 10.sp) }
+                                    contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp.dp, vertical = 0.dp),
+                                ) { Text("Restore full source", fontSize = VyroCutTypography.CaptionSp.sp) }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                                 TextButton(
                                     onClick = { rippleDeleteSelectedAudioTrack() },
-                                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+                                    contentPadding = PaddingValues(horizontal = VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp.dp, vertical = 0.dp),
                                 ) {
-                                    Text("Ripple delete", color = VyroCutPalette.Danger, fontSize = 10.sp)
+                                    Text("Ripple delete", color = VyroCutPalette.Danger, fontSize = VyroCutTypography.CaptionSp.sp)
                                 }
                             }
-                            Text("Ripple delete closes a removed clip duration; ripple trim shifts later clips by the source-range duration change.", color = StudioMuted, fontSize = 9.sp)
-                            Text("Non-destructive source trims and lane moves • independent lanes mix in preview and MP4 export", color = StudioMuted, fontSize = 9.sp)
+                            Text("Ripple delete closes a removed clip duration; ripple trim shifts later clips by the source-range duration change.", color = StudioMuted, fontSize = VyroCutTypography.ToolLabelSp.sp)
+                            Text("Non-destructive source trims and lane moves • independent lanes mix in preview and MP4 export", color = StudioMuted, fontSize = VyroCutTypography.ToolLabelSp.sp)
                         }
                     }
                 }
