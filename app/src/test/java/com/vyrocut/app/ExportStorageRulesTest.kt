@@ -151,17 +151,27 @@ class ExportStorageRulesTest {
     }
 
     @Test
-    fun unknownCapacityOrVolumeRelationshipDoesNotPretendTheCheckPassed() {
-        val missingCapacity = evaluateExportStoragePreflight(
+    fun knownInsufficientVolumeIsReportedEvenWhenAnotherCapacityIsUnknown() {
+        val missingTemporaryCapacity = evaluateExportStoragePreflight(
             estimate,
             ExportStorageAvailability(temporaryAvailableBytes = null, moviesAvailableBytes = 10L, sameVolume = false),
+        )
+        val unknownTemporaryCapacity = evaluateExportStoragePreflight(
+            estimate,
+            ExportStorageAvailability(
+                temporaryAvailableBytes = null,
+                moviesAvailableBytes = estimate.estimatedBytes + EXPORT_PUBLICATION_STORAGE_RESERVE_BYTES,
+                sameVolume = false,
+            ),
         )
         val unknownVolume = evaluateExportStoragePreflight(
             estimate,
             ExportStorageAvailability(temporaryAvailableBytes = 10L, moviesAvailableBytes = 10L, sameVolume = null),
         )
 
-        assertEquals(ExportStoragePreflightStatus.UNKNOWN, missingCapacity.status)
+        assertEquals(ExportStoragePreflightStatus.INSUFFICIENT, missingTemporaryCapacity.status)
+        assertEquals(ExportStorageScope.MOVIES_PUBLICATION, missingTemporaryCapacity.scope)
+        assertEquals(ExportStoragePreflightStatus.UNKNOWN, unknownTemporaryCapacity.status)
         assertEquals(ExportStoragePreflightStatus.UNKNOWN, unknownVolume.status)
     }
 
