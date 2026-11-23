@@ -262,6 +262,33 @@ class VyroCutDesignSystemTest {
         assertEquals(9, VyroCutTypography.ToolLabelSp)
     }
 
+    @Test
+    fun audioPanelMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(10, 7, 6, 6, 32, 17, 7, 5, 6, 4),
+            listOf(
+                VyroCutAudioPanelMetrics.PanelHorizontalPaddingDp,
+                VyroCutAudioPanelMetrics.LaneSectionGapDp,
+                VyroCutAudioPanelMetrics.LaneChipGapDp,
+                VyroCutAudioPanelMetrics.ClipCardVerticalPaddingDp,
+                VyroCutAudioPanelMetrics.DeleteButtonSizeDp,
+                VyroCutAudioPanelMetrics.DeleteIconSizeDp,
+                VyroCutAudioPanelMetrics.ClipVolumePanelVerticalPaddingDp,
+                VyroCutAudioPanelMetrics.ClipVolumeSectionGapDp,
+                VyroCutAudioPanelMetrics.MuteButtonHorizontalPaddingDp,
+                VyroCutAudioPanelMetrics.ActionButtonHorizontalPaddingDp,
+            ),
+        )
+        assertEquals(6, VyroCutAudioPanelMetrics.ClipCardCornerDp)
+        assertEquals(1f, VyroCutAudioPanelMetrics.HeaderLetterSpacingSp, 0f)
+        assertEquals(10, VyroCutShapes.CompactPanelCornerDp)
+        assertEquals(8, VyroCutSpacing.SmallDp)
+        assertEquals(8, VyroCutTypography.BadgeSp)
+        assertEquals(9, VyroCutTypography.ToolLabelSp)
+        assertEquals(10, VyroCutTypography.CaptionSp)
+        assertEquals(11, VyroCutTypography.LabelSp)
+    }
+
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
         val secondLuminance = relativeLuminance(second)
