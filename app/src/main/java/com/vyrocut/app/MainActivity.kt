@@ -4553,6 +4553,19 @@ private fun TimelineEditorStrip(
     val gapPx = with(density) { gap.dp.toPx() }
     val totalDuration = calculateTimelineDurationMs(timelineClipDurationsMs).coerceAtLeast(1L)
     val timelineRulerTicks = calculateTimelineRulerTicks(timelineClipDurationsMs, clipWidths, gap)
+    val maxRulerLabelCharacters = timelineRulerTicks
+        .asSequence()
+        .filter { it.isMajor }
+        .maxOfOrNull { formatTime(it.timeMs).length }
+        ?: 5
+    val rulerLabelMinimumSpacingDp = timelineRulerLabelMinimumSpacingDp(
+        maxLabelCharacters = maxRulerLabelCharacters,
+        fontScale = density.fontScale,
+    )
+    val visibleRulerLabelTimes = selectTimelineRulerLabelTicks(
+        ticks = timelineRulerTicks,
+        minimumSpacing = rulerLabelMinimumSpacingDp.toFloat(),
+    ).mapTo(mutableSetOf()) { it.timeMs }
     val markerX = calculateTimelinePlayheadOffsetPx(
         clipDurationsMs = timelineClipDurationsMs,
         clipWidthsPx = clipWidths,
@@ -4646,7 +4659,7 @@ private fun TimelineEditorStrip(
                             .height(if (tick.isMajor) 10.dp else 6.dp)
                             .background(StudioMuted.copy(alpha = 0.65f)),
                     )
-                    if (tick.isMajor) {
+                    if (tick.timeMs in visibleRulerLabelTimes) {
                         Text(formatTime(tick.timeMs), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
                     }
                 }

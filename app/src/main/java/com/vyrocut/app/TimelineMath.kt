@@ -319,6 +319,48 @@ internal fun calculateTimelineRulerTicks(
     return ticks
 }
 
+/**
+ * Selects major ruler labels whose estimated text bounds do not overlap.
+ *
+ * Tick marks remain available at every interval; this helper only controls
+ * which timecode labels are drawn. The first major label is retained, and the
+ * final major label is retained when it has enough room after the previous one.
+ * Offsets use the same coordinate unit as TimelineRulerTick.offsetPx.
+ */
+internal fun selectTimelineRulerLabelTicks(
+    ticks: List<TimelineRulerTick>,
+    minimumSpacing: Float,
+): List<TimelineRulerTick> {
+    val candidates = ticks.asSequence()
+        .filter { it.isMajor && it.offsetPx.isFinite() }
+        .sortedBy { it.timeMs }
+        .toList()
+    if (candidates.size <= 1) return candidates
+    if (!minimumSpacing.isFinite() || minimumSpacing <= 0f) return candidates
+
+    val selected = mutableListOf(candidates.first())
+    candidates.subList(1, candidates.lastIndex).forEach { candidate ->
+        val previous = selected.last()
+        if (
+            candidate.offsetPx >= previous.offsetPx &&
+            candidate.offsetPx - previous.offsetPx >= minimumSpacing
+        ) {
+            selected += candidate
+        }
+    }
+
+    val lastCandidate = candidates.last()
+    val previous = selected.last()
+    if (
+        lastCandidate.timeMs != previous.timeMs &&
+        lastCandidate.offsetPx >= previous.offsetPx &&
+        lastCandidate.offsetPx - previous.offsetPx >= minimumSpacing
+    ) {
+        selected += lastCandidate
+    }
+    return selected
+}
+
 private const val MAX_TIMELINE_RULER_TICKS = 2_000
 
 internal fun <T> moveTimelineItem(items: List<T>, fromIndex: Int, toIndex: Int): List<T> {

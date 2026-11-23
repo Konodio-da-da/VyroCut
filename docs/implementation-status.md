@@ -247,3 +247,11 @@ A control is only considered complete when its operation is connected to the pro
 - Selected targets are applied to each video clip in the Media3 Transformer composition with Media3 1.5.1 FrameDropEffect. Its default strategy compares source presentation timestamps and drops excess frames; it does not interpolate lower-rate clips.
 - The target is export-only. Preview playback, the VFR source timestamp index, clip trim points, project clock, and audio-lane timing remain unchanged.
 - Pure Kotlin tests cover preference migration/defaults, every supported target, source-cadence no-op behaviour, and truthful completion labels. CI must verify compilation and tests; actual frame cadence, export playback, and audio continuity remain device-validation items.
+
+## Timeline ruler label collision avoidance — 23 November 2026
+- Major timecode labels are filtered by an estimated label-width interval that accounts for the longest visible formatted timecode and the user's bounded system font scale.
+- The ruler continues to draw its regular major/minor tick marks at the existing absolute project-time positions. Only crowded text labels are omitted; clip widths, project clock mapping, playhead positioning, seek targets, and horizontal scrolling are unchanged.
+- The first major label remains visible, and the final major label is shown when enough horizontal space remains after the preceding label. Non-finite tick offsets are ignored by the label selector.
+- Pure JVM tests cover crowded and compressed projects, endpoint retention when space allows, minor/non-finite tick filtering, invalid spacing fallbacks, and font-scale/label-width bounds.
+- This is a code-level collision-avoidance improvement. Visual label fit across physical screen densities and font configurations still requires Android-device validation.
+

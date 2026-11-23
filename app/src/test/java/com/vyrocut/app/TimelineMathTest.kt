@@ -1124,6 +1124,71 @@ class TimelineMathTest {
 
 
     @Test
+    fun rulerLabelsSkipCrowdedMajorTicksAndKeepTheEndWhenSpaceAllows() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 30f, true),
+            TimelineRulerTick(10_000L, 60f, true),
+            TimelineRulerTick(15_000L, 90f, true),
+            TimelineRulerTick(20_000L, 120f, true),
+        )
+
+        assertEquals(
+            listOf(0L, 10_000L, 20_000L),
+            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 45f).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun rulerLabelsKeepOnlyOneLabelWhenTheWholeProjectIsCompressed() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 1f, true),
+            TimelineRulerTick(10_000L, 2f, true),
+        )
+
+        assertEquals(
+            listOf(0L),
+            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 40f).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun rulerLabelSelectionIgnoresMinorAndNonFiniteTicks() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(1_000L, 20f, false),
+            TimelineRulerTick(5_000L, Float.NaN, true),
+            TimelineRulerTick(10_000L, 60f, true),
+            TimelineRulerTick(15_000L, Float.POSITIVE_INFINITY, true),
+        )
+
+        assertEquals(
+            listOf(0L, 10_000L),
+            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 40f).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun invalidRulerLabelSpacingFallsBackToAllFiniteMajorLabels() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 1f, true),
+            TimelineRulerTick(10_000L, 2f, false),
+            TimelineRulerTick(15_000L, 3f, true),
+        )
+
+        assertEquals(
+            listOf(0L, 5_000L, 15_000L),
+            selectTimelineRulerLabelTicks(ticks, minimumSpacing = Float.NaN).map { it.timeMs },
+        )
+        assertEquals(
+            listOf(0L, 5_000L, 15_000L),
+            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 0f).map { it.timeMs },
+        )
+    }
+
+    @Test
     fun playbackProgressUsesFrameAlignedCadenceWhenPtsIndexIsAvailable() {
         assertEquals(33L, playbackProgressUpdateIntervalMs(isPlaying = true))
         assertEquals(16L, playbackProgressUpdateIntervalMs(isPlaying = true, hasPresentationTimestampIndex = true))

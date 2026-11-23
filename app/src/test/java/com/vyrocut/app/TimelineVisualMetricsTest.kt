@@ -25,6 +25,29 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun rulerLabelSpacingAccountsForTimecodeWidthAndSystemFontScale() {
+        assertEquals(39, timelineRulerLabelMinimumSpacingDp(5, 1f))
+        assertEquals(55, timelineRulerLabelMinimumSpacingDp(5, 1.5f))
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 2f),
+            timelineRulerLabelMinimumSpacingDp(5, 4f),
+        )
+    }
+
+    @Test
+    fun rulerLabelSpacingBoundsMalformedCharacterCountsAndFontScales() {
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(1, 1f),
+            timelineRulerLabelMinimumSpacingDp(0, Float.NaN),
+        )
+        assertEquals(405, timelineRulerLabelMinimumSpacingDp(100, 2f))
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 1f),
+            timelineRulerLabelMinimumSpacingDp(5, Float.NEGATIVE_INFINITY),
+        )
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)

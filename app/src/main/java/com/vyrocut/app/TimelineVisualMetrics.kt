@@ -18,6 +18,30 @@ internal const val TIMELINE_RULER_LABEL_FONT_SP = 10
 internal const val TIMELINE_CLIP_LABEL_FONT_SP = 11
 internal const val TIMELINE_CLIP_META_FONT_SP = 10
 internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = 14
+private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = 0.62f
+private const val TIMELINE_RULER_LABEL_GAP_DP = 8f
+private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = 32
+
+/**
+ * Estimates the horizontal room needed by a ruler timecode, including a small
+ * gap before the next label. Compose scales the label's sp size automatically,
+ * so the same bounded font scale is applied to this dp estimate.
+ */
+internal fun timelineRulerLabelMinimumSpacingDp(
+    maxLabelCharacters: Int,
+    fontScale: Float,
+): Int {
+    val safeScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+    val safeCharacters = maxLabelCharacters.coerceIn(1, MAX_TIMELINE_RULER_LABEL_CHARACTERS)
+    return ceil(
+        safeCharacters * TIMELINE_RULER_LABEL_FONT_SP *
+            TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR * safeScale +
+            TIMELINE_RULER_LABEL_GAP_DP,
+    ).toInt().coerceAtLeast(1)
+}
 
 /**
  * Fixed timeline rows grow with the user's system font scale so labels and
