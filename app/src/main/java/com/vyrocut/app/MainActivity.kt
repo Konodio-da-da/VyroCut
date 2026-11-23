@@ -86,6 +86,7 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.AudioEncoderSettings
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
@@ -239,6 +240,13 @@ private fun VyroCutApp() {
         mutableStateOf(
             ExportVideoBitratePreset.fromId(
                 preferences.getString("project_${activeProjectId}_export_video_bitrate", null),
+            ),
+        )
+    }
+    var exportAudioBitratePreset by remember(activeProjectId) {
+        mutableStateOf(
+            ExportAudioBitratePreset.fromId(
+                preferences.getString("project_${activeProjectId}_export_audio_bitrate", null),
             ),
         )
     }
@@ -3290,6 +3298,35 @@ private fun VyroCutApp() {
                     color = StudioMuted,
                     fontSize = 9.sp,
                 )
+                Text(
+                    "AUDIO BITRATE",
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    ExportAudioBitratePreset.values().forEach { preset ->
+                        FilterChip(
+                            selected = exportAudioBitratePreset == preset,
+                            onClick = {
+                                exportAudioBitratePreset = preset
+                                preferences.edit()
+                                    .putString("project_${activeProjectId}_export_audio_bitrate", preset.id)
+                                    .apply()
+                            },
+                            enabled = !isExporting && !isReadingMedia,
+                            label = { Text(preset.label, fontSize = 10.sp) },
+                        )
+                    }
+                }
+                Text(
+                    exportAudioBitrateSummary(exportAudioBitratePreset),
+                    color = StudioMuted,
+                    fontSize = 9.sp,
+                )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
@@ -3301,6 +3338,7 @@ private fun VyroCutApp() {
                                 val exportResolution = exportResolutionPreset
                                 val exportFrameRate = exportFrameRatePreset
                                 val exportVideoBitrate = exportVideoBitratePreset
+                                val exportAudioBitrate = exportAudioBitratePreset
                                 val exportFrameDropTargetFps = exportFrameDropTargetRate(exportFrameRate)
                                 val exportCanvasSize = exportCanvasSizeForPreset(
                                     exportCanvasSettings.aspectRatioPreset,
@@ -3310,6 +3348,9 @@ private fun VyroCutApp() {
                                     exportVideoBitrate,
                                     exportCanvasSize,
                                     exportFrameRate,
+                                )
+                                val exportAudioBitrateTargetBps = exportRequestedAudioBitrateBps(
+                                    exportAudioBitrate,
                                 )
                                 val exportBackgroundArgb = exportCanvasBackgroundArgbForPreset(
                                     exportCanvasSettings.backgroundPreset,
@@ -3556,18 +3597,29 @@ private fun VyroCutApp() {
                                     }
                                     val transformer = try {
                                         val transformerBuilder = Transformer.Builder(context)
-                                        exportVideoBitrateTargetBps?.let { targetBitrateBps ->
-                                            val encoderFactory = DefaultEncoderFactory.Builder(context)
-                                                .setRequestedVideoEncoderSettings(
+                                        if (exportVideoBitrateTargetBps != null ||
+                                            exportAudioBitrateTargetBps != null
+                                        ) {
+                                            val encoderFactoryBuilder = DefaultEncoderFactory.Builder(context)
+                                            exportVideoBitrateTargetBps?.let { targetBitrateBps ->
+                                                encoderFactoryBuilder.setRequestedVideoEncoderSettings(
                                                     VideoEncoderSettings.Builder()
                                                         .setBitrate(targetBitrateBps)
                                                         .build(),
                                                 )
-                                                // Retain Media3's supported-format fallback on devices
-                                                // that cannot use the requested bitrate exactly.
-                                                .setEnableFallback(true)
-                                                .build()
-                                            transformerBuilder.setEncoderFactory(encoderFactory)
+                                            }
+                                            exportAudioBitrateTargetBps?.let { targetBitrateBps ->
+                                                encoderFactoryBuilder.setRequestedAudioEncoderSettings(
+                                                    AudioEncoderSettings.Builder()
+                                                        .setBitrate(targetBitrateBps)
+                                                        .build(),
+                                                )
+                                            }
+                                            // Media3 treats both bitrates as best-effort encoder
+                                            // requests; keep its supported-format fallback enabled.
+                                            transformerBuilder.setEncoderFactory(
+                                                encoderFactoryBuilder.setEnableFallback(true).build(),
+                                            )
                                         }
                                         transformerBuilder
                                             .addListener(object : Transformer.Listener {
@@ -3610,7 +3662,7 @@ private fun VyroCutApp() {
                                                         exportSessionId = null
                                                         publishResult.onSuccess { uri ->
                                                             exportedUri = uri
-                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • ${exportVideoBitrate.summaryLabel} • MP4"
+                                                            completedExportSummary = "${exportCanvasSize.widthPx} × ${exportCanvasSize.heightPx} • ${exportResolution.label} • ${exportFrameRate.summaryLabel} • ${exportVideoBitrate.summaryLabel} • ${exportAudioBitrate.summaryLabel} • MP4"
                                                             exportUiStage = ExportUiStage.COMPLETE
                                                             exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {

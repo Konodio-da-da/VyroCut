@@ -304,3 +304,12 @@ A control is only considered complete when its operation is connected to the pro
 - Manual modes configure Media3 1.5.1 `DefaultEncoderFactory` with `VideoEncoderSettings.setBitrate` and format fallback enabled. The requested bitrate is best-effort: device encoders may clamp or ignore it to select a supported format. The completion summary reports the selected target preset, not a measured MP4 bitrate.
 - Pure Kotlin tests cover preference restoration, Auto no-op behaviour, 720p/1080p estimates, target-FPS scaling, Source-FPS estimation, lower/upper bounds, and truthful completion labels.
 - The encoder target is video-only. Existing audio encoding, Media3 composition timing, project clock, VFR frame indexing, preflight, decoded-media validation, cancellation, and MediaStore publication are unchanged. Actual device encoder selection, file size, bitrate, playback quality, and audio continuity still require physical-device export validation.
+
+
+## Export audio bitrate targets — 23 November 2026
+- The Export panel now offers per-project Auto, 96, 128, 192, and 256 kbps audio bitrate requests. Existing projects default to Auto, which leaves Media3's existing audio encoder default unchanged.
+- Manual presets use Media3 1.5.1 `DefaultEncoderFactory.Builder.setRequestedAudioEncoderSettings(AudioEncoderSettings)`. The same encoder factory also receives the existing optional video bitrate request, so video and audio quality can be selected independently in one export.
+- The completion summary reports the selected requested audio target rather than claiming a measured output bitrate. Media3/device encoders may ignore or adjust the requested value to preserve a supported configuration.
+- Pure Kotlin tests cover preference defaults/restoration, exact bits-per-second mappings, Auto no-op behaviour, and truthful requested-target summaries.
+- The setting is stored per project in local preferences; no project JSON or backup schema changes are required. Audio mixing, per-clip volume/fades, source audio, Music/SFX/Voiceover composition, project clock, VFR indexing, export preflight, validation, cancellation, and MediaStore publication are unchanged.
+- Android CI verifies compilation and JVM rules only. Actual encoder acceptance, resulting MP4 audio bitrate, sound quality, and audio/video sync still require physical-device export validation.
