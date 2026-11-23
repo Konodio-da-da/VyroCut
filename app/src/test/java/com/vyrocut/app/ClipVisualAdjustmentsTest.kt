@@ -95,6 +95,7 @@ class ClipVisualAdjustmentsTest {
             )
         }
     }
+
     @Test
     fun creativeEffectIdsResolveToStablePresetsAndRejectUnknownValues() {
         assertEquals(ClipCreativeEffectPreset.ORIGINAL, clipCreativeEffectPresetFromId(null))
@@ -224,10 +225,25 @@ class ClipVisualAdjustmentsTest {
             listOf(ClipCreativeEffectPreset.SEPIA),
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.VINTAGE),
         )
+
+        // Browser order is category-first (Color, Monochrome, Vintage), not
+        // enum declaration order. Verify that every preset appears exactly once
+        // while keeping the category ordering asserted above.
+        val browserOrder = ClipCreativeEffectCategory.values()
+            .flatMap(::clipCreativeEffectPresetsForCategory)
         assertEquals(
-            ClipCreativeEffectPreset.values().toList(),
-            ClipCreativeEffectCategory.values().flatMap(::clipCreativeEffectPresetsForCategory),
+            listOf(
+                ClipCreativeEffectPreset.WARM,
+                ClipCreativeEffectPreset.COOL,
+                ClipCreativeEffectPreset.ORIGINAL,
+                ClipCreativeEffectPreset.NEGATIVE,
+                ClipCreativeEffectPreset.GRAYSCALE,
+                ClipCreativeEffectPreset.SEPIA,
+            ),
+            browserOrder,
         )
+        assertEquals(ClipCreativeEffectPreset.values().toSet(), browserOrder.toSet())
+        assertEquals(ClipCreativeEffectPreset.values().size, browserOrder.size)
     }
 
     @Test
@@ -268,5 +284,4 @@ class ClipVisualAdjustmentsTest {
         assertArrayEquals(halfStrength, blendRgbMatrixWithIdentity(inverted, 0.5f), 0.0001f)
         assertArrayEquals(inverted, blendRgbMatrixWithIdentity(inverted, 1f), 0.0001f)
     }
-
 }
