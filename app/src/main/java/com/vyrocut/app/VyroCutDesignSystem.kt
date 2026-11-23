@@ -190,6 +190,21 @@ internal object VyroCutTextPanelMetrics {
     const val ChipLabelFontSizeSp = 10
 }
 
+/**
+ * Sticker-overlay panel metrics. Generic spacing, shapes, and typography reuse
+ * the shared scales; these tokens cover only the panel's existing unique values.
+ */
+internal object VyroCutStickerPanelMetrics {
+    const val HorizontalPaddingDp = 10
+    const val VerticalPaddingDp = 9
+    const val ChipGapDp = 6
+    const val LayerVerticalPaddingDp = 6
+    const val LayerItemGapDp = 3
+    const val SymbolChipFontSizeSp = 19
+    const val LayerSymbolFontSizeSp = 20
+    const val RemoveButtonHorizontalPaddingDp = 6
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,

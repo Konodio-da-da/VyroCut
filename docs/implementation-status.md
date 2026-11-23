@@ -386,3 +386,9 @@ A control is only considered complete when its operation is connected to the pro
 - Replaced the Text panel's repeated dp/sp literals with shared design-system tokens while preserving its existing numeric dimensions.
 - This is styling-only: text content limits, layer selection, size/position choices, overlay timing, apply/remove actions, split/trim persistence, preview rendering, and MP4 export are unchanged.
 - Added a pure JVM exact-value regression test for the Text panel metrics and shared shape/spacing tokens. Physical-device layout fit and text-entry usability remain unverified.
+## Sticker overlay panel design-token consolidation — 23 November 2026
+- Added semantic `VyroCutStickerPanelMetrics` for the Stickers panel's existing horizontal/vertical padding, chip spacing, layer-card vertical padding and row gap, sticker glyph sizes, and remove-button padding.
+- Reused the shared compact/small shapes, spacing scale, and typography tokens for the panel's remaining dimensions. Existing dp/sp values are preserved.
+- This is styling-only: sticker symbol choices, per-layer size and clip-local IN/OUT controls, selection/removal, non-destructive overlay model, split/trim persistence, undo/redo, preview rendering, and Media3 Transformer export are unchanged.
+- Added a pure JVM exact-value regression test for the sticker-panel metrics and reused shared tokens. Android CI must verify compilation and the unit test; actual glyph rendering and screen fit still require physical-device validation.
+

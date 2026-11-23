@@ -2923,38 +2923,38 @@ private fun VyroCutApp() {
                 }
                 if (activeTool == "Stickers") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 10.dp, vertical = 9.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.CompactPanelCornerDp.dp))
+                            .padding(horizontal = VyroCutStickerPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutStickerPanelMetrics.VerticalPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp),
                     ) {
-                        Text("STICKER OVERLAYS", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("STICKER OVERLAYS", color = StudioText, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = FontWeight.Bold)
                         if (selectedClip == null) {
-                            Text("Select a video clip before adding a sticker.", color = StudioMuted, fontSize = 10.sp)
+                            Text("Select a video clip before adding a sticker.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                         } else {
-                            Text("Choose a sticker position, then tap a symbol to add it to this clip.", color = StudioMuted, fontSize = 10.sp)
+                            Text("Choose a sticker position, then tap a symbol to add it to this clip.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                             Row(
                                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
                             ) {
                                 ClipStickerPosition.values().forEach { position ->
                                     FilterChip(
                                         selected = selectedStickerPosition == position,
                                         onClick = { selectedStickerPosition = position },
                                         label = {
-                                            Text(position.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }, fontSize = 9.sp)
+                                            Text(position.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }, fontSize = VyroCutTypography.ToolLabelSp.sp)
                                         },
                                     )
                                 }
                             }
                             Row(
                                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
                             ) {
                                 listOf("⭐", "❤️", "🔥", "😂", "😎", "✨", "🎉", "🚀", "💯", "👏").forEach { symbol ->
                                     FilterChip(
                                         selected = false,
                                         onClick = { addSelectedClipSticker(symbol) },
-                                        label = { Text(symbol, fontSize = 19.sp) },
+                                        label = { Text(symbol, fontSize = VyroCutStickerPanelMetrics.SymbolChipFontSizeSp.sp) },
                                         enabled = selectedClip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
                                     )
                                 }
@@ -2962,11 +2962,11 @@ private fun VyroCutApp() {
                             Text(
                                 "ADDED • " + selectedClip.allStickerOverlays.size + "/" + MAX_CLIP_STICKER_OVERLAYS,
                                 color = StudioMuted,
-                                fontSize = 9.sp,
+                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                             if (selectedClip.allStickerOverlays.isEmpty()) {
-                                Text("No stickers on this clip yet.", color = StudioMuted, fontSize = 10.sp)
+                                Text("No stickers on this clip yet.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                             } else {
                                 selectedClip.allStickerOverlays.forEachIndexed { index, sticker ->
                                     val clipDurationMs = selectedClip.durationMs.coerceAtLeast(1L)
@@ -2991,36 +2991,36 @@ private fun VyroCutApp() {
                                                 } else {
                                                     StudioBackground
                                                 },
-                                                RoundedCornerShape(8.dp),
+                                                RoundedCornerShape(VyroCutShapes.SmallCornerDp.dp),
                                             )
-                                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                                        verticalArrangement = Arrangement.spacedBy(3.dp),
+                                            .padding(horizontal = VyroCutSpacing.SmallDp.dp, vertical = VyroCutStickerPanelMetrics.LayerVerticalPaddingDp.dp),
+                                        verticalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.LayerItemGapDp.dp),
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(sticker.symbol, fontSize = 20.sp)
-                                            Spacer(Modifier.width(8.dp))
+                                            Text(sticker.symbol, fontSize = VyroCutStickerPanelMetrics.LayerSymbolFontSizeSp.sp)
+                                            Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                                             Text(
                                                 sticker.position.name.lowercase().replace('_', ' '),
                                                 color = StudioMuted,
-                                                fontSize = 10.sp,
+                                                fontSize = VyroCutTypography.CaptionSp.sp,
                                             )
                                             Spacer(Modifier.weight(1f))
                                             TextButton(
                                                 onClick = { removeSelectedClipSticker(index) },
-                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                            ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = 10.sp) }
+                                                contentPadding = PaddingValues(horizontal = VyroCutStickerPanelMetrics.RemoveButtonHorizontalPaddingDp.dp, vertical = 0.dp),
+                                            ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = VyroCutTypography.CaptionSp.sp) }
                                         }
                                         Row(verticalAlignment = Alignment.CenterVertically) {
                                             Text(
                                                 "SIZE ${String.format(java.util.Locale.US, "%.1f", scaleDraft)}×",
                                                 color = StudioMuted,
-                                                fontSize = 9.sp,
+                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                                             )
                                             Spacer(Modifier.weight(1f))
                                             Text(
                                                 "${MIN_CLIP_STICKER_SCALE}× – ${MAX_CLIP_STICKER_SCALE}×",
                                                 color = StudioMuted,
-                                                fontSize = 9.sp,
+                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                                             )
                                         }
                                         Slider(
@@ -3036,13 +3036,13 @@ private fun VyroCutApp() {
                                             Text(
                                                 "IN ${String.format(java.util.Locale.US, "%.1f", startSeconds)}s",
                                                 color = StudioMuted,
-                                                fontSize = 9.sp,
+                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                                             )
                                             Spacer(Modifier.weight(1f))
                                             Text(
                                                 "OUT ${String.format(java.util.Locale.US, "%.1f", endSeconds)}s",
                                                 color = StudioMuted,
-                                                fontSize = 9.sp,
+                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                                             )
                                         }
                                         Slider(
@@ -3073,7 +3073,7 @@ private fun VyroCutApp() {
                             Text(
                                 "Clip-local IN/OUT timing • Survives split, trim, save and MP4 export",
                                 color = StudioMuted,
-                                fontSize = 9.sp,
+                                fontSize = VyroCutTypography.ToolLabelSp.sp,
                             )
                         }
                     }
