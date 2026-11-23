@@ -61,6 +61,21 @@ internal fun isValidClipStickerOverlaySymbol(symbol: String): Boolean {
 internal fun isValidClipStickerOverlayScale(scale: Float): Boolean =
     scale.isFinite() && scale in MIN_CLIP_STICKER_SCALE..MAX_CLIP_STICKER_SCALE
 
+/**
+ * Updates one sticker's size without changing its timing, position, or symbol.
+ * Finite values are clamped to the supported editor range; non-finite values
+ * are rejected so malformed UI state cannot enter project history.
+ */
+internal fun updateClipStickerOverlayScale(
+    overlay: ClipStickerOverlay,
+    requestedScale: Float,
+): ClipStickerOverlay? {
+    if (!requestedScale.isFinite()) return null
+    return overlay.copy(
+        scale = requestedScale.coerceIn(MIN_CLIP_STICKER_SCALE, MAX_CLIP_STICKER_SCALE),
+    )
+}
+
 internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boolean =
     startMs >= 0L && (endMs == null || endMs > startMs)
 
