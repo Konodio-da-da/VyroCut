@@ -366,3 +366,10 @@ A control is only considered complete when its operation is connected to the pro
 - Replaced repeated dp/sp literals in the Effects panel with shared spacing, shape, typography, and effects-panel tokens while preserving the exact existing values.
 - The change is styling-only: creative-effect IDs, Media3 effect construction, preview and Transformer effect lists, slider ranges/commit timing, clip state, undo/redo, and project persistence are unchanged.
 - Added an exact-value JVM regression test for the effects-panel metrics and the shared tokens used by the panel. The Android unit-test task exercises this test; actual panel fit and touch behaviour still require Android-device validation.
+
+## Filters and Adjust panel design-token consolidation — 23 November 2026
+- Added semantic VyroCutVisualPanelMetrics for the Filters and Adjust panel's existing padding, section spacing, heading tracking, and reset-button padding.
+- Replaced the panel's repeated shape, spacing, and type literals with shared design-system tokens while preserving the existing numeric dimensions and control values.
+- This is styling-only: filter preset selection, per-clip brightness/contrast/saturation state, slider ranges and commit timing, undo/redo, preview effects, and Transformer export are unchanged.
+- Added a pure JVM exact-value regression test for the panel-specific metrics and shared tokens.
+- Android CI must verify this commit's compilation and unit tests. Physical-device layout fit and touch behaviour remain unverified.

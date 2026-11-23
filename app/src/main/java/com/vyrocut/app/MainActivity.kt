@@ -2512,17 +2512,17 @@ private fun VyroCutApp() {
                     }
                 } else if (activeTool == "Filters" || activeTool == "Adjust") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp)).padding(horizontal = VyroCutVisualPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutVisualPanelMetrics.VerticalPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutVisualPanelMetrics.SectionGapDp.dp)
                     ) {
                         Text(
                             if (activeTool == "Filters") "FILTERS" else "CLIP ADJUSTMENTS",
                             color = StudioText,
-                            fontSize = 11.sp,
+                            fontSize = VyroCutTypography.LabelSp.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
+                            letterSpacing = VyroCutVisualPanelMetrics.HeaderLetterSpacingSp.sp
                         )
-                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                             val options = if (activeTool == "Filters") {
                                 ClipVisualPreset.values().map { it.label }
                             } else {
@@ -2552,13 +2552,13 @@ private fun VyroCutApp() {
                                             selectedAdjustment = item
                                         }
                                     },
-                                    label = { Text(item, fontSize = 11.sp) }
+                                    label = { Text(item, fontSize = VyroCutTypography.LabelSp.sp) }
                                 )
                             }
                         }
                         if (activeTool == "Adjust") {
                             if (selectedClip == null) {
-                                Text("Select a video clip to adjust its colour.", color = StudioMuted, fontSize = 10.sp)
+                                Text("Select a video clip to adjust its colour.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                             } else {
                                 val adjustmentValue = when (selectedAdjustment) {
                                     "Contrast" -> clipContrastDraft
@@ -2566,9 +2566,9 @@ private fun VyroCutApp() {
                                     else -> clipBrightnessDraft
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(selectedAdjustment, color = StudioMuted, fontSize = 11.sp)
+                                    Text(selectedAdjustment, color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
                                     Spacer(Modifier.weight(1f))
-                                    Text("${adjustmentValue.toInt()}%", color = StudioAccent, fontSize = 11.sp)
+                                    Text("${adjustmentValue.toInt()}%", color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                                     TextButton(
                                         onClick = {
                                             clipBrightnessDraft = 0f
@@ -2576,8 +2576,8 @@ private fun VyroCutApp() {
                                             clipSaturationDraft = 0f
                                             commitSelectedClipVisualAdjustments(0, 0, 0)
                                         },
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
-                                    ) { Text("Reset", fontSize = 10.sp) }
+                                        contentPadding = PaddingValues(horizontal = VyroCutVisualPanelMetrics.ResetButtonHorizontalPaddingDp.dp, vertical = VyroCutVisualPanelMetrics.ResetButtonVerticalPaddingDp.dp),
+                                    ) { Text("Reset", fontSize = VyroCutTypography.CaptionSp.sp) }
                                 }
                                 Slider(
                                     value = adjustmentValue.coerceIn(-100f, 100f),
@@ -2602,17 +2602,17 @@ private fun VyroCutApp() {
                                 Text(
                                     "Non-destructive • Applied to this clip in preview and MP4 export",
                                     color = StudioMuted,
-                                    fontSize = 10.sp
+                                    fontSize = VyroCutTypography.CaptionSp.sp
                                 )
                             }
                         } else {
                             if (selectedClip == null) {
-                                Text("Select a video clip to apply a tonal preset.", color = StudioMuted, fontSize = 10.sp)
+                                Text("Select a video clip to apply a tonal preset.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                             } else {
                                 Text(
                                     "Preset applied to this clip • Fine-tune it in Adjust",
                                     color = StudioMuted,
-                                    fontSize = 10.sp,
+                                    fontSize = VyroCutTypography.CaptionSp.sp,
                                 )
                             }
                         }

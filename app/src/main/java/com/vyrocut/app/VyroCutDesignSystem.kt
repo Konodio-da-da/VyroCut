@@ -150,6 +150,19 @@ internal object VyroCutEffectsPanelMetrics {
     const val CategoryLetterSpacingSp = 0.8f
 }
 
+/**
+ * Filters and Adjust panel geometry. Values preserve the current editor layout
+ * while moving repeated styling literals into the shared design system.
+ */
+internal object VyroCutVisualPanelMetrics {
+    const val HorizontalPaddingDp = 10
+    const val VerticalPaddingDp = 7
+    const val SectionGapDp = 10
+    const val HeaderLetterSpacingSp = 1f
+    const val ResetButtonHorizontalPaddingDp = 6
+    const val ResetButtonVerticalPaddingDp = 0
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
