@@ -35,9 +35,11 @@ internal fun diagnoseExportFailure(
 ): ExportFailureDiagnostic {
     val chain = mutableListOf<Throwable>()
     var current: Throwable? = error
-    while (current != null && chain.size < 8 && chain.none { it === current }) {
-        chain += current
-        current = current.cause
+    while (chain.size < 8) {
+        val next = current ?: break
+        if (chain.any { it === next }) break
+        chain += next
+        current = next.cause
     }
 
     val classNames = chain.map { it.javaClass.name.lowercase(Locale.ROOT) }
@@ -124,4 +126,4 @@ internal fun diagnoseExportFailure(
 }
 
 private fun String.containsAny(vararg candidates: String): Boolean =
-    candidates.any(::contains)
+    candidates.any { candidate -> contains(candidate) }
