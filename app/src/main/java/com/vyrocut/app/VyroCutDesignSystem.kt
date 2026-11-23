@@ -23,6 +23,14 @@ internal object VyroCutPalette {
     val SurfaceClip = Color(0xFF252A28)
     val SurfaceBadge = Color(0xFF29312E)
     val SurfaceTrack = Color(0xFF293330)
+
+    // Declare source accent tokens before derived timeline tokens. Kotlin
+    // initializes object properties in declaration order.
+    val Accent = Color(0xFF0FE8B8)
+    val AccentSecondary = Color(0xFF00E5FF)
+    val AccentSoft = Color(0xFF8AFFD8)
+    val AccentInk = Color(0xFF00382A)
+
     val TimelinePlayhead = Accent
     val TimelinePlayheadOutline = Background
     val TimelineSelectionOutline = AccentSoft
@@ -30,11 +38,6 @@ internal object VyroCutPalette {
     val HeroGradientEnd = Color(0xFF171918)
     val ThumbnailGradientStart = Color(0xFF34443E)
     val CanvasDark = Color(0xFF202322)
-
-    val Accent = Color(0xFF0FE8B8)
-    val AccentSecondary = Color(0xFF00E5FF)
-    val AccentSoft = Color(0xFF8AFFD8)
-    val AccentInk = Color(0xFF00382A)
 
     val TextPrimary = Color(0xFFE5EDEA)
     val TextMuted = Color(0xFF9BAAA5)
