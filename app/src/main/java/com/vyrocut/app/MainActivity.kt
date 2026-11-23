@@ -3711,7 +3711,7 @@ private fun VyroCutApp() {
 
                                         isExporting = false
                                         exportSessionId = null
-                                        exportMessage = "Could not prepare export: ${error.message}"
+                                        exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.PREPARATION, error).userMessage}"
                                         return@exportPreparation
                                     }
                                     val transformer = try {
@@ -3794,7 +3794,7 @@ private fun VyroCutApp() {
                                                             exportedUri = null
                                                             completedExportSummary = null
                                                             exportUiStage = ExportUiStage.FAILED
-                                                            exportMessage = "Export verification or saving failed: ${error.message}"
+                                                            exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.VERIFYING_OR_PUBLISHING, error).userMessage}"
                                                         }
                                                         outputFile.delete()
                                                     }
@@ -3807,7 +3807,7 @@ private fun VyroCutApp() {
                                                         activeTransformer = null
                                                         activeExportFile = null
                                                         exportSessionId = null
-                                                        exportMessage = "Export failed: ${exception.message ?: "Unsupported media"}"
+                                                        exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.RENDERING, exception).userMessage}"
                                                     }
                                                 }
                                             }).build()
@@ -3816,7 +3816,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
                                         isExporting = false
                                         exportSessionId = null
-                                        exportMessage = "Could not initialize export: ${error.message}"
+                                        exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.PREPARATION, error).userMessage}"
                                         return@exportPreparation
                                     }
                                     activeTransformer = transformer
@@ -3855,7 +3855,7 @@ private fun VyroCutApp() {
                                                 activeTransformer = null
                                                 activeExportFile = null
                                                 exportSessionId = null
-                                                exportMessage = "Could not start export: ${error.message}"
+                                                exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.RENDERING, error).userMessage}"
                                             }
                                             outputFile.delete()
                                         }
