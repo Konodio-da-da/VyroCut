@@ -13,15 +13,17 @@ internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 400
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP = 560
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP = EDITOR_COMPACT_WINDOW_WIDTH_DP
 
+internal const val TIGHT_EDITOR_SECTION_SPACING_DP = 3
+internal const val TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP = 2
 internal const val COMPACT_EDITOR_SECTION_SPACING_DP = 4
 internal const val DEFAULT_EDITOR_SECTION_SPACING_DP = 6
 
 /**
  * Small, pure layout values shared by the editor screen.
  *
- * The whole editor remains vertically scrollable. Compact windows reclaim a
- * little space from the preview and inter-section gaps without hiding tools
- * or changing timeline/playback geometry.
+ * The whole editor remains vertically scrollable. Tight windows reclaim a
+ * little more space from outer padding and section gaps without hiding tools,
+ * reducing touch targets, or changing timeline/playback geometry.
  */
 internal data class EditorLayoutMetrics(
     val previewHeightDp: Int,
@@ -42,6 +44,7 @@ internal fun editorLayoutMetrics(
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP
     val safeWidth = windowWidthDp.takeIf { it > 0 }
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
+    val tight = safeHeight < EDITOR_TIGHT_WINDOW_HEIGHT_DP
     val compact = safeHeight < EDITOR_COMPACT_WINDOW_HEIGHT_DP
 
     val previewHeight = when {
@@ -62,16 +65,21 @@ internal fun editorLayoutMetrics(
             )
     }
 
-    val sectionSpacing = if (compact) {
-        COMPACT_EDITOR_SECTION_SPACING_DP
+    val sectionSpacing = when {
+        tight -> TIGHT_EDITOR_SECTION_SPACING_DP
+        compact -> COMPACT_EDITOR_SECTION_SPACING_DP
+        else -> DEFAULT_EDITOR_SECTION_SPACING_DP
+    }
+    val contentPadding = if (tight) {
+        TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP
     } else {
-        DEFAULT_EDITOR_SECTION_SPACING_DP
+        sectionSpacing
     }
 
     return EditorLayoutMetrics(
         previewHeightDp = previewHeight,
         sectionSpacingDp = sectionSpacing,
-        contentPaddingVerticalDp = sectionSpacing,
+        contentPaddingVerticalDp = contentPadding,
         stackPreviewMetadataAboveTransportControls = safeWidth < EDITOR_COMPACT_WINDOW_WIDTH_DP,
     )
 }

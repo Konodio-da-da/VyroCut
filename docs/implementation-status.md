@@ -403,3 +403,9 @@ A control is only considered complete when its operation is connected to the pro
 - The wide layout retains the existing single-row arrangement. Preview transport actions, Media3 player state, frame stepping, project-clock seeking, playback speed, and source relinking behaviour are unchanged.
 - The breakpoint uses the current Compose window configuration width, so resized and split-screen windows can receive the compact arrangement. Existing height-based preview sizing and vertical scrolling remain unchanged.
 - Added JVM tests for the width breakpoint and invalid-width fallback. Android CI verifies compilation and pure logic only; physical-device layout fit and touch usability still require device validation.
+
+
+## Tight-height editor spacing — 24 November 2026
+- Added a third vertical-density tier below the existing 520 dp tight-window breakpoint: 3 dp between editor sections and 2 dp outer vertical padding, while retaining 4 dp compact spacing from 520–599 dp and 6 dp standard spacing at 600 dp and above.
+- The editor remains vertically scrollable. No tools, timeline rows, playback actions, or accessibility touch targets are hidden or reduced; preview sizing, project-clock behaviour, and timeline geometry are unchanged.
+- Added pure JVM boundary coverage for the tight-to-compact transition. CI can verify layout-rule calculations and compilation; actual screen fit still requires physical-device validation.

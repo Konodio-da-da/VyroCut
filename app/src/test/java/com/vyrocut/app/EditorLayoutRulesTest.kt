@@ -5,10 +5,18 @@ import org.junit.Test
 
 class EditorLayoutRulesTest {
     @Test
-    fun compactWindowReducesPreviewAndSectionSpacing() {
+    fun tightWindowReducesPreviewAndSectionSpacing() {
         val metrics = editorLayoutMetrics(480)
 
         assertEquals(96, metrics.previewHeightDp)
+        assertEquals(TIGHT_EDITOR_SECTION_SPACING_DP, metrics.sectionSpacingDp)
+        assertEquals(TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP, metrics.contentPaddingVerticalDp)
+    }
+
+    @Test
+    fun compactWindowOutsideTightRangeKeepsCompactSpacing() {
+        val metrics = editorLayoutMetrics(EDITOR_TIGHT_WINDOW_HEIGHT_DP)
+
         assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, metrics.sectionSpacingDp)
         assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, metrics.contentPaddingVerticalDp)
     }
