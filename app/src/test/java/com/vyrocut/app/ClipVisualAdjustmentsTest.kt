@@ -105,6 +105,7 @@ class ClipVisualAdjustmentsTest {
         assertEquals(ClipCreativeEffectPreset.NEGATIVE, clipCreativeEffectPresetFromId("negative"))
         assertEquals(ClipCreativeEffectPreset.GRAYSCALE, clipCreativeEffectPresetFromId("grayscale"))
         assertEquals(ClipCreativeEffectPreset.SEPIA, clipCreativeEffectPresetFromId("sepia"))
+        assertEquals(ClipCreativeEffectPreset.FILM_FADE, clipCreativeEffectPresetFromId("film-fade"))
         assertNull(clipCreativeEffectPresetFromId("future-effect"))
         assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectPresetId = "future-effect"))
     }
@@ -139,6 +140,12 @@ class ClipVisualAdjustmentsTest {
             listOf(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, 1f)),
             createClipVisualEffectSpecs(
                 ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.SEPIA),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.FILM_FADE, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.FILM_FADE),
             ),
         )
     }
@@ -184,6 +191,7 @@ class ClipVisualAdjustmentsTest {
             ClipCreativeEffectPreset.NEGATIVE to ClipVisualEffectType.INVERTED,
             ClipCreativeEffectPreset.GRAYSCALE to ClipVisualEffectType.GRAYSCALE,
             ClipCreativeEffectPreset.SEPIA to ClipVisualEffectType.SEPIA,
+            ClipCreativeEffectPreset.FILM_FADE to ClipVisualEffectType.FILM_FADE,
         )
         cases.forEach { (preset, type) ->
             assertEquals(
@@ -222,7 +230,7 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.MONOCHROME),
         )
         assertEquals(
-            listOf(ClipCreativeEffectPreset.SEPIA),
+            listOf(ClipCreativeEffectPreset.SEPIA, ClipCreativeEffectPreset.FILM_FADE),
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.VINTAGE),
         )
 
@@ -239,6 +247,7 @@ class ClipVisualAdjustmentsTest {
                 ClipCreativeEffectPreset.NEGATIVE,
                 ClipCreativeEffectPreset.GRAYSCALE,
                 ClipCreativeEffectPreset.SEPIA,
+                ClipCreativeEffectPreset.FILM_FADE,
             ),
             browserOrder,
         )
@@ -258,6 +267,29 @@ class ClipVisualAdjustmentsTest {
             sepiaRgbMatrix(),
             0.0001f,
         )
+    }
+
+    @Test
+    fun filmFadeMatrixLiftsShadowsSoftensContrastAndPreservesAlpha() {
+        val matrix = filmFadeRgbMatrix()
+        assertArrayEquals(
+            floatArrayOf(
+                0.88f, 0f, 0f, 0f,
+                0f, 0.88f, 0f, 0f,
+                0f, 0f, 0.88f, 0f,
+                0.055f, 0.05f, 0.045f, 1f,
+            ),
+            matrix,
+            0.0001f,
+        )
+        assertEquals(1f, matrix[15], 0.0001f)
+        assertEquals(0f, matrix[3], 0.0001f)
+        assertEquals(0f, matrix[7], 0.0001f)
+        assertEquals(0f, matrix[11], 0.0001f)
+        assertEquals(true, matrix[0] < 1f && matrix[5] < 1f && matrix[10] < 1f)
+        assertEquals(true, matrix[12] > 0f && matrix[13] > 0f && matrix[14] > 0f)
+        matrix[12] = 99f
+        assertEquals(0.055f, filmFadeRgbMatrix()[12], 0.0001f)
     }
 
     @Test

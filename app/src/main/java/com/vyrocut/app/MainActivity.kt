@@ -2374,7 +2374,7 @@ private fun VyroCutApp() {
                                 }
                             }
                             Text(
-                                "Warm and Cool tint RGB channels. Grayscale uses Media3 luminance filtering; Sepia adds a vintage tone; Negative inverts the frame.",
+                                "Warm and Cool tint RGB channels. Grayscale uses Media3 luminance filtering; Sepia adds a vintage tone; Film Fade lifts shadows and softens contrast; Negative inverts the frame.",
                                 color = StudioMuted,
                                 fontSize = 10.sp,
                             )

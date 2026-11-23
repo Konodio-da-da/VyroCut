@@ -51,6 +51,7 @@ internal enum class ClipCreativeEffectPreset(
     NEGATIVE("negative", "Negative", ClipCreativeEffectCategory.MONOCHROME),
     GRAYSCALE("grayscale", "Grayscale", ClipCreativeEffectCategory.MONOCHROME),
     SEPIA("sepia", "Sepia", ClipCreativeEffectCategory.VINTAGE),
+    FILM_FADE("film-fade", "Film Fade", ClipCreativeEffectCategory.VINTAGE),
 }
 
 internal fun clipCreativeEffectPresetsForCategory(
@@ -107,6 +108,7 @@ internal enum class ClipVisualEffectType {
     INVERTED,
     GRAYSCALE,
     SEPIA,
+    FILM_FADE,
 }
 
 /** Pure description of an effect, safe to exercise in local JVM unit tests. */
@@ -143,6 +145,7 @@ internal fun createClipVisualEffectSpecs(
             ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
             ClipCreativeEffectPreset.GRAYSCALE -> add(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, intensity))
             ClipCreativeEffectPreset.SEPIA -> add(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, intensity))
+            ClipCreativeEffectPreset.FILM_FADE -> add(ClipVisualEffectSpec(ClipVisualEffectType.FILM_FADE, intensity))
         }
     }
 }
@@ -174,9 +177,25 @@ private val SEPIA_MATRIX = floatArrayOf(
 
 internal fun sepiaRgbMatrix(): FloatArray = SEPIA_MATRIX.copyOf()
 
+// Reduces channel contrast and lifts the toe with a subtle warm bias.
+// The matrix is column-major, matching Android's 4x4 color-matrix convention.
+private val FILM_FADE_MATRIX = floatArrayOf(
+    0.88f, 0f, 0f, 0f,
+    0f, 0.88f, 0f, 0f,
+    0f, 0f, 0.88f, 0f,
+    0.055f, 0.05f, 0.045f, 1f,
+)
+
+internal fun filmFadeRgbMatrix(): FloatArray = FILM_FADE_MATRIX.copyOf()
+
 @OptIn(UnstableApi::class)
 private object SepiaRgbMatrix : RgbMatrix {
     override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = SEPIA_MATRIX
+}
+
+@OptIn(UnstableApi::class)
+private object FilmFadeRgbMatrix : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = FILM_FADE_MATRIX
 }
 
 /**
@@ -217,6 +236,8 @@ internal fun createClipVisualEffects(
         }
         ClipVisualEffectType.SEPIA ->
             if (spec.amount >= 1f) SepiaRgbMatrix else IntensityRgbMatrix(SepiaRgbMatrix, spec.amount)
+        ClipVisualEffectType.FILM_FADE ->
+            if (spec.amount >= 1f) FilmFadeRgbMatrix else IntensityRgbMatrix(FilmFadeRgbMatrix, spec.amount)
     }
 }
 

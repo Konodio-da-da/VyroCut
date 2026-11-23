@@ -683,6 +683,17 @@ class ProjectClipAudioPersistenceTest {
                     creativeEffectIntensity = 78,
                 ),
             ),
+            EditClip(
+                id = "film-fade-look",
+                uri = "content://media/film-fade-look",
+                name = "Film Fade look",
+                sourceStartMs = 0L,
+                sourceEndMs = 2_000L,
+                visualAdjustments = ClipVisualAdjustments(
+                    creativeEffectPreset = ClipCreativeEffectPreset.FILM_FADE,
+                    creativeEffectIntensity = 55,
+                ),
+            ),
         )
 
         val projectJson = encodeProject(clips)
@@ -701,6 +712,11 @@ class ProjectClipAudioPersistenceTest {
             .getJSONObject("visualAdjustments")
         assertEquals("sepia", sepiaJson.getString("creativeEffectPreset"))
         assertEquals(78, sepiaJson.getInt("creativeEffectIntensity"))
+        val filmFadeJson = org.json.JSONArray(projectJson)
+            .getJSONObject(3)
+            .getJSONObject("visualAdjustments")
+        assertEquals("film-fade", filmFadeJson.getString("creativeEffectPreset"))
+        assertEquals(55, filmFadeJson.getInt("creativeEffectIntensity"))
         assertEquals(clips, decodeProjectStrict(projectJson))
 
         val backup = encodeProjectBackup(

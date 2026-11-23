@@ -289,3 +289,10 @@ A control is only considered complete when its operation is connected to the pro
 - Added Grayscale using Media3 1.5.1 `RgbFilter.createGrayscaleFilter()`, which selects the library's SDR or HDR luminance matrix. Added Sepia with a dedicated 4×4 RGB matrix. Both use the existing identity-to-effect intensity blending, so the shared 0–100% strength control works consistently.
 - Both effects are added to the same ordered `createClipVisualEffects` builder used by preview and Transformer export. Their stable IDs and strength values use the existing per-clip visual-adjustment JSON; project and version-15 backup formats do not change.
 - Pure JVM tests cover stable IDs, category grouping/order, effect-spec generation, strength bounds/zero-strength no-op, the Sepia matrix coefficients/alpha channel, and project/backup round trips for both new presets. Android CI is required to verify Media3 integration and compilation; visual quality and exported frames still require physical-device validation.
+
+
+## Film Fade creative effect — 23 November 2026
+- Added a non-destructive Film Fade preset in the existing Vintage category. Its Media3 1.5.1 `RgbMatrix` reduces RGB channel contrast and lifts the shadow toe with a subtle warm bias; the existing 0–100% intensity blend applies the same effect-strength semantics as the other looks.
+- The stable `film-fade` identifier is stored in the existing per-clip visual-adjustment payload and uses the same `createClipVisualEffects` builder for preview and Transformer export. No project or version-15 backup schema change is required.
+- Pure JVM tests cover the effect specification, category ordering, intensity mapping, matrix coefficients, shadow lift, contrast reduction, alpha preservation, defensive matrix copies, and project/version-15 backup round trips.
+- This validates the deterministic matrix and Android compilation only. Perceived film rendering, preview appearance, HDR handling, and exported MP4 output still require physical-device validation.
