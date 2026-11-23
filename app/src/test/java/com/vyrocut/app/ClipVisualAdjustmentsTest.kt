@@ -94,4 +94,55 @@ class ClipVisualAdjustmentsTest {
             )
         }
     }
+    @Test
+    fun creativeEffectIdsResolveToStablePresetsAndRejectUnknownValues() {
+        assertEquals(ClipCreativeEffectPreset.ORIGINAL, clipCreativeEffectPresetFromId(null))
+        assertEquals(ClipCreativeEffectPreset.ORIGINAL, clipCreativeEffectPresetFromId("original"))
+        assertEquals(ClipCreativeEffectPreset.WARM, clipCreativeEffectPresetFromId("warm"))
+        assertEquals(ClipCreativeEffectPreset.COOL, clipCreativeEffectPresetFromId("cool"))
+        assertEquals(ClipCreativeEffectPreset.NEGATIVE, clipCreativeEffectPresetFromId("negative"))
+        assertNull(clipCreativeEffectPresetFromId("future-effect"))
+        assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectPresetId = "future-effect"))
+    }
+
+    @Test
+    fun creativeLooksProduceDeterministicRealMedia3EffectSpecs() {
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.WARM),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.COOL),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.NEGATIVE),
+            ),
+        )
+    }
+
+    @Test
+    fun creativeLookIsComposedAfterExistingPerClipAdjustments() {
+        assertEquals(
+            listOf(
+                ClipVisualEffectSpec(ClipVisualEffectType.BRIGHTNESS, 0.2f),
+                ClipVisualEffectSpec(ClipVisualEffectType.HUE_SHIFT, 45f),
+                ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, 1f),
+            ),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(
+                    brightness = 20,
+                    hueShiftDegrees = 45,
+                    creativeEffectPreset = ClipCreativeEffectPreset.COOL,
+                ),
+            ),
+        )
+    }
+
 }
