@@ -1,5 +1,6 @@
 package com.vyrocut.app
 
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -143,6 +144,75 @@ class ClipVisualAdjustmentsTest {
                 ),
             ),
         )
+    }
+
+    @Test
+    fun creativeEffectIntensityDefaultsToFullStrengthAndRejectsOutOfRangeValues() {
+        assertEquals(DEFAULT_CREATIVE_EFFECT_INTENSITY, ClipVisualAdjustments().creativeEffectIntensity)
+        assertEquals(
+            35,
+            decodeClipVisualAdjustments(0, 0, 0, creativeEffectIntensity = 35)?.creativeEffectIntensity,
+        )
+        assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectIntensity = -1))
+        assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectIntensity = 101))
+        assertEquals(
+            false,
+            isValidClipVisualAdjustments(0, 0, 0, creativeEffectIntensity = 101),
+        )
+    }
+
+    @Test
+    fun creativeEffectIntensityScalesEveryLookAndZeroIsANoOp() {
+        val cases = listOf(
+            ClipCreativeEffectPreset.WARM to ClipVisualEffectType.WARM_TINT,
+            ClipCreativeEffectPreset.COOL to ClipVisualEffectType.COOL_TINT,
+            ClipCreativeEffectPreset.NEGATIVE to ClipVisualEffectType.INVERTED,
+        )
+        cases.forEach { (preset, type) ->
+            assertEquals(
+                listOf(ClipVisualEffectSpec(type, 0.35f)),
+                createClipVisualEffectSpecs(
+                    ClipVisualAdjustments(
+                        creativeEffectPreset = preset,
+                        creativeEffectIntensity = 35,
+                    ),
+                ),
+            )
+            assertEquals(
+                emptyList<ClipVisualEffectSpec>(),
+                createClipVisualEffectSpecs(
+                    ClipVisualAdjustments(
+                        creativeEffectPreset = preset,
+                        creativeEffectIntensity = 0,
+                    ),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun negativeMatrixIntensityBlendsIdentityWithFullInversion() {
+        val identity = floatArrayOf(
+            1f, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            0f, 0f, 0f, 1f,
+        )
+        val inverted = floatArrayOf(
+            -1f, 0f, 0f, 0f,
+            0f, -1f, 0f, 0f,
+            0f, 0f, -1f, 0f,
+            1f, 1f, 1f, 1f,
+        )
+        val halfStrength = floatArrayOf(
+            0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f,
+            0f, 0f, 0f, 0f,
+            0.5f, 0.5f, 0.5f, 1f,
+        )
+        assertArrayEquals(identity, blendRgbMatrixWithIdentity(inverted, 0f), 0.0001f)
+        assertArrayEquals(halfStrength, blendRgbMatrixWithIdentity(inverted, 0.5f), 0.0001f)
+        assertArrayEquals(inverted, blendRgbMatrixWithIdentity(inverted, 1f), 0.0001f)
     }
 
 }

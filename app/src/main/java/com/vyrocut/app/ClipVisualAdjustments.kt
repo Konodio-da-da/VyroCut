@@ -7,6 +7,11 @@ import androidx.media3.effect.Contrast
 import androidx.media3.effect.HslAdjustment
 import androidx.media3.effect.RgbAdjustment
 import androidx.media3.effect.RgbFilter
+import androidx.media3.effect.RgbMatrix
+
+internal const val DEFAULT_CREATIVE_EFFECT_INTENSITY = 100
+internal const val MIN_CREATIVE_EFFECT_INTENSITY = 0
+internal const val MAX_CREATIVE_EFFECT_INTENSITY = 100
 
 /**
  * Non-destructive colour adjustments stored per video clip.
@@ -20,9 +25,10 @@ internal data class ClipVisualAdjustments(
     val saturation: Int = 0,
     val hueShiftDegrees: Int = 0,
     val creativeEffectPreset: ClipCreativeEffectPreset = ClipCreativeEffectPreset.ORIGINAL,
+    val creativeEffectIntensity: Int = DEFAULT_CREATIVE_EFFECT_INTENSITY,
 ) {
     init {
-        require(isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) {
+        require(isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees, creativeEffectIntensity)) {
             "Clip visual adjustments must be between -100 and 100"
         }
     }
@@ -47,10 +53,12 @@ internal fun isValidClipVisualAdjustments(
     contrast: Int,
     saturation: Int,
     hueShiftDegrees: Int = 0,
+    creativeEffectIntensity: Int = DEFAULT_CREATIVE_EFFECT_INTENSITY,
 ): Boolean = brightness in -100..100 &&
     contrast in -100..100 &&
     saturation in -100..100 &&
-    hueShiftDegrees in -180..180
+    hueShiftDegrees in -180..180 &&
+    creativeEffectIntensity in MIN_CREATIVE_EFFECT_INTENSITY..MAX_CREATIVE_EFFECT_INTENSITY
 
 internal fun decodeClipVisualAdjustments(
     brightness: Int,
@@ -58,8 +66,9 @@ internal fun decodeClipVisualAdjustments(
     saturation: Int,
     hueShiftDegrees: Int = 0,
     creativeEffectPresetId: String? = null,
+    creativeEffectIntensity: Int = DEFAULT_CREATIVE_EFFECT_INTENSITY,
 ): ClipVisualAdjustments? {
-    if (!isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) return null
+    if (!isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees, creativeEffectIntensity)) return null
     val creativeEffectPreset = clipCreativeEffectPresetFromId(creativeEffectPresetId) ?: return null
     return ClipVisualAdjustments(
         brightness = brightness,
@@ -67,6 +76,7 @@ internal fun decodeClipVisualAdjustments(
         saturation = saturation,
         hueShiftDegrees = hueShiftDegrees,
         creativeEffectPreset = creativeEffectPreset,
+        creativeEffectIntensity = creativeEffectIntensity,
     )
 }
 
@@ -105,12 +115,33 @@ internal fun createClipVisualEffectSpecs(
     if (adjustments.saturation != 0) {
         add(ClipVisualEffectSpec(ClipVisualEffectType.SATURATION, adjustments.saturation.toFloat()))
     }
-    when (adjustments.creativeEffectPreset) {
-        ClipCreativeEffectPreset.ORIGINAL -> Unit
-        ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 1f))
-        ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, 1f))
-        ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, 1f))
+    val intensity = adjustments.creativeEffectIntensity / 100f
+    if (intensity > 0f) {
+        when (adjustments.creativeEffectPreset) {
+            ClipCreativeEffectPreset.ORIGINAL -> Unit
+            ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, intensity))
+            ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, intensity))
+            ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
+        }
     }
+}
+
+internal fun blendRgbMatrixWithIdentity(matrix: FloatArray, intensity: Float): FloatArray {
+    require(matrix.size == 16) { "An RGB transformation matrix must contain 16 values" }
+    require(intensity.isFinite() && intensity in 0f..1f) { "Effect intensity must be between 0 and 1" }
+    return FloatArray(16) { index ->
+        val identityValue = if (index % 5 == 0) 1f else 0f
+        identityValue + (matrix[index] - identityValue) * intensity
+    }
+}
+
+@OptIn(UnstableApi::class)
+private class IntensityRgbMatrix(
+    private val delegate: RgbMatrix,
+    private val intensity: Float,
+) : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray =
+        blendRgbMatrixWithIdentity(delegate.getMatrix(presentationTimeUs, useHdr), intensity)
 }
 
 /**
@@ -132,16 +163,19 @@ internal fun createClipVisualEffects(
             .adjustSaturation(spec.amount)
             .build()
         ClipVisualEffectType.WARM_TINT -> RgbAdjustment.Builder()
-            .setRedScale(1.08f)
+            .setRedScale(1f + 0.08f * spec.amount)
             .setGreenScale(1f)
-            .setBlueScale(0.88f)
+            .setBlueScale(1f - 0.12f * spec.amount)
             .build()
         ClipVisualEffectType.COOL_TINT -> RgbAdjustment.Builder()
-            .setRedScale(0.88f)
+            .setRedScale(1f - 0.12f * spec.amount)
             .setGreenScale(1f)
-            .setBlueScale(1.08f)
+            .setBlueScale(1f + 0.08f * spec.amount)
             .build()
-        ClipVisualEffectType.INVERTED -> RgbFilter.createInvertedFilter()
+        ClipVisualEffectType.INVERTED -> {
+            val inverted = RgbFilter.createInvertedFilter()
+            if (spec.amount >= 1f) inverted else IntensityRgbMatrix(inverted, spec.amount)
+        }
     }
 }
 

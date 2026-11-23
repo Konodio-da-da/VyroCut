@@ -647,7 +647,7 @@ class ProjectClipAudioPersistenceTest {
     }
 
     @Test
-    fun perClipCreativeEffectPresetSurvivesProjectAndVersionFifteenBackupSerialization() {
+    fun perClipCreativeEffectPresetAndIntensitySurviveProjectAndVersionFifteenBackupSerialization() {
         val clips = listOf(
             EditClip(
                 id = "cool-look",
@@ -658,6 +658,7 @@ class ProjectClipAudioPersistenceTest {
                 visualAdjustments = ClipVisualAdjustments(
                     brightness = 12,
                     creativeEffectPreset = ClipCreativeEffectPreset.COOL,
+                    creativeEffectIntensity = 42,
                 ),
             ),
         )
@@ -667,6 +668,7 @@ class ProjectClipAudioPersistenceTest {
             .getJSONObject(0)
             .getJSONObject("visualAdjustments")
         assertEquals("cool", visualJson.getString("creativeEffectPreset"))
+        assertEquals(42, visualJson.getInt("creativeEffectIntensity"))
         assertEquals(clips, decodeProjectStrict(projectJson))
 
         val backup = encodeProjectBackup(
@@ -676,6 +678,38 @@ class ProjectClipAudioPersistenceTest {
         )
         assertEquals(15, org.json.JSONObject(backup).getInt("version"))
         assertEquals(clips, decodeProjectBackup(backup).clips)
+    }
+
+
+    @Test
+    fun existingVersionFifteenBackupWithoutEffectIntensityDefaultsToFullStrength() {
+        val clips = listOf(
+            EditClip(
+                id = "legacy-v15-effect",
+                uri = "content://media/legacy-v15-effect",
+                name = "Legacy v15 effect",
+                sourceStartMs = 0L,
+                sourceEndMs = 1_000L,
+                visualAdjustments = ClipVisualAdjustments(
+                    creativeEffectPreset = ClipCreativeEffectPreset.WARM,
+                ),
+            ),
+        )
+        val backup = org.json.JSONObject(
+            encodeProjectBackup(
+                name = "Legacy version fifteen",
+                clips = clips,
+                canvasSettings = ProjectCanvasSettings(),
+            ),
+        )
+        backup.getJSONArray("clips")
+            .getJSONObject(0)
+            .getJSONObject("visualAdjustments")
+            .remove("creativeEffectIntensity")
+
+        val restored = decodeProjectBackup(backup.toString()).clips.single()
+        assertEquals(ClipCreativeEffectPreset.WARM, restored.visualAdjustments.creativeEffectPreset)
+        assertEquals(DEFAULT_CREATIVE_EFFECT_INTENSITY, restored.visualAdjustments.creativeEffectIntensity)
     }
 
     @Test

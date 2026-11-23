@@ -413,6 +413,9 @@ private fun VyroCutApp() {
     var clipHueShiftDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.hueShiftDegrees) {
         mutableFloatStateOf(selectedClip?.visualAdjustments?.hueShiftDegrees?.toFloat() ?: 0f)
     }
+    var clipCreativeEffectIntensityDraft by remember(selectedClip?.id, selectedClip?.visualAdjustments?.creativeEffectIntensity) {
+        mutableFloatStateOf(selectedClip?.visualAdjustments?.creativeEffectIntensity?.toFloat() ?: DEFAULT_CREATIVE_EFFECT_INTENSITY.toFloat())
+    }
     var clipTextDraft by remember(selectedClip?.id, selectedTextLayerIndex, selectedTextOverlay?.text) {
         mutableStateOf(selectedTextOverlay?.text ?: "")
     }
@@ -1419,6 +1422,8 @@ private fun VyroCutApp() {
         hueShiftDegrees: Int = selectedClip?.visualAdjustments?.hueShiftDegrees ?: 0,
         creativeEffectPreset: ClipCreativeEffectPreset =
             selectedClip?.visualAdjustments?.creativeEffectPreset ?: ClipCreativeEffectPreset.ORIGINAL,
+        creativeEffectIntensity: Int =
+            selectedClip?.visualAdjustments?.creativeEffectIntensity ?: DEFAULT_CREATIVE_EFFECT_INTENSITY,
     ) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         val next = decodeClipVisualAdjustments(
@@ -1427,6 +1432,7 @@ private fun VyroCutApp() {
             saturation = saturation,
             hueShiftDegrees = hueShiftDegrees,
             creativeEffectPresetId = creativeEffectPreset.id,
+            creativeEffectIntensity = creativeEffectIntensity,
         ) ?: return
         if (clip.visualAdjustments == next) return
         changed(clips.toMutableList().apply {
@@ -2355,6 +2361,7 @@ private fun VyroCutApp() {
                                                 saturation = clipSaturationDraft.toInt(),
                                                 hueShiftDegrees = clipHueShiftDraft.toInt(),
                                                 creativeEffectPreset = preset,
+                                                creativeEffectIntensity = clipCreativeEffectIntensityDraft.toInt(),
                                             )
                                         },
                                         label = { Text(preset.label, fontSize = 11.sp) },
@@ -2366,6 +2373,42 @@ private fun VyroCutApp() {
                                 color = StudioMuted,
                                 fontSize = 10.sp,
                             )
+                            if (selectedClip.visualAdjustments.creativeEffectPreset != ClipCreativeEffectPreset.ORIGINAL) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Effect strength", color = StudioMuted, fontSize = 11.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    Text("${clipCreativeEffectIntensityDraft.toInt()}%", color = StudioAccent, fontSize = 11.sp)
+                                    TextButton(
+                                        onClick = {
+                                            clipCreativeEffectIntensityDraft = DEFAULT_CREATIVE_EFFECT_INTENSITY.toFloat()
+                                            commitSelectedClipVisualAdjustments(
+                                                brightness = clipBrightnessDraft.toInt(),
+                                                contrast = clipContrastDraft.toInt(),
+                                                saturation = clipSaturationDraft.toInt(),
+                                                hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                                creativeEffectIntensity = DEFAULT_CREATIVE_EFFECT_INTENSITY,
+                                            )
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                                    ) { Text("Reset", fontSize = 10.sp) }
+                                }
+                                Slider(
+                                    value = clipCreativeEffectIntensityDraft.coerceIn(0f, 100f),
+                                    onValueChange = { clipCreativeEffectIntensityDraft = it },
+                                    onValueChangeFinished = {
+                                        commitSelectedClipVisualAdjustments(
+                                            brightness = clipBrightnessDraft.toInt(),
+                                            contrast = clipContrastDraft.toInt(),
+                                            saturation = clipSaturationDraft.toInt(),
+                                            hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                            creativeEffectIntensity = clipCreativeEffectIntensityDraft.toInt(),
+                                        )
+                                    },
+                                    valueRange = 0f..100f,
+                                    steps = 99,
+                                    colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent),
+                                )
+                            }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("Hue shift", color = StudioMuted, fontSize = 11.sp)
                                 Spacer(Modifier.weight(1f))
@@ -4044,6 +4087,7 @@ internal fun encodeProject(clips: List<EditClip>): String {
             put("saturation", clip.visualAdjustments.saturation)
             put("hueShiftDegrees", clip.visualAdjustments.hueShiftDegrees)
             put("creativeEffectPreset", clip.visualAdjustments.creativeEffectPreset.id)
+            put("creativeEffectIntensity", clip.visualAdjustments.creativeEffectIntensity)
         })
         put("textOverlays", JSONArray().apply {
             clip.allTextOverlays.forEach { overlay ->
@@ -4270,6 +4314,11 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                 saturation = if (visualJson?.has("saturation") == true) visualJson.optInt("saturation", Int.MIN_VALUE) else 0,
                 hueShiftDegrees = if (visualJson?.has("hueShiftDegrees") == true) visualJson.optInt("hueShiftDegrees", Int.MIN_VALUE) else 0,
                 creativeEffectPresetId = visualJson?.takeIf { it.has("creativeEffectPreset") }?.optString("creativeEffectPreset"),
+                creativeEffectIntensity = if (visualJson?.has("creativeEffectIntensity") == true) {
+                    visualJson.optInt("creativeEffectIntensity", Int.MIN_VALUE)
+                } else {
+                    DEFAULT_CREATIVE_EFFECT_INTENSITY
+                },
             ) ?: error("A clip has invalid visual adjustments")
             fun decodeOverlay(overlayJson: JSONObject): ClipTextOverlay =
                 decodeClipTextOverlay(
