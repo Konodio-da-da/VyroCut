@@ -5,6 +5,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
 import androidx.media3.effect.HslAdjustment
+import androidx.media3.effect.RgbAdjustment
+import androidx.media3.effect.RgbFilter
 
 /**
  * Non-destructive colour adjustments stored per video clip.
@@ -17,6 +19,7 @@ internal data class ClipVisualAdjustments(
     val contrast: Int = 0,
     val saturation: Int = 0,
     val hueShiftDegrees: Int = 0,
+    val creativeEffectPreset: ClipCreativeEffectPreset = ClipCreativeEffectPreset.ORIGINAL,
 ) {
     init {
         require(isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) {
@@ -24,6 +27,20 @@ internal data class ClipVisualAdjustments(
         }
     }
 }
+
+internal enum class ClipCreativeEffectPreset(val id: String, val label: String) {
+    ORIGINAL("original", "Original"),
+    WARM("warm", "Warm"),
+    COOL("cool", "Cool"),
+    NEGATIVE("negative", "Negative"),
+}
+
+internal fun clipCreativeEffectPresetFromId(id: String?): ClipCreativeEffectPreset? =
+    if (id == null) {
+        ClipCreativeEffectPreset.ORIGINAL
+    } else {
+        ClipCreativeEffectPreset.values().firstOrNull { it.id == id }
+    }
 
 internal fun isValidClipVisualAdjustments(
     brightness: Int,
@@ -40,9 +57,17 @@ internal fun decodeClipVisualAdjustments(
     contrast: Int,
     saturation: Int,
     hueShiftDegrees: Int = 0,
+    creativeEffectPresetId: String? = null,
 ): ClipVisualAdjustments? {
     if (!isValidClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)) return null
-    return ClipVisualAdjustments(brightness, contrast, saturation, hueShiftDegrees)
+    val creativeEffectPreset = clipCreativeEffectPresetFromId(creativeEffectPresetId) ?: return null
+    return ClipVisualAdjustments(
+        brightness = brightness,
+        contrast = contrast,
+        saturation = saturation,
+        hueShiftDegrees = hueShiftDegrees,
+        creativeEffectPreset = creativeEffectPreset,
+    )
 }
 
 internal enum class ClipVisualEffectType {
@@ -50,6 +75,9 @@ internal enum class ClipVisualEffectType {
     CONTRAST,
     HUE_SHIFT,
     SATURATION,
+    WARM_TINT,
+    COOL_TINT,
+    INVERTED,
 }
 
 /** Pure description of an effect, safe to exercise in local JVM unit tests. */
@@ -77,6 +105,12 @@ internal fun createClipVisualEffectSpecs(
     if (adjustments.saturation != 0) {
         add(ClipVisualEffectSpec(ClipVisualEffectType.SATURATION, adjustments.saturation.toFloat()))
     }
+    when (adjustments.creativeEffectPreset) {
+        ClipCreativeEffectPreset.ORIGINAL -> Unit
+        ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 1f))
+        ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, 1f))
+        ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, 1f))
+    }
 }
 
 /**
@@ -97,6 +131,17 @@ internal fun createClipVisualEffects(
         ClipVisualEffectType.SATURATION -> HslAdjustment.Builder()
             .adjustSaturation(spec.amount)
             .build()
+        ClipVisualEffectType.WARM_TINT -> RgbAdjustment.Builder()
+            .setRedScale(1.08f)
+            .setGreenScale(1f)
+            .setBlueScale(0.88f)
+            .build()
+        ClipVisualEffectType.COOL_TINT -> RgbAdjustment.Builder()
+            .setRedScale(0.88f)
+            .setGreenScale(1f)
+            .setBlueScale(1.08f)
+            .build()
+        ClipVisualEffectType.INVERTED -> RgbFilter.createInvertedFilter()
     }
 }
 
