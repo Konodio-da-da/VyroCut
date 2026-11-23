@@ -6,6 +6,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -15,6 +16,25 @@ class SilentAudioWavTest {
     @Rule
     @JvmField
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun estimatesExactCacheFileBytesAndRejectsUnsupportedDurations() {
+        assertEquals(4_044L, estimateSilentAudioWavFileBytes(250L))
+        assertEquals(60L, estimateSilentAudioWavFileBytes(1L))
+        assertNull(estimateSilentAudioWavFileBytes(0L))
+        assertNull(estimateSilentAudioWavFileBytes(Long.MAX_VALUE))
+    }
+
+    @Test
+    fun recognizesOnlyACompleteMatchingSilenceCacheFile() {
+        val directory = temporaryFolder.newFolder("cache-check")
+        assertFalse(hasReusableSilentAudioWav(directory, 250L))
+
+        createSilentAudioWav(directory, 250L)
+
+        assertTrue(hasReusableSilentAudioWav(directory, 250L))
+        assertFalse(hasReusableSilentAudioWav(directory, 500L))
+    }
 
     @Test
     fun createsValidRiffWaveSilenceAndReusesTheCompletedCache() {

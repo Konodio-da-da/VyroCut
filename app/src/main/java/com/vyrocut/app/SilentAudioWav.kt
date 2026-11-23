@@ -56,6 +56,28 @@ internal fun isValidSilentAudioWavHeader(header: ByteArray, expectedDataBytes: L
     runCatching { header.contentEquals(buildSilentAudioWavHeader(expectedDataBytes)) }
         .getOrDefault(false)
 
+private fun silentAudioWavDataBytes(durationMs: Long): Long? {
+    if (durationMs <= 0L) return null
+    val dataBytes = (
+        durationMs.toDouble() *
+            SILENT_AUDIO_SAMPLE_RATE_HZ *
+            SILENT_AUDIO_CHANNELS *
+            SILENT_AUDIO_BITS_PER_SAMPLE / 8.0 / 1_000.0
+        ).toLong().coerceAtLeast(2L)
+    return dataBytes.takeIf { it <= Int.MAX_VALUE.toLong() - 36L }
+}
+
+/** Exact size of the deterministic cache file, including its 44-byte WAV header. */
+internal fun estimateSilentAudioWavFileBytes(durationMs: Long): Long? =
+    silentAudioWavDataBytes(durationMs)?.let { it + SILENT_AUDIO_HEADER_BYTES }
+
+/** True only when the deterministic cache file has a complete, matching WAV header and length. */
+internal fun hasReusableSilentAudioWav(directory: File, durationMs: Long): Boolean {
+    val dataBytes = silentAudioWavDataBytes(durationMs) ?: return false
+    val file = File(directory, "vyrocut-silence-v2-$dataBytes.wav")
+    return isValidSilentAudioWavFile(file, dataBytes)
+}
+
 /**
  * Writes a local silence source atomically. A killed write can leave a temporary
  * file, but it can never leave a correctly-sized, half-written target that the
@@ -64,15 +86,8 @@ internal fun isValidSilentAudioWavHeader(header: ByteArray, expectedDataBytes: L
 @Synchronized
 internal fun createSilentAudioWav(directory: File, durationMs: Long): File {
     require(durationMs > 0L) { "Silence duration must be positive" }
-    val dataBytes = (
-        durationMs.toDouble() *
-            SILENT_AUDIO_SAMPLE_RATE_HZ *
-            SILENT_AUDIO_CHANNELS *
-            SILENT_AUDIO_BITS_PER_SAMPLE / 8.0 / 1_000.0
-        ).toLong().coerceAtLeast(2L)
-    require(dataBytes <= Int.MAX_VALUE.toLong() - 36L) {
-        "Audio gap is too long for a WAV silence source"
-    }
+    val dataBytes = silentAudioWavDataBytes(durationMs)
+        ?: throw IllegalArgumentException("Audio gap is too long for a WAV silence source")
     if (!directory.exists() && !directory.mkdirs()) {
         error("Could not create the audio cache directory")
     }

@@ -321,3 +321,11 @@ A control is only considered complete when its operation is connected to the pro
 - A known insufficient-capacity result stops export before creating the MP4. If storage statistics or the volume relationship cannot be read, the check is reported as unknown and export may continue rather than treating unavailable information as a pass.
 - Pure JVM tests cover bitrate/duration estimates, automatic assumptions, container overhead, rounding and overflow, same/separate-volume capacity checks, unknown capacity, and canonical path-boundary matching.
 - The storage check is a preflight estimate, not a guarantee: concurrent storage use, variable encoder output, filesystem metadata, and device behaviour can change the final space requirement. Physical-device low-storage and MediaStore publication tests remain required.
+
+
+## Export preflight includes silent-audio gap cache — 23 November 2026
+- Export now builds the same Music/SFX/Voiceover gap segments before storage preflight, so it can calculate the longest silent gap before creating the temporary WAV source.
+- The 8 kHz mono 16-bit PCM WAV cache size is estimated from the exact writer formula, including the 44-byte RIFF header. A complete matching cache file is detected and is not budgeted as a second allocation; missing or invalid cache files reserve the exact bytes needed for regeneration.
+- Preflight checks the cache directory's free space and whether the cache shares the temporary export volume. When it shares the volume, the WAV allocation is added to that volume's temporary-output requirement; when separate, the cache is checked independently with its own reserve. Unknown capacity or volume relationships remain UNKNOWN rather than passing.
+- Oversized gap WAVs are rejected before Transformer starts, matching the writer's existing RIFF size limit.
+- Pure JVM tests cover exact WAV file-size estimates, cache reuse, same-volume and separate-volume requirements, insufficient cache capacity, and unknown cache relationships. Device-level storage topology and low-space behavior still require Android-device validation.

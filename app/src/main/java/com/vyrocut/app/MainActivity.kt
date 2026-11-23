@@ -105,22 +105,42 @@ private val StudioAccent = VyroCutPalette.Accent
 private val StudioText = VyroCutPalette.TextPrimary
 private val StudioMuted = VyroCutPalette.TextMuted
 
-private fun inspectExportStorageAvailability(temporaryDirectory: File): ExportStorageAvailability {
+private fun inspectExportStorageAvailability(
+    temporaryDirectory: File,
+    silenceCacheDirectory: File,
+): ExportStorageAvailability {
     val temporaryAvailableBytes = runCatching {
         StatFs(temporaryDirectory.absolutePath).availableBytes
+    }.getOrNull()
+    val silenceCacheAvailableBytes = runCatching {
+        StatFs(silenceCacheDirectory.absolutePath).availableBytes
     }.getOrNull()
     @Suppress("DEPRECATION")
     val moviesRoot = Environment.getExternalStorageDirectory()
     val moviesAvailableBytes = runCatching {
         StatFs(moviesRoot.absolutePath).availableBytes
     }.getOrNull()
-    val sameVolume = runCatching {
+    val temporarySharesMoviesVolume = runCatching {
         isPathWithinStorageRoot(temporaryDirectory.canonicalPath, moviesRoot.canonicalPath)
     }.getOrNull()
+    val silenceCacheSharesMoviesVolume = runCatching {
+        isPathWithinStorageRoot(silenceCacheDirectory.canonicalPath, moviesRoot.canonicalPath)
+    }.getOrNull()
+    // The export directory resolves only to app-specific primary external storage
+    // or app-private filesDir; cacheDir is app-private, so matching this known
+    // primary-external membership identifies whether the two share a volume.
+    val silenceCacheSharesTemporaryVolume =
+        if (temporarySharesMoviesVolume != null && silenceCacheSharesMoviesVolume != null) {
+            temporarySharesMoviesVolume == silenceCacheSharesMoviesVolume
+        } else {
+            null
+        }
     return ExportStorageAvailability(
         temporaryAvailableBytes = temporaryAvailableBytes,
         moviesAvailableBytes = moviesAvailableBytes,
-        sameVolume = sameVolume,
+        sameVolume = temporarySharesMoviesVolume,
+        silenceCacheAvailableBytes = silenceCacheAvailableBytes,
+        silenceCacheSharesTemporaryVolume = silenceCacheSharesTemporaryVolume,
     )
 }
 
@@ -3508,6 +3528,24 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
                                     val expectedDurationMs = calculateTimelineDurationMs(exportClips.map { it.durationMs })
+                                    val exportAudioSegments = AudioTrackType.values().associateWith { type ->
+                                        buildAudioTrackTimelineSegments(exportAudioTracks, type, expectedDurationMs)
+                                    }
+                                    val maximumExportSilenceMs = exportAudioSegments.values.flatten()
+                                        .filter { it.clip == null }
+                                        .maxOfOrNull { it.durationMs } ?: 0L
+                                    val silenceCacheRequiredBytes = when {
+                                        maximumExportSilenceMs <= 0L -> 0L
+                                        hasReusableSilentAudioWav(context.cacheDir, maximumExportSilenceMs) -> 0L
+                                        else -> estimateSilentAudioWavFileBytes(maximumExportSilenceMs)
+                                    }
+                                    if (silenceCacheRequiredBytes == null) {
+                                        exportUiStage = ExportUiStage.FAILED
+                                        isExporting = false
+                                        exportSessionId = null
+                                        exportMessage = "Audio-track gaps exceed the supported temporary WAV cache size."
+                                        return@exportPreparation
+                                    }
                                     val automaticVideoBitrateBps = exportTargetVideoBitrateBps(
                                         ExportVideoBitratePreset.BALANCED,
                                         exportCanvasSize,
@@ -3521,10 +3559,14 @@ private fun VyroCutApp() {
                                         automaticAudioBitrateBps = DEFAULT_AUTOMATIC_AUDIO_BITRATE_ESTIMATE_BPS,
                                     )
                                     val storageAvailability = withContext(Dispatchers.IO) {
-                                        inspectExportStorageAvailability(outputDirectory)
+                                        inspectExportStorageAvailability(outputDirectory, context.cacheDir)
                                     }
                                     val storageCheck = exportSizeEstimate?.let { estimate ->
-                                        evaluateExportStoragePreflight(estimate, storageAvailability)
+                                        evaluateExportStoragePreflight(
+                                            estimate,
+                                            storageAvailability,
+                                            silenceCacheRequiredBytes = silenceCacheRequiredBytes,
+                                        )
                                     }
                                     if (storageCheck?.status == ExportStoragePreflightStatus.INSUFFICIENT) {
                                         exportUiStage = ExportUiStage.FAILED
@@ -3542,12 +3584,6 @@ private fun VyroCutApp() {
                                     }
                                     val outputFile = File(outputDirectory, "VyroCut_${System.currentTimeMillis()}.mp4")
                                     val sourceUris = exportClips.map { it.uri } + exportAudioTracks.map { it.uri }
-                                    val exportAudioSegments = AudioTrackType.values().associateWith { type ->
-                                        buildAudioTrackTimelineSegments(exportAudioTracks, type, expectedDurationMs)
-                                    }
-                                    val maximumExportSilenceMs = exportAudioSegments.values.flatten()
-                                        .filter { it.clip == null }
-                                        .maxOfOrNull { it.durationMs } ?: 0L
                                     val exportSilenceFile = if (maximumExportSilenceMs > 0L) {
                                         runCatching {
                                             withContext(Dispatchers.IO) {

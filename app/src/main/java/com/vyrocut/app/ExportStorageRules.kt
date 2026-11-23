@@ -4,6 +4,7 @@ internal const val DEFAULT_AUTOMATIC_AUDIO_BITRATE_ESTIMATE_BPS = 128_000
 internal const val EXPORT_ESTIMATE_CONTAINER_OVERHEAD_PERCENT = 5
 internal const val EXPORT_TEMPORARY_STORAGE_RESERVE_BYTES = 16L * 1024L * 1024L
 internal const val EXPORT_PUBLICATION_STORAGE_RESERVE_BYTES = 16L * 1024L * 1024L
+internal const val EXPORT_SILENCE_CACHE_STORAGE_RESERVE_BYTES = 16L * 1024L * 1024L
 internal const val EXPORT_SAME_VOLUME_STORAGE_RESERVE_BYTES =
     EXPORT_TEMPORARY_STORAGE_RESERVE_BYTES + EXPORT_PUBLICATION_STORAGE_RESERVE_BYTES
 
@@ -53,6 +54,8 @@ internal data class ExportStorageAvailability(
     val temporaryAvailableBytes: Long?,
     val moviesAvailableBytes: Long?,
     val sameVolume: Boolean?,
+    val silenceCacheAvailableBytes: Long? = null,
+    val silenceCacheSharesTemporaryVolume: Boolean? = null,
 )
 
 internal enum class ExportStoragePreflightStatus {
@@ -65,6 +68,7 @@ internal enum class ExportStorageScope(val label: String) {
     TEMPORARY_AND_MOVIES("the temporary MP4 and Movies copy"),
     TEMPORARY_EXPORT("the temporary MP4"),
     MOVIES_PUBLICATION("the Movies publication"),
+    SILENCE_CACHE("the temporary silent-audio WAV cache"),
 }
 
 internal data class ExportStoragePreflightResult(
@@ -82,16 +86,43 @@ internal data class ExportStoragePreflightResult(
 internal fun evaluateExportStoragePreflight(
     estimate: ExportFileSizeEstimate,
     availability: ExportStorageAvailability,
+    silenceCacheRequiredBytes: Long = 0L,
 ): ExportStoragePreflightResult {
     val temporaryAvailable = availability.temporaryAvailableBytes?.takeIf { it >= 0L }
     val moviesAvailable = availability.moviesAvailableBytes?.takeIf { it >= 0L }
+    val silenceCacheAvailable = availability.silenceCacheAvailableBytes?.takeIf { it >= 0L }
+    if (silenceCacheRequiredBytes < 0L) {
+        return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
+    }
+    val needsSilenceCache = silenceCacheRequiredBytes > 0L
     val sameVolume = availability.sameVolume
+        ?: return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
 
-    if (sameVolume == true) {
-        val required = saturatedAdd(
+    if (sameVolume) {
+        var required = saturatedAdd(
             saturatedMultiply(estimate.estimatedBytes, 2L),
             EXPORT_SAME_VOLUME_STORAGE_RESERVE_BYTES,
         )
+        var separateSilenceCacheRequired: Long? = null
+        val unknownSilenceCacheVolume = if (!needsSilenceCache) {
+            false
+        } else {
+            when (availability.silenceCacheSharesTemporaryVolume) {
+                true -> {
+                    required = saturatedAdd(required, silenceCacheRequiredBytes)
+                    false
+                }
+                false -> {
+                    separateSilenceCacheRequired = saturatedAdd(
+                        silenceCacheRequiredBytes,
+                        EXPORT_SILENCE_CACHE_STORAGE_RESERVE_BYTES,
+                    )
+                    false
+                }
+                null -> true
+            }
+        }
+
         val knownAvailable = listOfNotNull(temporaryAvailable, moviesAvailable).minOrNull()
         if (knownAvailable != null && knownAvailable < required) {
             return ExportStoragePreflightResult(
@@ -104,6 +135,22 @@ internal fun evaluateExportStoragePreflight(
         if (temporaryAvailable == null || moviesAvailable == null) {
             return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
         }
+        if (separateSilenceCacheRequired != null) {
+            if (silenceCacheAvailable != null && silenceCacheAvailable < separateSilenceCacheRequired) {
+                return ExportStoragePreflightResult(
+                    status = ExportStoragePreflightStatus.INSUFFICIENT,
+                    scope = ExportStorageScope.SILENCE_CACHE,
+                    requiredBytes = separateSilenceCacheRequired,
+                    availableBytes = silenceCacheAvailable,
+                )
+            }
+            if (silenceCacheAvailable == null) {
+                return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
+            }
+        }
+        if (unknownSilenceCacheVolume) {
+            return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
+        }
         return ExportStoragePreflightResult(
             status = ExportStoragePreflightStatus.SUFFICIENT,
             scope = ExportStorageScope.TEMPORARY_AND_MOVIES,
@@ -112,11 +159,7 @@ internal fun evaluateExportStoragePreflight(
         )
     }
 
-    if (sameVolume == null) {
-        return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
-    }
-
-    val temporaryRequired = saturatedAdd(
+    var temporaryRequired = saturatedAdd(
         estimate.estimatedBytes,
         EXPORT_TEMPORARY_STORAGE_RESERVE_BYTES,
     )
@@ -124,6 +167,26 @@ internal fun evaluateExportStoragePreflight(
         estimate.estimatedBytes,
         EXPORT_PUBLICATION_STORAGE_RESERVE_BYTES,
     )
+    var separateSilenceCacheRequired: Long? = null
+    val unknownSilenceCacheVolume = if (!needsSilenceCache) {
+        false
+    } else {
+        when (availability.silenceCacheSharesTemporaryVolume) {
+            true -> {
+                temporaryRequired = saturatedAdd(temporaryRequired, silenceCacheRequiredBytes)
+                false
+            }
+            false -> {
+                separateSilenceCacheRequired = saturatedAdd(
+                    silenceCacheRequiredBytes,
+                    EXPORT_SILENCE_CACHE_STORAGE_RESERVE_BYTES,
+                )
+                false
+            }
+            null -> true
+        }
+    }
+
     if (temporaryAvailable != null && temporaryAvailable < temporaryRequired) {
         return ExportStoragePreflightResult(
             status = ExportStoragePreflightStatus.INSUFFICIENT,
@@ -140,7 +203,20 @@ internal fun evaluateExportStoragePreflight(
             availableBytes = moviesAvailable,
         )
     }
-    if (temporaryAvailable == null || moviesAvailable == null) {
+    if (separateSilenceCacheRequired != null) {
+        if (silenceCacheAvailable != null && silenceCacheAvailable < separateSilenceCacheRequired) {
+            return ExportStoragePreflightResult(
+                status = ExportStoragePreflightStatus.INSUFFICIENT,
+                scope = ExportStorageScope.SILENCE_CACHE,
+                requiredBytes = separateSilenceCacheRequired,
+                availableBytes = silenceCacheAvailable,
+            )
+        }
+        if (silenceCacheAvailable == null) {
+            return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
+        }
+    }
+    if (temporaryAvailable == null || moviesAvailable == null || unknownSilenceCacheVolume) {
         return ExportStoragePreflightResult(ExportStoragePreflightStatus.UNKNOWN)
     }
     return ExportStoragePreflightResult(
