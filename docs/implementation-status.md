@@ -262,3 +262,9 @@ A control is only considered complete when its operation is connected to the pro
 - A shared playhead marker uses an accent needle with a dark outline and a bordered top cap. The same marker is drawn in the ruler, video, text, sticker, source-audio, and added-audio rows; no timeline positions or seek calculations are changed.
 - Pure Kotlin tests verify centered playhead geometry, malformed-offset fallback, selected/unselected border widths, and the contrast of semantic emphasis colors against the timeline's actual track surfaces.
 - This is a visual-state implementation only. Touch-target behaviour, perceived contrast, and continuous playhead alignment still require Android-device validation.
+
+## Editable sticker size control — 23 November 2026
+- The Stickers panel now exposes a per-layer size slider bounded to the existing 0.5×–2× model range. Changes commit once on release through the shared sticker-overlay mutation path, preserving the layer's symbol, position, and clip-local IN/OUT interval.
+- The existing ClipStickerOverlay scale value remains the single source for preview and Media3 export rendering; project serialization and undo/redo continue to store the same overlay model without a schema change.
+- Pure JVM tests cover normal scale updates, lower/upper clamping, non-finite rejection, and preservation of the other overlay properties.
+- The control is wired to the existing preview/export renderer. Emoji glyph appearance and perceived size still require physical-device and exported-video validation.
