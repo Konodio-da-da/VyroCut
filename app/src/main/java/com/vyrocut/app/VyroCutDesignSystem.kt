@@ -163,6 +163,16 @@ internal object VyroCutVisualPanelMetrics {
     const val ResetButtonVerticalPaddingDp = 0
 }
 
+/**
+ * Aspect-ratio and canvas-background panel geometry. These tokens preserve the
+ * existing panel dimensions while keeping its spacing in the shared system.
+ */
+internal object VyroCutCanvasPanelMetrics {
+    const val HorizontalPaddingDp = 10
+    const val VerticalPaddingDp = 7
+    const val SectionGapDp = 8
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,

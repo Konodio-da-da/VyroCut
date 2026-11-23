@@ -2350,11 +2350,22 @@ private fun VyroCutApp() {
                 )
                 if (activeTool == "Ratio" || activeTool == "Canvas") {
                     Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(12.dp)).padding(horizontal = 10.dp, vertical = 7.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        Modifier.fillMaxWidth().background(
+                            StudioPanel,
+                            RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp),
+                        ).padding(
+                            horizontal = VyroCutCanvasPanelMetrics.HorizontalPaddingDp.dp,
+                            vertical = VyroCutCanvasPanelMetrics.VerticalPaddingDp.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutCanvasPanelMetrics.SectionGapDp.dp),
                     ) {
-                        Text(if (activeTool == "Ratio") "ASPECT RATIO" else "CANVAS BACKGROUND", color = StudioText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            if (activeTool == "Ratio") "ASPECT RATIO" else "CANVAS BACKGROUND",
+                            color = StudioText,
+                            fontSize = VyroCutTypography.LabelSp.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                             if (activeTool == "Ratio") {
                                 listOf("9:16" to (9f / 16f), "16:9" to (16f / 9f), "1:1" to 1f).forEach { (label, ratio) ->
                                     FilterChip(

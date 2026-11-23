@@ -373,3 +373,9 @@ A control is only considered complete when its operation is connected to the pro
 - This is styling-only: filter preset selection, per-clip brightness/contrast/saturation state, slider ranges and commit timing, undo/redo, preview effects, and Transformer export are unchanged.
 - Added a pure JVM exact-value regression test for the panel-specific metrics and shared tokens.
 - Android CI must verify this commit's compilation and unit tests. Physical-device layout fit and touch behaviour remain unverified.
+
+## Ratio and Canvas panel design-token consolidation — 23 November 2026
+- Added semantic `VyroCutCanvasPanelMetrics` for the Ratio and Canvas panel's existing horizontal/vertical padding and section gap.
+- Replaced the panel's hardcoded corner radius, padding, heading size, and option spacing with shared shape, spacing, typography, and panel tokens while preserving the existing numeric dimensions.
+- The change is styling-only: aspect-ratio selection, canvas-background selection, project settings persistence, preview rendering, and export canvas composition are unchanged.
+- Added a pure JVM exact-value regression test for the new panel metrics and shared tokens. Physical-device layout fit remains unverified.
