@@ -125,6 +125,46 @@ class VyroCutDesignSystemTest {
         )
     }
 
+
+    @Test
+    fun projectHomeMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(
+                14, 50, 12, 18, 42, 27, 13, 9, 7, 176, 18, 14, 13, 34, 10,
+                17, 5, 30, 38, 13, 11, 76, 68, 27, 3, 5, 2,
+            ),
+            listOf(
+                VyroCutHomeMetrics.ProjectListItemGapDp,
+                VyroCutHomeMetrics.SearchFieldHeightDp,
+                VyroCutHomeMetrics.SearchPlaceholderSp,
+                VyroCutHomeMetrics.SearchIconSizeDp,
+                VyroCutHomeMetrics.ImportButtonSizeDp,
+                VyroCutHomeMetrics.ImportIconSizeDp,
+                VyroCutHomeMetrics.OfflineBannerHorizontalPaddingDp,
+                VyroCutHomeMetrics.OfflineBannerVerticalPaddingDp,
+                VyroCutHomeMetrics.OfflineIndicatorSizeDp,
+                VyroCutHomeMetrics.HeroCardHeightDp,
+                VyroCutHomeMetrics.HeroCardHorizontalPaddingDp,
+                VyroCutHomeMetrics.HeroIconCornerDp,
+                VyroCutHomeMetrics.HeroIconPaddingDp,
+                VyroCutHomeMetrics.HeroIconSizeDp,
+                VyroCutHomeMetrics.HeroTitleGapDp,
+                VyroCutHomeMetrics.SortIconSizeDp,
+                VyroCutHomeMetrics.SortLabelGapDp,
+                VyroCutHomeMetrics.EmptyStateVerticalPaddingDp,
+                VyroCutHomeMetrics.EmptyStateIconSizeDp,
+                VyroCutHomeMetrics.ProjectCardCornerDp,
+                VyroCutHomeMetrics.ProjectCardPaddingDp,
+                VyroCutHomeMetrics.ProjectThumbnailWidthDp,
+                VyroCutHomeMetrics.ProjectThumbnailHeightDp,
+                VyroCutHomeMetrics.ProjectThumbnailIconSizeDp,
+                VyroCutHomeMetrics.ProjectBadgeCornerDp,
+                VyroCutHomeMetrics.ProjectBadgeHorizontalPaddingDp,
+                VyroCutHomeMetrics.ProjectBadgeVerticalPaddingDp,
+            ),
+        )
+    }
+
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
         val secondLuminance = relativeLuminance(second)

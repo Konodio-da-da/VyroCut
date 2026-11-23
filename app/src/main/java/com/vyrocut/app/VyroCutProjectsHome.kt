@@ -57,7 +57,7 @@ internal fun VyroCutProjectsHome(
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(HomeBackground),
         contentPadding = PaddingValues(start = VyroCutSpacing.LargeDp.dp, end = VyroCutSpacing.LargeDp.dp, top = VyroCutSpacing.MediumDp.dp, bottom = VyroCutSpacing.XLargeDp.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(VyroCutHomeMetrics.ProjectListItemGapDp.dp)
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -71,11 +71,11 @@ internal fun VyroCutProjectsHome(
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
-                    modifier = Modifier.weight(1f).height(50.dp),
+                    modifier = Modifier.weight(1f).height(VyroCutHomeMetrics.SearchFieldHeightDp.dp),
                     singleLine = true,
-                    placeholder = { Text("Search projects", fontSize = 12.sp, color = HomeMuted) },
+                    placeholder = { Text("Search projects", fontSize = VyroCutHomeMetrics.SearchPlaceholderSp.sp, color = HomeMuted) },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, null, tint = HomeMuted, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Search, null, tint = HomeMuted, modifier = Modifier.size(VyroCutHomeMetrics.SearchIconSizeDp.dp))
                     },
                     trailingIcon = {
                         if (query.isNotEmpty()) {
@@ -96,8 +96,8 @@ internal fun VyroCutProjectsHome(
                     ),
                 )
                 Spacer(Modifier.width(VyroCutSpacing.XSmallDp.dp))
-                IconButton(onClick = onImportVideo, modifier = Modifier.size(42.dp)) {
-                    Icon(Icons.Default.Add, "Import video", tint = HomeAccent, modifier = Modifier.size(27.dp))
+                IconButton(onClick = onImportVideo, modifier = Modifier.size(VyroCutHomeMetrics.ImportButtonSizeDp.dp)) {
+                    Icon(Icons.Default.Add, "Import video", tint = HomeAccent, modifier = Modifier.size(VyroCutHomeMetrics.ImportIconSizeDp.dp))
                 }
             }
         }
@@ -107,13 +107,13 @@ internal fun VyroCutProjectsHome(
                 shape = RoundedCornerShape(VyroCutShapes.CardCornerDp.dp),
             ) {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = VyroCutHomeMetrics.OfflineBannerHorizontalPaddingDp.dp, vertical = VyroCutHomeMetrics.OfflineBannerVerticalPaddingDp.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Box(Modifier.size(7.dp).background(HomeAccent, CircleShape))
-                    Spacer(Modifier.width(8.dp))
+                    Box(Modifier.size(VyroCutHomeMetrics.OfflineIndicatorSizeDp.dp).background(HomeAccent, CircleShape))
+                    Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                     Text("Offline-first", color = HomeAccent, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                     Text("Projects stay on this device", color = HomeMuted, fontSize = VyroCutTypography.LabelSp.sp)
                 }
             }
@@ -121,27 +121,27 @@ internal fun VyroCutProjectsHome(
         item {
             Column(
                 Modifier.fillMaxWidth()
-                    .height(176.dp)
+                    .height(VyroCutHomeMetrics.HeroCardHeightDp.dp)
                     .background(
                         Brush.linearGradient(listOf(VyroCutPalette.HeroGradientStart, VyroCutPalette.HeroGradientEnd)),
                         RoundedCornerShape(VyroCutShapes.LargeCornerDp.dp),
                     )
                     .clickable { onNewProject() }
-                    .padding(horizontal = 18.dp),
+                    .padding(horizontal = VyroCutHomeMetrics.HeroCardHorizontalPaddingDp.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
-                Surface(color = HomeAccent, shape = RoundedCornerShape(14.dp)) {
+                Surface(color = HomeAccent, shape = RoundedCornerShape(VyroCutHomeMetrics.HeroIconCornerDp.dp)) {
                     Icon(
                         Icons.Default.Add,
                         "New project",
                         tint = VyroCutPalette.AccentInk,
-                        modifier = Modifier.padding(13.dp).size(34.dp),
+                        modifier = Modifier.padding(VyroCutHomeMetrics.HeroIconPaddingDp.dp).size(VyroCutHomeMetrics.HeroIconSizeDp.dp),
                     )
                 }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(VyroCutHomeMetrics.HeroTitleGapDp.dp))
                 Text("New project", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.HeroTitleSp.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(VyroCutSpacing.XSmallDp.dp))
                 Text(
                     "Import videos from your device and start editing",
                     color = HomeMuted,
@@ -165,10 +165,10 @@ internal fun VyroCutProjectsHome(
                 }
                 TextButton(
                     onClick = { ascending = !ascending },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                    contentPadding = PaddingValues(horizontal = VyroCutSpacing.SmallDp.dp, vertical = VyroCutSpacing.XSmallDp.dp),
                 ) {
-                    Icon(Icons.Default.Sort, null, tint = HomeMuted, modifier = Modifier.size(17.dp))
-                    Spacer(Modifier.width(5.dp))
+                    Icon(Icons.Default.Sort, null, tint = HomeMuted, modifier = Modifier.size(VyroCutHomeMetrics.SortIconSizeDp.dp))
+                    Spacer(Modifier.width(VyroCutHomeMetrics.SortLabelGapDp.dp))
                     Text(if (ascending) "Name A–Z" else "Name Z–A", color = HomeMuted, fontSize = VyroCutTypography.LabelSp.sp)
                 }
             }
@@ -176,10 +176,10 @@ internal fun VyroCutProjectsHome(
         if (visibleProjects.isEmpty()) {
             item {
                 Column(
-                    Modifier.fillMaxWidth().padding(vertical = 30.dp),
+                    Modifier.fillMaxWidth().padding(vertical = VyroCutHomeMetrics.EmptyStateVerticalPaddingDp.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Icon(Icons.Default.Movie, null, tint = HomeMuted, modifier = Modifier.size(38.dp))
+                    Icon(Icons.Default.Movie, null, tint = HomeMuted, modifier = Modifier.size(VyroCutHomeMetrics.EmptyStateIconSizeDp.dp))
                     Spacer(Modifier.height(VyroCutSpacing.SmallDp.dp))
                     Text(
                         if (projects.isEmpty()) "No projects yet" else "No matching projects",
@@ -198,29 +198,29 @@ internal fun VyroCutProjectsHome(
             items(visibleProjects, key = { it.first }) { project ->
                 Row(
                     Modifier.fillMaxWidth()
-                        .background(HomePanel, RoundedCornerShape(13.dp))
+                        .background(HomePanel, RoundedCornerShape(VyroCutHomeMetrics.ProjectCardCornerDp.dp))
                         .clickable { onOpenProject(project.first) }
-                        .padding(11.dp),
+                        .padding(VyroCutHomeMetrics.ProjectCardPaddingDp.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        Modifier.size(76.dp, 68.dp)
+                        Modifier.size(width = VyroCutHomeMetrics.ProjectThumbnailWidthDp.dp, height = VyroCutHomeMetrics.ProjectThumbnailHeightDp.dp)
                             .background(
                                 Brush.linearGradient(listOf(VyroCutPalette.ThumbnailGradientStart, VyroCutPalette.SurfaceClip)),
                                 RoundedCornerShape(VyroCutShapes.SmallCornerDp.dp),
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(Icons.Default.Movie, null, tint = HomeAccent, modifier = Modifier.size(27.dp))
+                        Icon(Icons.Default.Movie, null, tint = HomeAccent, modifier = Modifier.size(VyroCutHomeMetrics.ProjectThumbnailIconSizeDp.dp))
                         if (project.first == activeProjectId) {
                             Surface(
-                                Modifier.align(Alignment.BottomStart).padding(4.dp),
+                                Modifier.align(Alignment.BottomStart).padding(VyroCutSpacing.XSmallDp.dp),
                                 color = HomeAccent,
-                                shape = RoundedCornerShape(3.dp),
+                                shape = RoundedCornerShape(VyroCutHomeMetrics.ProjectBadgeCornerDp.dp),
                             ) {
                                 Text(
                                     "OPEN",
-                                    Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                                    Modifier.padding(horizontal = VyroCutHomeMetrics.ProjectBadgeHorizontalPaddingDp.dp, vertical = VyroCutHomeMetrics.ProjectBadgeVerticalPaddingDp.dp),
                                     color = VyroCutPalette.AccentInk,
                                     fontSize = VyroCutTypography.BadgeSp.sp,
                                     fontWeight = FontWeight.Bold,
@@ -231,7 +231,7 @@ internal fun VyroCutProjectsHome(
                     Spacer(Modifier.width(VyroCutSpacing.MediumDp.dp))
                     Column(
                         Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.XSmallDp.dp),
                     ) {
                         Text(
                             project.second,

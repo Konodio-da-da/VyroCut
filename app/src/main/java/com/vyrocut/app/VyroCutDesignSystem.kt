@@ -101,6 +101,41 @@ internal object VyroCutControlMetrics {
     const val ToolIndicatorHeightDp = 2
 }
 
+
+/**
+ * Home-screen-specific geometry retained as semantic tokens during styling
+ * consolidation. Values intentionally match the existing Compose layout.
+ */
+internal object VyroCutHomeMetrics {
+    const val ProjectListItemGapDp = 14
+    const val SearchFieldHeightDp = 50
+    const val SearchPlaceholderSp = 12
+    const val SearchIconSizeDp = 18
+    const val ImportButtonSizeDp = 42
+    const val ImportIconSizeDp = 27
+    const val OfflineBannerHorizontalPaddingDp = 13
+    const val OfflineBannerVerticalPaddingDp = 9
+    const val OfflineIndicatorSizeDp = 7
+    const val HeroCardHeightDp = 176
+    const val HeroCardHorizontalPaddingDp = 18
+    const val HeroIconCornerDp = 14
+    const val HeroIconPaddingDp = 13
+    const val HeroIconSizeDp = 34
+    const val HeroTitleGapDp = 10
+    const val SortIconSizeDp = 17
+    const val SortLabelGapDp = 5
+    const val EmptyStateVerticalPaddingDp = 30
+    const val EmptyStateIconSizeDp = 38
+    const val ProjectCardCornerDp = 13
+    const val ProjectCardPaddingDp = 11
+    const val ProjectThumbnailWidthDp = 76
+    const val ProjectThumbnailHeightDp = 68
+    const val ProjectThumbnailIconSizeDp = 27
+    const val ProjectBadgeCornerDp = 3
+    const val ProjectBadgeHorizontalPaddingDp = 5
+    const val ProjectBadgeVerticalPaddingDp = 2
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,

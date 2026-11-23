@@ -350,3 +350,12 @@ A control is only considered complete when its operation is connected to the pro
 - Migrated the project-home screen's repeated spacing, card shapes, and title/label sizes to shared tokens. Migrated the editor tool dock's panel/item shape, spacing, icon size, label size, and button geometry without changing its existing dimensions or horizontal scrolling.
 - Reused the shared spacing token in the trim dialog. This is a styling-only consolidation: no navigation, state, editing, playback, timeline geometry, persistence, or export logic changed.
 - Added JVM assertions for ordered spacing/shape/type scales and for tool-button dimensions remaining at least 48 dp. These tests protect the existing touch geometry; actual touch usability and screen fit still require Android-device validation.
+
+
+## 2026-11-23 — Project home styling token consolidation
+
+- Added semantic `VyroCutHomeMetrics` for the home screen's remaining one-off dimensions and its search, import, hero, empty-state, project-card, and badge geometry.
+- Replaced literal dp/sp values in `VyroCutProjectsHome` with shared design tokens or home-specific semantic metrics.
+- Preserved every migrated numeric value; this is a styling-centralization change, not a layout redesign.
+- Added an exact-value JVM regression test so future token edits cannot silently change the existing project-home geometry.
+- Android compilation and unit-test verification for this commit are pending its GitHub Actions run.
