@@ -358,4 +358,11 @@ A control is only considered complete when its operation is connected to the pro
 - Replaced literal dp/sp values in `VyroCutProjectsHome` with shared design tokens or home-specific semantic metrics.
 - Preserved every migrated numeric value; this is a styling-centralization change, not a layout redesign.
 - Added an exact-value JVM regression test so future token edits cannot silently change the existing project-home geometry.
-- Android compilation and unit-test verification for this commit are pending its GitHub Actions run.
+- Android compilation, JVM unit tests, and debug APK upload passed in [Android build run #582](https://github.com/Konodio-da-da/VyroCut/actions/runs/45204371892). Physical screen fit remains a device-validation item.
+
+
+## Effects panel design-token consolidation — 23 November 2026
+- Added semantic effects-panel metrics for horizontal/vertical padding, section spacing, reset-button padding, and heading/category letter spacing.
+- Replaced repeated dp/sp literals in the Effects panel with shared spacing, shape, typography, and effects-panel tokens while preserving the exact existing values.
+- The change is styling-only: creative-effect IDs, Media3 effect construction, preview and Transformer effect lists, slider ranges/commit timing, clip state, undo/redo, and project persistence are unchanged.
+- Added an exact-value JVM regression test for the effects-panel metrics and the shared tokens used by the panel. The Android unit-test task exercises this test; actual panel fit and touch behaviour still require Android-device validation.
