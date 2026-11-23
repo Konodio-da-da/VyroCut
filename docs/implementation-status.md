@@ -255,3 +255,10 @@ A control is only considered complete when its operation is connected to the pro
 - Pure JVM tests cover crowded and compressed projects, endpoint retention when space allows, minor/non-finite tick filtering, invalid spacing fallbacks, and font-scale/label-width bounds.
 - This is a code-level collision-avoidance improvement. Visual label fit across physical screen densities and font configurations still requires Android-device validation.
 
+
+
+## Timeline selection and playhead emphasis — 23 November 2026
+- The active video clip now has a distinct semantic selection outline, repeated around its text-layer, sticker-layer, and source-audio timeline columns so the selected project clip remains identifiable across tracks.
+- A shared playhead marker uses an accent needle with a dark outline and a bordered top cap. The same marker is drawn in the ruler, video, text, sticker, source-audio, and added-audio rows; no timeline positions or seek calculations are changed.
+- Pure Kotlin tests verify centered playhead geometry, malformed-offset fallback, selected/unselected border widths, and the contrast of semantic emphasis colors against the timeline's actual track surfaces.
+- This is a visual-state implementation only. Touch-target behaviour, perceived contrast, and continuous playhead alignment still require Android-device validation.

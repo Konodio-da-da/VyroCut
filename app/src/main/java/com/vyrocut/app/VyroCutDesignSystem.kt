@@ -23,6 +23,9 @@ internal object VyroCutPalette {
     val SurfaceClip = Color(0xFF252A28)
     val SurfaceBadge = Color(0xFF29312E)
     val SurfaceTrack = Color(0xFF293330)
+    val TimelinePlayhead = Accent
+    val TimelinePlayheadOutline = Background
+    val TimelineSelectionOutline = AccentSoft
     val HeroGradientStart = Color(0xFF202725)
     val HeroGradientEnd = Color(0xFF171918)
     val ThumbnailGradientStart = Color(0xFF34443E)

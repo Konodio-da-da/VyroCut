@@ -20,6 +20,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -59,6 +60,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -4520,6 +4522,42 @@ private fun projectCanvasSettingsFor(aspectRatio: Float, background: Color): Pro
 
 
 @Composable
+private fun TimelinePlayheadMarker(
+    offsetDp: Float,
+    height: Dp,
+    showCap: Boolean = false,
+) {
+    val metrics = timelinePlayheadVisualMetrics()
+    val geometry = timelinePlayheadGeometry(offsetDp)
+    Box(
+        Modifier.offset(x = geometry.outlineLeftDp.dp)
+            .width(metrics.outlineWidthDp.dp)
+            .height(height)
+            .background(VyroCutPalette.TimelinePlayheadOutline),
+    )
+    Box(
+        Modifier.offset(x = geometry.lineLeftDp.dp)
+            .width(metrics.lineWidthDp.dp)
+            .height(height)
+            .background(VyroCutPalette.TimelinePlayhead),
+    )
+    if (showCap) {
+        Box(
+            Modifier.offset(x = geometry.capLeftDp.dp)
+                .width(metrics.capWidthDp.dp)
+                .height(metrics.capHeightDp.dp)
+                .background(VyroCutPalette.TimelinePlayheadOutline, RoundedCornerShape(3.dp)),
+        )
+        Box(
+            Modifier.offset(x = (geometry.capLeftDp + 1f).dp)
+                .width((metrics.capWidthDp - 2).dp)
+                .height((metrics.capHeightDp - 2).dp)
+                .background(VyroCutPalette.TimelinePlayhead, RoundedCornerShape(2.dp)),
+        )
+    }
+}
+
+@Composable
 private fun TimelineEditorStrip(
     clips: List<EditClip>,
     audioTracks: List<AudioTrackClip>,
@@ -4664,6 +4702,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
+            TimelinePlayheadMarker(markerX, timelineMetrics.rulerHeightDp.dp)
         }
 
         Box(Modifier.width(totalWidth).height(timelineMetrics.videoTrackHeightDp.dp)) {
@@ -4672,6 +4711,11 @@ private fun TimelineEditorStrip(
                     Column(
                         Modifier.width(clipWidths[index].dp)
                             .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip, RoundedCornerShape(5.dp))
+                            .border(
+                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(5.dp),
+                            )
                             .padding(3.dp)
                     ) {
                         Box(Modifier.fillMaxWidth().height(TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP.dp)) {
@@ -4689,8 +4733,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
-            Box(Modifier.offset(x = markerX.dp).width(2.dp).height(timelineMetrics.videoTrackHeightDp.dp).background(StudioAccent))
-            Box(Modifier.offset(x = (markerX - 5f).dp).width(12.dp).height(7.dp).background(StudioAccent, RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)))
+            TimelinePlayheadMarker(markerX, timelineMetrics.videoTrackHeightDp.dp, showCap = true)
             // The overlay is a child inside horizontalScroll, so pointer positions
             // are already expressed in scrolled content coordinates. Adding
             // timelineScroll.value here would apply the scroll displacement twice.
@@ -4749,7 +4792,15 @@ private fun TimelineEditorStrip(
         Box(Modifier.width(totalWidth).height(textTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
-                    Column(Modifier.width(clipWidths[index].dp)) {
+                    Column(
+                        Modifier.width(clipWidths[index].dp)
+                            .fillMaxHeight()
+                            .border(
+                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(4.dp),
+                            ),
+                    ) {
                         repeat(textLayerCount) { layerIndex ->
                             val overlay = clip.allTextOverlays.getOrNull(layerIndex)
                             Box(
@@ -4802,12 +4853,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
-            Box(
-                Modifier.offset(x = markerX.dp)
-                    .width(2.dp)
-                    .height(textTrackHeight)
-                    .background(StudioAccent),
-            )
+            TimelinePlayheadMarker(markerX, textTrackHeight)
         }
 
         val stickerLayerCount = maxOf(
@@ -4823,7 +4869,15 @@ private fun TimelineEditorStrip(
         Box(Modifier.width(totalWidth).height(stickerTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
-                    Column(Modifier.width(clipWidths[index].dp)) {
+                    Column(
+                        Modifier.width(clipWidths[index].dp)
+                            .fillMaxHeight()
+                            .border(
+                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(4.dp),
+                            ),
+                    ) {
                         repeat(stickerLayerCount) { layerIndex ->
                             val overlay = clip.allStickerOverlays.getOrNull(layerIndex)
                             Box(
@@ -4879,12 +4933,7 @@ private fun TimelineEditorStrip(
                     }
                 }
             }
-            Box(
-                Modifier.offset(x = markerX.dp)
-                    .width(2.dp)
-                    .height(stickerTrackHeight)
-                    .background(StudioAccent),
-            )
+            TimelinePlayheadMarker(markerX, stickerTrackHeight)
         }
 
         Row(Modifier.width(totalWidth), verticalAlignment = Alignment.CenterVertically) {
@@ -4892,17 +4941,25 @@ private fun TimelineEditorStrip(
             Spacer(Modifier.width(8.dp))
             Text("Original clip audio", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp)
         }
-        Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
-            clips.forEachIndexed { index, clip ->
-                Box(
-                    Modifier.width(clipWidths[index].dp).height(timelineMetrics.sourceTrackHeightDp.dp)
-                        .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AudioWaveform(clip, Modifier.fillMaxWidth().height(timelineMetrics.sourceWaveformHeightDp.dp))
+        Box(Modifier.width(totalWidth).height(timelineMetrics.sourceTrackHeightDp.dp)) {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    Box(
+                        Modifier.width(clipWidths[index].dp).fillMaxHeight()
+                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp))
+                            .border(
+                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(4.dp),
+                            )
+                            .padding(horizontal = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AudioWaveform(clip, Modifier.fillMaxWidth().height(timelineMetrics.sourceWaveformHeightDp.dp))
+                    }
                 }
             }
+            TimelinePlayheadMarker(markerX, timelineMetrics.sourceTrackHeightDp.dp)
         }
         AudioTrackType.values().forEach { type ->
             val laneClips = audioTracks.filter { it.type == type }
@@ -4966,7 +5023,7 @@ private fun TimelineEditorStrip(
                         }
                     }
                 }
-                Box(Modifier.offset(x = markerX.dp).width(2.dp).fillMaxHeight().background(StudioAccent))
+                TimelinePlayheadMarker(markerX, timelineMetrics.audioLaneHeightDp.dp)
             }
         }
         Row(Modifier.width(totalWidth), horizontalArrangement = Arrangement.SpaceBetween) {

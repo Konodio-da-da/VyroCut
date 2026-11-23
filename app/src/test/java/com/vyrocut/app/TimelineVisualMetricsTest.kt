@@ -48,6 +48,33 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun playheadOutlineAndCapStayCenteredOnTheNeedle() {
+        val metrics = timelinePlayheadVisualMetrics()
+        val geometry = timelinePlayheadGeometry(48f)
+        val lineCenter = geometry.lineLeftDp + metrics.lineWidthDp / 2f
+
+        assertEquals(2, metrics.lineWidthDp)
+        assertEquals(4, metrics.outlineWidthDp)
+        assertEquals(14, metrics.capWidthDp)
+        assertEquals(9, metrics.capHeightDp)
+        assertEquals(lineCenter, geometry.outlineLeftDp + metrics.outlineWidthDp / 2f, 0.001f)
+        assertEquals(lineCenter, geometry.capLeftDp + metrics.capWidthDp / 2f, 0.001f)
+    }
+
+    @Test
+    fun malformedPlayheadOffsetsFallBackToTheTimelineOrigin() {
+        assertEquals(0f, timelinePlayheadGeometry(Float.NaN).lineLeftDp, 0f)
+        assertEquals(0f, timelinePlayheadGeometry(Float.POSITIVE_INFINITY).lineLeftDp, 0f)
+        assertEquals(-1f, timelinePlayheadGeometry(Float.NEGATIVE_INFINITY).outlineLeftDp, 0f)
+    }
+
+    @Test
+    fun selectedClipGetsAnOutlineWhileUnselectedClipsDoNot() {
+        assertEquals(TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP, timelineClipSelectionBorderWidthDp(true))
+        assertEquals(0, timelineClipSelectionBorderWidthDp(false))
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)

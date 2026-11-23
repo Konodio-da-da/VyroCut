@@ -18,6 +18,45 @@ internal const val TIMELINE_RULER_LABEL_FONT_SP = 10
 internal const val TIMELINE_CLIP_LABEL_FONT_SP = 11
 internal const val TIMELINE_CLIP_META_FONT_SP = 10
 internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = 14
+internal const val TIMELINE_PLAYHEAD_LINE_WIDTH_DP = 2
+internal const val TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP = 4
+internal const val TIMELINE_PLAYHEAD_CAP_WIDTH_DP = 14
+internal const val TIMELINE_PLAYHEAD_CAP_HEIGHT_DP = 9
+internal const val TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP = 2
+
+internal data class TimelinePlayheadVisualMetrics(
+    val lineWidthDp: Int,
+    val outlineWidthDp: Int,
+    val capWidthDp: Int,
+    val capHeightDp: Int,
+)
+
+internal fun timelinePlayheadVisualMetrics() = TimelinePlayheadVisualMetrics(
+    lineWidthDp = TIMELINE_PLAYHEAD_LINE_WIDTH_DP,
+    outlineWidthDp = TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP,
+    capWidthDp = TIMELINE_PLAYHEAD_CAP_WIDTH_DP,
+    capHeightDp = TIMELINE_PLAYHEAD_CAP_HEIGHT_DP,
+)
+
+internal data class TimelinePlayheadGeometry(
+    val lineLeftDp: Float,
+    val outlineLeftDp: Float,
+    val capLeftDp: Float,
+)
+
+/** Keeps the dark outline and top cap centered on the accent playhead line. */
+internal fun timelinePlayheadGeometry(lineLeftDp: Float): TimelinePlayheadGeometry {
+    val safeLineLeft = lineLeftDp.takeIf { it.isFinite() } ?: 0f
+    val metrics = timelinePlayheadVisualMetrics()
+    return TimelinePlayheadGeometry(
+        lineLeftDp = safeLineLeft,
+        outlineLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.outlineWidthDp) / 2f,
+        capLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.capWidthDp) / 2f,
+    )
+}
+
+internal fun timelineClipSelectionBorderWidthDp(isSelected: Boolean): Int =
+    if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else 0
 private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = 0.62f
 private const val TIMELINE_RULER_LABEL_GAP_DP = 8f
 private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = 32
