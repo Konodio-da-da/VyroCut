@@ -329,3 +329,10 @@ A control is only considered complete when its operation is connected to the pro
 - Preflight checks the cache directory's free space and whether the cache shares the temporary export volume. When it shares the volume, the WAV allocation is added to that volume's temporary-output requirement; when separate, the cache is checked independently with its own reserve. Unknown capacity or volume relationships remain UNKNOWN rather than passing.
 - Oversized gap WAVs are rejected before Transformer starts, matching the writer's existing RIFF size limit.
 - Pure JVM tests cover exact WAV file-size estimates, cache reuse, same-volume and separate-volume requirements, insufficient cache capacity, and unknown cache relationships. Device-level storage topology and low-space behavior still require Android-device validation.
+
+## Actionable export failure diagnostics
+- Media3 render errors, Transformer start failures, export-composition/initialization failures, and post-render verification/publication failures now pass through one pure Kotlin diagnostic classifier.
+- The classifier inspects a bounded cause chain and distinguishes storage exhaustion, Android permission denial, unavailable source files, unsupported encoder/codec failures, invalid output verification, and unknown failures.
+- User-facing guidance is stage-aware and does not echo raw exception messages, filesystem paths, or content URIs. Unknown failures retain a conservative stage-specific retry/check message rather than guessing a cause.
+- JVM regression tests cover nested causes, each recognized category, stage-specific fallback guidance, and suppression of private paths/URIs from the displayed message. Actual encoder/provider failure wording still needs device testing.
+
