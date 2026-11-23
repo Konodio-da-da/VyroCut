@@ -52,10 +52,10 @@ internal fun VyroCutToolDock(
         EditorTool("Adjust", Icons.Default.Tune),
     )
     Row(
-        Modifier.background(VyroCutPalette.SurfaceToolbar, RoundedCornerShape(12.dp))
+        Modifier.background(VyroCutPalette.SurfaceToolbar, RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp))
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 7.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.XSmallDp.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         tools.forEach { tool ->
@@ -64,14 +64,14 @@ internal fun VyroCutToolDock(
                 modifier = Modifier
                     .background(
                         if (selected) VyroCutPalette.SurfaceSelected else Color.Transparent,
-                        RoundedCornerShape(9.dp)
+                        RoundedCornerShape(VyroCutShapes.ToolItemCornerDp.dp)
                     )
-                    .padding(horizontal = 7.dp, vertical = 4.dp),
+                    .padding(horizontal = 7.dp, vertical = VyroCutSpacing.XSmallDp.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TextButton(
                     onClick = { onToolSelected(tool.title) },
-                    modifier = Modifier.size(width = 52.dp, height = 48.dp),
+                    modifier = Modifier.size(width = VyroCutControlMetrics.ToolButtonWidthDp.dp, height = VyroCutControlMetrics.ToolButtonHeightDp.dp),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -79,21 +79,21 @@ internal fun VyroCutToolDock(
                             tool.icon,
                             contentDescription = tool.title,
                             tint = if (selected) VyroCutPalette.AccentSoft else VyroCutPalette.TextMuted,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(VyroCutControlMetrics.ToolIconSizeDp.dp)
                         )
-                        Spacer(Modifier.height(4.dp))
+                        Spacer(Modifier.height(VyroCutSpacing.XSmallDp.dp))
                         Text(
                             tool.title,
                             color = if (selected) VyroCutPalette.AccentSoft else VyroCutPalette.TextMuted,
-                            fontSize = 9.sp,
+                            fontSize = VyroCutTypography.ToolLabelSp.sp,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                             maxLines = 1
                         )
                     }
                 }
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(VyroCutSpacing.XXSmallDp.dp))
                 Spacer(
-                    Modifier.size(width = 18.dp, height = 2.dp)
+                    Modifier.size(width = VyroCutControlMetrics.ToolIndicatorWidthDp.dp, height = VyroCutControlMetrics.ToolIndicatorHeightDp.dp)
                         .background(if (selected) VyroCutPalette.AccentSoft else Color.Transparent, RoundedCornerShape(2.dp))
                 )
             }

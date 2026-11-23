@@ -71,6 +71,60 @@ class VyroCutDesignSystemTest {
         assertEquals(VyroCutPalette.Outline, scheme.outline)
     }
 
+
+    @Test
+    fun sharedLayoutTokensKeepTheExistingSpacingAndShapeScaleOrdered() {
+        assertEquals(
+            listOf(2, 4, 8, 12, 16, 24),
+            listOf(
+                VyroCutSpacing.XXSmallDp,
+                VyroCutSpacing.XSmallDp,
+                VyroCutSpacing.SmallDp,
+                VyroCutSpacing.MediumDp,
+                VyroCutSpacing.LargeDp,
+                VyroCutSpacing.XLargeDp,
+            ),
+        )
+        assertEquals(
+            listOf(8, 9, 12, 16, 20, 24),
+            listOf(
+                VyroCutShapes.SmallCornerDp,
+                VyroCutShapes.ToolItemCornerDp,
+                VyroCutShapes.MediumCornerDp,
+                VyroCutShapes.LargeCornerDp,
+                VyroCutShapes.CardCornerDp,
+                VyroCutShapes.PillCornerDp,
+            ),
+        )
+    }
+
+    @Test
+    fun toolDockControlsPreserveAccessibleMinimumDimensions() {
+        assertTrue(VyroCutControlMetrics.MinimumTouchTargetDp >= 48)
+        assertTrue(VyroCutControlMetrics.ToolButtonWidthDp >= VyroCutControlMetrics.MinimumTouchTargetDp)
+        assertTrue(VyroCutControlMetrics.ToolButtonHeightDp >= VyroCutControlMetrics.MinimumTouchTargetDp)
+        assertTrue(VyroCutControlMetrics.ToolIconSizeDp > 0)
+        assertTrue(VyroCutControlMetrics.ToolIndicatorWidthDp > 0)
+        assertTrue(VyroCutControlMetrics.ToolIndicatorHeightDp > 0)
+    }
+
+    @Test
+    fun sharedTypographyTokensRemainPositiveAndOrdered() {
+        assertEquals(
+            listOf(8, 9, 10, 11, 14, 20, 22, 23),
+            listOf(
+                VyroCutTypography.BadgeSp,
+                VyroCutTypography.ToolLabelSp,
+                VyroCutTypography.CaptionSp,
+                VyroCutTypography.LabelSp,
+                VyroCutTypography.BodySp,
+                VyroCutTypography.SectionTitleSp,
+                VyroCutTypography.BrandSp,
+                VyroCutTypography.HeroTitleSp,
+            ),
+        )
+    }
+
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
         val secondLuminance = relativeLuminance(second)

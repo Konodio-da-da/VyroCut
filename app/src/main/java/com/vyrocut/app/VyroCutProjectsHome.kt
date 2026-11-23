@@ -56,7 +56,7 @@ internal fun VyroCutProjectsHome(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().background(HomeBackground),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp),
+        contentPadding = PaddingValues(start = VyroCutSpacing.LargeDp.dp, end = VyroCutSpacing.LargeDp.dp, top = VyroCutSpacing.MediumDp.dp, bottom = VyroCutSpacing.XLargeDp.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
@@ -64,10 +64,10 @@ internal fun VyroCutProjectsHome(
                 Text(
                     "VyroCut",
                     color = HomeAccent,
-                    fontSize = 22.sp,
+                    fontSize = VyroCutTypography.BrandSp.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(VyroCutSpacing.MediumDp.dp))
                 OutlinedTextField(
                     value = query,
                     onValueChange = { query = it },
@@ -84,7 +84,7 @@ internal fun VyroCutProjectsHome(
                             }
                         }
                     },
-                    shape = RoundedCornerShape(24.dp),
+                    shape = RoundedCornerShape(VyroCutShapes.PillCornerDp.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = HomePanelHigh,
                         unfocusedContainerColor = HomePanelHigh,
@@ -95,7 +95,7 @@ internal fun VyroCutProjectsHome(
                         cursorColor = HomeAccent,
                     ),
                 )
-                Spacer(Modifier.width(4.dp))
+                Spacer(Modifier.width(VyroCutSpacing.XSmallDp.dp))
                 IconButton(onClick = onImportVideo, modifier = Modifier.size(42.dp)) {
                     Icon(Icons.Default.Add, "Import video", tint = HomeAccent, modifier = Modifier.size(27.dp))
                 }
@@ -104,7 +104,7 @@ internal fun VyroCutProjectsHome(
         item {
             Surface(
                 color = HomePanel,
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(VyroCutShapes.CardCornerDp.dp),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 9.dp),
@@ -112,9 +112,9 @@ internal fun VyroCutProjectsHome(
                 ) {
                     Box(Modifier.size(7.dp).background(HomeAccent, CircleShape))
                     Spacer(Modifier.width(8.dp))
-                    Text("Offline-first", color = HomeAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("Offline-first", color = HomeAccent, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.width(8.dp))
-                    Text("Projects stay on this device", color = HomeMuted, fontSize = 11.sp)
+                    Text("Projects stay on this device", color = HomeMuted, fontSize = VyroCutTypography.LabelSp.sp)
                 }
             }
         }
@@ -124,7 +124,7 @@ internal fun VyroCutProjectsHome(
                     .height(176.dp)
                     .background(
                         Brush.linearGradient(listOf(VyroCutPalette.HeroGradientStart, VyroCutPalette.HeroGradientEnd)),
-                        RoundedCornerShape(16.dp),
+                        RoundedCornerShape(VyroCutShapes.LargeCornerDp.dp),
                     )
                     .clickable { onNewProject() }
                     .padding(horizontal = 18.dp),
@@ -140,12 +140,12 @@ internal fun VyroCutProjectsHome(
                     )
                 }
                 Spacer(Modifier.height(10.dp))
-                Text("New project", color = VyroCutPalette.TextPrimary, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("New project", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.HeroTitleSp.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(4.dp))
                 Text(
                     "Import videos from your device and start editing",
                     color = HomeMuted,
-                    fontSize = 11.sp,
+                    fontSize = VyroCutTypography.LabelSp.sp,
                     maxLines = 2,
                 )
             }
@@ -156,11 +156,11 @@ internal fun VyroCutProjectsHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Your projects", color = VyroCutPalette.TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Your projects", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.SectionTitleSp.sp, fontWeight = FontWeight.Bold)
                     Text(
                         "${projects.size} saved on this device",
                         color = HomeMuted,
-                        fontSize = 11.sp,
+                        fontSize = VyroCutTypography.LabelSp.sp,
                     )
                 }
                 TextButton(
@@ -169,7 +169,7 @@ internal fun VyroCutProjectsHome(
                 ) {
                     Icon(Icons.Default.Sort, null, tint = HomeMuted, modifier = Modifier.size(17.dp))
                     Spacer(Modifier.width(5.dp))
-                    Text(if (ascending) "Name A–Z" else "Name Z–A", color = HomeMuted, fontSize = 11.sp)
+                    Text(if (ascending) "Name A–Z" else "Name Z–A", color = HomeMuted, fontSize = VyroCutTypography.LabelSp.sp)
                 }
             }
         }
@@ -180,7 +180,7 @@ internal fun VyroCutProjectsHome(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(Icons.Default.Movie, null, tint = HomeMuted, modifier = Modifier.size(38.dp))
-                    Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(VyroCutSpacing.SmallDp.dp))
                     Text(
                         if (projects.isEmpty()) "No projects yet" else "No matching projects",
                         color = VyroCutPalette.TextPrimary,
@@ -190,7 +190,7 @@ internal fun VyroCutProjectsHome(
                         if (projects.isEmpty()) "Create a project to start your first edit."
                         else "Try a different project name.",
                         color = HomeMuted,
-                        fontSize = 11.sp,
+                        fontSize = VyroCutTypography.LabelSp.sp,
                     )
                 }
             }
@@ -207,7 +207,7 @@ internal fun VyroCutProjectsHome(
                         Modifier.size(76.dp, 68.dp)
                             .background(
                                 Brush.linearGradient(listOf(VyroCutPalette.ThumbnailGradientStart, VyroCutPalette.SurfaceClip)),
-                                RoundedCornerShape(8.dp),
+                                RoundedCornerShape(VyroCutShapes.SmallCornerDp.dp),
                             ),
                         contentAlignment = Alignment.Center,
                     ) {
@@ -222,13 +222,13 @@ internal fun VyroCutProjectsHome(
                                     "OPEN",
                                     Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
                                     color = VyroCutPalette.AccentInk,
-                                    fontSize = 8.sp,
+                                    fontSize = VyroCutTypography.BadgeSp.sp,
                                     fontWeight = FontWeight.Bold,
                                 )
                             }
                         }
                     }
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(VyroCutSpacing.MediumDp.dp))
                     Column(
                         Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -237,14 +237,14 @@ internal fun VyroCutProjectsHome(
                             project.second,
                             color = VyroCutPalette.TextPrimary,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
+                            fontSize = VyroCutTypography.BodySp.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             if (project.first == activeProjectId) "Current project • Saved locally" else "Saved on this device",
                             color = HomeMuted,
-                            fontSize = 10.sp,
+                            fontSize = VyroCutTypography.CaptionSp.sp,
                         )
                     }
                     Box {

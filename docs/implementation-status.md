@@ -343,3 +343,10 @@ A control is only considered complete when its operation is connected to the pro
 - Requested resolution/FPS/bitrate preset labels remain separate from the measured output fields. The actual file-size label is sourced from the bytes that passed verification and were copied/read back for publication; it is not the preflight estimate or a claimed measured stream bitrate.
 - Export track validation now rejects missing or non-positive video dimensions even when no expected canvas size is supplied. Existing exact selected-canvas checks, duration tolerance, decoded video/audio verification, cancellation, fingerprint comparison, and MediaStore publication remain unchanged.
 - Pure JVM tests cover invalid dimensions, measured-size formatting, duration formatting, video-only versus audio/video codec reporting, unknown codec preservation, and incomplete metadata rejection. Android CI verifies compilation and JVM rules only; actual encoder metadata and exported playback still require physical-device validation.
+
+
+## Shared spacing, shape, typography, and control tokens — 23 November 2026
+- Extended the central design system beyond color with an explicit dp spacing scale, corner-radius tokens, a small typography scale, and editor tool-dock control metrics.
+- Migrated the project-home screen's repeated spacing, card shapes, and title/label sizes to shared tokens. Migrated the editor tool dock's panel/item shape, spacing, icon size, label size, and button geometry without changing its existing dimensions or horizontal scrolling.
+- Reused the shared spacing token in the trim dialog. This is a styling-only consolidation: no navigation, state, editing, playback, timeline geometry, persistence, or export logic changed.
+- Added JVM assertions for ordered spacing/shape/type scales and for tool-button dimensions remaining at least 48 dp. These tests protect the existing touch geometry; actual touch usability and screen fit still require Android-device validation.

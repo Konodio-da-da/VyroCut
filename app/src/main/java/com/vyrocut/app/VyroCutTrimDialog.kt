@@ -45,7 +45,7 @@ internal fun VyroCutTrimDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.MediumDp.dp),
             ) {
                 Text(clipName, fontWeight = FontWeight.SemiBold)
                 if (isLoadingSource) {

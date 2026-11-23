@@ -58,6 +58,49 @@ internal object VyroCutPalette {
     val VoiceoverTrack = Color(0xFF344A67)
 }
 
+
+/** Shared spacing scale. Values are dp units to keep token files platform-light. */
+internal object VyroCutSpacing {
+    const val XXSmallDp = 2
+    const val XSmallDp = 4
+    const val SmallDp = 8
+    const val MediumDp = 12
+    const val LargeDp = 16
+    const val XLargeDp = 24
+}
+
+/** Shared corner radii; the tool item keeps its existing 9 dp shape. */
+internal object VyroCutShapes {
+    const val SmallCornerDp = 8
+    const val ToolItemCornerDp = 9
+    const val MediumCornerDp = 12
+    const val LargeCornerDp = 16
+    const val CardCornerDp = 20
+    const val PillCornerDp = 24
+}
+
+/** Small, explicit type scale for the existing home and tool-dock hierarchy. */
+internal object VyroCutTypography {
+    const val BadgeSp = 8
+    const val ToolLabelSp = 9
+    const val CaptionSp = 10
+    const val LabelSp = 11
+    const val BodySp = 14
+    const val SectionTitleSp = 20
+    const val BrandSp = 22
+    const val HeroTitleSp = 23
+}
+
+/** Control geometry tokens preserve the current dock's minimum hit dimensions. */
+internal object VyroCutControlMetrics {
+    const val MinimumTouchTargetDp = 48
+    const val ToolButtonWidthDp = 52
+    const val ToolButtonHeightDp = 48
+    const val ToolIconSizeDp = 20
+    const val ToolIndicatorWidthDp = 18
+    const val ToolIndicatorHeightDp = 2
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
