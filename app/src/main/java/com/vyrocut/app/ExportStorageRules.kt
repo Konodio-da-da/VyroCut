@@ -174,8 +174,9 @@ private fun formatBytesAsMiB(bytes: Long): String =
     "${ceilDivide(bytes.coerceAtLeast(0L), MEBIBYTE_BYTES)} MiB"
 
 internal fun isPathWithinStorageRoot(path: String, root: String): Boolean {
-    val normalizedPath = path.replace('\\\\', '/').trimEnd('/')
-    val normalizedRoot = root.replace('\\\\', '/').trimEnd('/').ifEmpty { "/" }
+    // Android filesystem paths use forward slashes; normalize trailing separators only.
+    val normalizedPath = path.trimEnd('/')
+    val normalizedRoot = root.trimEnd('/').ifEmpty { "/" }
     if (normalizedPath == normalizedRoot) return true
     val prefix = if (normalizedRoot.endsWith('/')) normalizedRoot else "$normalizedRoot/"
     return normalizedPath.startsWith(prefix)
