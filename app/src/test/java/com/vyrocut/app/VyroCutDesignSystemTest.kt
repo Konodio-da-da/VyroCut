@@ -17,6 +17,13 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun timelineSemanticTokensReuseInitializedSourcePaletteValues() {
+        assertEquals(VyroCutPalette.Accent, VyroCutPalette.TimelinePlayhead)
+        assertEquals(VyroCutPalette.AccentSoft, VyroCutPalette.TimelineSelectionOutline)
+        assertEquals(VyroCutPalette.Background, VyroCutPalette.TimelinePlayheadOutline)
+    }
+
+    @Test
     fun semanticCanvasAndMediaColorsStayCentralized() {
         assertEquals(Color.Black, VyroCutPalette.CanvasBlack)
         assertEquals(Color.White, VyroCutPalette.CanvasWhite)
@@ -63,7 +70,6 @@ class VyroCutDesignSystemTest {
         assertEquals(VyroCutPalette.OnDanger, scheme.onError)
         assertEquals(VyroCutPalette.Outline, scheme.outline)
     }
-
 
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
