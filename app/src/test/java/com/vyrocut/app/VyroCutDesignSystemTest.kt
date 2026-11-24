@@ -298,6 +298,22 @@ class VyroCutDesignSystemTest {
         assertEquals(11, VyroCutTypography.LabelSp)
     }
 
+    @Test
+    fun exportPanelMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(8, 2, 6, 8, 4, 10, 12),
+            listOf(
+                VyroCutExportPanelMetrics.SettingsRowGapDp,
+                VyroCutExportPanelMetrics.SizeSummaryGapDp,
+                VyroCutExportPanelMetrics.PresetChipGapDp,
+                VyroCutExportPanelMetrics.ProgressCardSectionGapDp,
+                VyroCutExportPanelMetrics.CompletionCardSectionGapDp,
+                VyroCutExportPanelMetrics.CardCornerDp,
+                VyroCutExportPanelMetrics.CardPaddingDp,
+            ),
+        )
+    }
+
     private fun contrastRatio(first: Color, second: Color): Double {
         val firstLuminance = relativeLuminance(first)
         val secondLuminance = relativeLuminance(second)
