@@ -484,3 +484,10 @@ A control is only considered complete when its operation is connected to the pro
 - Kept the Media3 Transformer lifecycle, decoded validation, integrity checks, cancellation, temporary-file cleanup, and MediaStore publication untouched.
 - Added JVM assertions for each stage's activity label and explanatory copy, including idle, failure, and cancellation states.
 - CI verifies compilation and deterministic presentation rules. Actual export cadence, on-device rendering, and saved MP4 playback still require device validation.
+
+
+## Export panel design-token consolidation — 24 November 2026
+- Added semantic export-panel metrics for settings-row spacing, preset-chip spacing, progress/completion card spacing, and card geometry.
+- Reused the shared typography scale for export labels, values, and helper copy.
+- Replaced only existing styling literals in the export settings, progress, and completion UI. Numeric values are unchanged; export preferences, bitrate calculations, progress stages, Transformer lifecycle, cancellation, validation, and MediaStore publication are untouched.
+- Added a JVM regression assertion for every export-panel metric. CI compilation and unit tests are the available automated checks; compact-window fit and actual export interaction still require Android-device validation.
