@@ -83,3 +83,14 @@ internal fun exportProgressPresentation(
         detailText = "The temporary export was discarded.",
     )
 }
+
+/**
+ * Makes a failed export's existing, fully revalidated action explicit.
+ * The retry uses the same export callback and therefore reruns preflight.
+ */
+internal fun exportActionButtonLabel(stage: ExportUiStage, isExporting: Boolean): String = when {
+    isExporting -> "Exporting…"
+    stage == ExportUiStage.FAILED -> "Retry export"
+    else -> "Export MP4"
+}
+

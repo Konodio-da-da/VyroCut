@@ -511,3 +511,10 @@ A control is only considered complete when its operation is connected to the pro
 - The measured-width breakpoint is unchanged: widths below 400 dp stack metadata, while 400 dp and above retain the inline layout. Only the unknown-width fallback changes.
 - Added JVM coverage for zero/negative widths and the default-argument path. Preview sizing, touch targets, tool availability, timeline geometry, playback, project persistence, and export behavior are unchanged.
 - This is a conservative first-measurement/split-window fallback; actual fit still requires physical-device and resized-window validation.
+
+ 
+## Explicit export retry affordance — 24 November 2026
+- The export action now changes to “Retry export” after a failed attempt; active exports retain “Exporting…” and idle, cancelled, or completed states retain “Export MP4”.
+- Retry intentionally reuses the existing export action callback, so every attempt reruns source inspection, export preflight, audio validation, storage checks, Media3 composition preparation, output verification, and MediaStore publication. No failed temporary output or stale Transformer session is reused.
+- Added pure JVM coverage for failed, active, idle, cancelled, and completed action labels. Export lifecycle, failure classification, cancellation, and publication behavior are unchanged.
+- GitHub Actions verifies compilation and pure presentation logic; actual retry after repairing a source/permission/storage issue still requires device validation.

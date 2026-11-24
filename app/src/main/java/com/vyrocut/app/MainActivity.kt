@@ -3779,7 +3779,7 @@ private fun VyroCutApp() {
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk)
                     ) {
-                        Text(if (isExporting) "Exporting…" else "Export MP4", fontWeight = FontWeight.Bold)
+                        Text(exportActionButtonLabel(exportUiStage, isExporting), fontWeight = FontWeight.Bold)
                     }
                     if (isExporting) {
                         OutlinedButton(onClick = {

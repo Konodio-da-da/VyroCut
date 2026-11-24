@@ -111,4 +111,19 @@ class ExportProgressRulesTest {
             )
         }
     }
+
+    @Test
+    fun exportActionLabelOffersRetryOnlyAfterFailure() {
+        assertEquals("Export MP4", exportActionButtonLabel(ExportUiStage.IDLE, isExporting = false))
+        assertEquals("Retry export", exportActionButtonLabel(ExportUiStage.FAILED, isExporting = false))
+        assertEquals("Export MP4", exportActionButtonLabel(ExportUiStage.CANCELLED, isExporting = false))
+        assertEquals("Export MP4", exportActionButtonLabel(ExportUiStage.COMPLETE, isExporting = false))
+    }
+
+    @Test
+    fun activeExportLabelTakesPrecedenceOverTerminalStage() {
+        ExportUiStage.values().forEach { stage ->
+            assertEquals("Exporting…", exportActionButtonLabel(stage, isExporting = true))
+        }
+    }
 }
