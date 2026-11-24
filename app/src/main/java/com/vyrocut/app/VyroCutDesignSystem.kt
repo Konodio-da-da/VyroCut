@@ -100,6 +100,10 @@ internal object VyroCutControlMetrics {
     const val ToolIconSizeDp = 20
     const val ToolIndicatorWidthDp = 18
     const val ToolIndicatorHeightDp = 2
+    const val ToolDockHorizontalPaddingDp = 7
+    const val ToolDockVerticalPaddingDp = 7
+    const val ToolItemHorizontalPaddingDp = 7
+    const val ToolIndicatorCornerDp = 2
 }
 
 
