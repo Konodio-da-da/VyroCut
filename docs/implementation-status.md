@@ -469,3 +469,10 @@ A control is only considered complete when its operation is connected to the pro
 - Moved the existing IME bottom inset to the constraints container. The measured editor height therefore reflects the remaining viewport when the software keyboard is visible, while the scrollable editor fills that reduced viewport and retains access to lower controls.
 - Added pure JVM boundary coverage for 519/520 dp and 599/600 dp transitions. Preview height and spacing rules are unchanged; only their input now represents the available editor window.
 - This is a source-level layout improvement. Actual split-screen sizing, keyboard inset animation, touch reachability, and visual fit still require physical-device validation. Media3 playback, project timing, timeline data, persistence, and export code are untouched.
+
+## Stage-aware export progress — 24 November 2026
+- Android build run #637 passed on the preceding head `92f78cf00e72eb45a3831f7c22ebf47e86792ece`, including `assembleDebug`, `testDebugUnitTest`, and debug APK upload.
+- Corrected the export progress presentation so Media3's render callback can never display 100% while the output is still being verified or copied into MediaStore. Rendering is capped visually at 99%; the UI switches to an indeterminate indicator during preparation and verification/publication.
+- The completion stage alone may display 100%. The existing Transformer listener, decoded MP4 verification, fingerprint/copy integrity checks, cancellation, temporary-file cleanup, and MediaStore publication operations are unchanged.
+- Added pure JVM tests for preparing/verifying indeterminate states, missing rendering progress, the 99% render cap, completed-only 100%, and inactive terminal states.
+- Android CI verifies compilation and pure JVM rules. Actual export progress cadence, encoder completion timing, saved-file playback, and MediaStore behavior still require physical-device validation.
