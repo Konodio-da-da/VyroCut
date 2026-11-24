@@ -106,6 +106,15 @@ class VyroCutDesignSystemTest {
         assertTrue(VyroCutControlMetrics.ToolIconSizeDp > 0)
         assertTrue(VyroCutControlMetrics.ToolIndicatorWidthDp > 0)
         assertTrue(VyroCutControlMetrics.ToolIndicatorHeightDp > 0)
+        assertEquals(
+            listOf(7, 7, 7, 2),
+            listOf(
+                VyroCutControlMetrics.ToolDockHorizontalPaddingDp,
+                VyroCutControlMetrics.ToolDockVerticalPaddingDp,
+                VyroCutControlMetrics.ToolItemHorizontalPaddingDp,
+                VyroCutControlMetrics.ToolIndicatorCornerDp,
+            ),
+        )
     }
 
     @Test
