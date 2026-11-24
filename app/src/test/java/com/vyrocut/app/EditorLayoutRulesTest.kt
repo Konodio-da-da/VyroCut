@@ -72,6 +72,26 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun availableWindowHeightUsesExactTightAndCompactBoundaries() {
+        val justBelowTight = editorLayoutMetrics(519)
+        val atTightBoundary = editorLayoutMetrics(520)
+        val justBelowCompact = editorLayoutMetrics(599)
+        val atCompactBoundary = editorLayoutMetrics(600)
+
+        assertEquals(103, justBelowTight.previewHeightDp)
+        assertEquals(TIGHT_EDITOR_SECTION_SPACING_DP, justBelowTight.sectionSpacingDp)
+
+        assertEquals(104, atTightBoundary.previewHeightDp)
+        assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, atTightBoundary.sectionSpacingDp)
+
+        assertEquals(119, justBelowCompact.previewHeightDp)
+        assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, justBelowCompact.sectionSpacingDp)
+
+        assertEquals(120, atCompactBoundary.previewHeightDp)
+        assertEquals(DEFAULT_EDITOR_SECTION_SPACING_DP, atCompactBoundary.sectionSpacingDp)
+    }
+
+    @Test
     fun invalidWindowHeightUsesSafeFallback() {
         val expected = editorLayoutMetrics(EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP)
 

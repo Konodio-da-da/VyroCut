@@ -54,7 +54,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -99,6 +98,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private val StudioBackground = VyroCutPalette.Background
 private val StudioPanel = VyroCutPalette.Surface
@@ -223,11 +223,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun VyroCutApp() {
     val context = LocalContext.current
-    val windowConfiguration = LocalConfiguration.current
-    val editorMetrics = editorLayoutMetrics(
-        windowHeightDp = windowConfiguration.screenHeightDp,
-        windowWidthDp = windowConfiguration.screenWidthDp,
-    )
     val exportScope = rememberCoroutineScope()
     val previewScope = rememberCoroutineScope()
     val recoveryDirectory = remember { File(context.filesDir, "project-recovery") }
@@ -1980,10 +1975,15 @@ private fun VyroCutApp() {
                     }
                 )
             } else {
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxSize().imePadding(),
+                ) {
+                    val editorMetrics = editorLayoutMetrics(
+                        windowHeightDp = maxHeight.value.roundToInt(),
+                        windowWidthDp = maxWidth.value.roundToInt(),
+                    )
             Column(
                 Modifier.fillMaxSize()
-                    // Keep the bottom of the scrollable editor reachable while text fields use the IME.
-                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 10.dp, vertical = editorMetrics.contentPaddingVerticalDp.dp),
                 verticalArrangement = Arrangement.spacedBy(editorMetrics.sectionSpacingDp.dp)
@@ -4124,6 +4124,7 @@ private fun VyroCutApp() {
                     )
                 }
             }
+                }
             }
         }
     }
