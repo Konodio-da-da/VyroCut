@@ -40,7 +40,7 @@ internal object VyroCutPalette {
     val CanvasDark = Color(0xFF202322)
 
     val TextPrimary = Color(0xFFE5EDEA)
-    val TextMuted = Color(0xFF9BAAA5)
+    val TextMuted = Color(0xFFA0B0A9)
     val TextSubtle = Color(0xFF71827B)
     val Danger = Color(0xFFFF8A80)
     val OnDanger = Color.Black
