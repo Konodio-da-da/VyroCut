@@ -3645,7 +3645,7 @@ private fun VyroCutApp() {
                                                         return
                                                     }
                                                     exportUiStage = ExportUiStage.VERIFYING
-                                                    exportProgressPercent = 100
+                                                    exportProgressPercent = null
                                                     exportMessage = "Verifying MP4 and saved copy…"
                                                     exportScope.launch exportPublishing@ {
                                                         val publishResult = runCatching {
@@ -3816,6 +3816,10 @@ private fun VyroCutApp() {
                             .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        val progressPresentation = exportProgressPresentation(
+                            stage = exportUiStage,
+                            reportedPercent = exportProgressPercent,
+                        )
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 exportUiStage.label,
@@ -3825,18 +3829,17 @@ private fun VyroCutApp() {
                             )
                             Spacer(Modifier.weight(1f))
                             Text(
-                                exportProgressPercent?.let { "$it%" } ?: "Working…",
+                                progressPresentation.percent?.let { "$it%" } ?: "Working…",
                                 color = StudioAccent,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
-                        val progress = exportProgressPercent
-                        if (progress == null) {
+                        if (progressPresentation.isIndeterminate) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         } else {
                             LinearProgressIndicator(
-                                progress = progress / 100f,
+                                progress = (progressPresentation.percent ?: 0) / 100f,
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
