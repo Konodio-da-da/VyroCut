@@ -54,7 +54,10 @@ internal fun VyroCutToolDock(
     Row(
         Modifier.background(VyroCutPalette.SurfaceToolbar, RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp))
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 7.dp, vertical = 7.dp),
+            .padding(
+                horizontal = VyroCutControlMetrics.ToolDockHorizontalPaddingDp.dp,
+                vertical = VyroCutControlMetrics.ToolDockVerticalPaddingDp.dp,
+            ),
         horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.XSmallDp.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -66,7 +69,10 @@ internal fun VyroCutToolDock(
                         if (selected) VyroCutPalette.SurfaceSelected else Color.Transparent,
                         RoundedCornerShape(VyroCutShapes.ToolItemCornerDp.dp)
                     )
-                    .padding(horizontal = 7.dp, vertical = VyroCutSpacing.XSmallDp.dp),
+                    .padding(
+                        horizontal = VyroCutControlMetrics.ToolItemHorizontalPaddingDp.dp,
+                        vertical = VyroCutSpacing.XSmallDp.dp,
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TextButton(
@@ -94,7 +100,7 @@ internal fun VyroCutToolDock(
                 Spacer(Modifier.height(VyroCutSpacing.XXSmallDp.dp))
                 Spacer(
                     Modifier.size(width = VyroCutControlMetrics.ToolIndicatorWidthDp.dp, height = VyroCutControlMetrics.ToolIndicatorHeightDp.dp)
-                        .background(if (selected) VyroCutPalette.AccentSoft else Color.Transparent, RoundedCornerShape(2.dp))
+                        .background(if (selected) VyroCutPalette.AccentSoft else Color.Transparent, RoundedCornerShape(VyroCutControlMetrics.ToolIndicatorCornerDp.dp))
                 )
             }
         }
