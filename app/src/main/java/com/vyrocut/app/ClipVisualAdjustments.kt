@@ -36,6 +36,7 @@ internal data class ClipVisualAdjustments(
 
 internal enum class ClipCreativeEffectCategory(val label: String) {
     COLOR("COLOR"),
+    CINEMATIC("CINEMATIC"),
     MONOCHROME("NEUTRAL & MONOCHROME"),
     VINTAGE("VINTAGE"),
 }
@@ -48,6 +49,7 @@ internal enum class ClipCreativeEffectPreset(
     ORIGINAL("original", "Original", ClipCreativeEffectCategory.MONOCHROME),
     WARM("warm", "Warm", ClipCreativeEffectCategory.COLOR),
     COOL("cool", "Cool", ClipCreativeEffectCategory.COLOR),
+    CINEMATIC("cinematic", "Cinematic", ClipCreativeEffectCategory.CINEMATIC),
     NEGATIVE("negative", "Negative", ClipCreativeEffectCategory.MONOCHROME),
     GRAYSCALE("grayscale", "Grayscale", ClipCreativeEffectCategory.MONOCHROME),
     SEPIA("sepia", "Sepia", ClipCreativeEffectCategory.VINTAGE),
@@ -105,6 +107,7 @@ internal enum class ClipVisualEffectType {
     SATURATION,
     WARM_TINT,
     COOL_TINT,
+    CINEMATIC,
     INVERTED,
     GRAYSCALE,
     SEPIA,
@@ -142,6 +145,7 @@ internal fun createClipVisualEffectSpecs(
             ClipCreativeEffectPreset.ORIGINAL -> Unit
             ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, intensity))
             ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, intensity))
+            ClipCreativeEffectPreset.CINEMATIC -> add(ClipVisualEffectSpec(ClipVisualEffectType.CINEMATIC, intensity))
             ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
             ClipCreativeEffectPreset.GRAYSCALE -> add(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, intensity))
             ClipCreativeEffectPreset.SEPIA -> add(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, intensity))
@@ -188,6 +192,17 @@ private val FILM_FADE_MATRIX = floatArrayOf(
 
 internal fun filmFadeRgbMatrix(): FloatArray = FILM_FADE_MATRIX.copyOf()
 
+// A restrained cool-matte grade: slightly softens RGB channel gain and lifts
+// the blue channel more than red to keep the shadow bias cool without clipping alpha.
+private val CINEMATIC_MATRIX = floatArrayOf(
+    0.94f, 0.01f, 0.02f, 0f,
+    0f, 0.96f, 0.02f, 0f,
+    -0.01f, 0.02f, 0.94f, 0f,
+    0.015f, 0.025f, 0.045f, 1f,
+)
+
+internal fun cinematicRgbMatrix(): FloatArray = CINEMATIC_MATRIX.copyOf()
+
 @OptIn(UnstableApi::class)
 private object SepiaRgbMatrix : RgbMatrix {
     override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = SEPIA_MATRIX
@@ -196,6 +211,11 @@ private object SepiaRgbMatrix : RgbMatrix {
 @OptIn(UnstableApi::class)
 private object FilmFadeRgbMatrix : RgbMatrix {
     override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = FILM_FADE_MATRIX
+}
+
+@OptIn(UnstableApi::class)
+private object CinematicRgbMatrix : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = CINEMATIC_MATRIX
 }
 
 /**
@@ -238,6 +258,8 @@ internal fun createClipVisualEffects(
             if (spec.amount >= 1f) SepiaRgbMatrix else IntensityRgbMatrix(SepiaRgbMatrix, spec.amount)
         ClipVisualEffectType.FILM_FADE ->
             if (spec.amount >= 1f) FilmFadeRgbMatrix else IntensityRgbMatrix(FilmFadeRgbMatrix, spec.amount)
+        ClipVisualEffectType.CINEMATIC ->
+            if (spec.amount >= 1f) CinematicRgbMatrix else IntensityRgbMatrix(CinematicRgbMatrix, spec.amount)
     }
 }
 

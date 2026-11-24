@@ -429,3 +429,11 @@ A control is only considered complete when its operation is connected to the pro
 - Reused the existing accent and per-lane colors. Audio header badges use the same Music/SFX/Voiceover lane colors already used by their clips, so the label reinforces the track's existing color identity.
 - Badge styling uses horizontal-only padding and retains the existing 11 sp label / 10 sp detail scale; it does not add vertical padding or alter timeline row heights, clip geometry, or timeline-to-time mapping.
 - Added a pure JVM regression test for the compact badge geometry. Android CI must verify compilation and unit tests; visual contrast and readability still require physical-device validation.
+
+
+## Cinematic creative effect — 24 November 2026
+- Added a persisted `cinematic` creative-effect preset in its own Effects category. The preset uses a real Media3 `RgbMatrix` rather than a UI-only selection.
+- The matrix applies a restrained cool-matte grade with slightly reduced channel gain and a stronger blue lift; its intensity blends against the identity matrix, and alpha remains unchanged.
+- Preview and Transformer export both use the shared `createClipVisualEffects` factory, so the same ordered effect specification is used in both paths. Existing clip adjustments remain composed before the creative look.
+- The stable preset ID is stored through the existing visual-adjustment JSON field; no project schema or migration change is required. Existing preset IDs and older project defaults are unchanged.
+- Added pure JVM coverage for ID decoding, category ordering, full/partial/zero intensity, matrix coefficients, alpha preservation, and defensive matrix copies. CI verifies compilation and JVM logic only; visual grading and playback still require device/export validation.

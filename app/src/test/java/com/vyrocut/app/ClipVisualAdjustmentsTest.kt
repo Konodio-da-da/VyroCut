@@ -102,6 +102,7 @@ class ClipVisualAdjustmentsTest {
         assertEquals(ClipCreativeEffectPreset.ORIGINAL, clipCreativeEffectPresetFromId("original"))
         assertEquals(ClipCreativeEffectPreset.WARM, clipCreativeEffectPresetFromId("warm"))
         assertEquals(ClipCreativeEffectPreset.COOL, clipCreativeEffectPresetFromId("cool"))
+        assertEquals(ClipCreativeEffectPreset.CINEMATIC, clipCreativeEffectPresetFromId("cinematic"))
         assertEquals(ClipCreativeEffectPreset.NEGATIVE, clipCreativeEffectPresetFromId("negative"))
         assertEquals(ClipCreativeEffectPreset.GRAYSCALE, clipCreativeEffectPresetFromId("grayscale"))
         assertEquals(ClipCreativeEffectPreset.SEPIA, clipCreativeEffectPresetFromId("sepia"))
@@ -122,6 +123,12 @@ class ClipVisualAdjustmentsTest {
             listOf(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, 1f)),
             createClipVisualEffectSpecs(
                 ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.COOL),
+            ),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.CINEMATIC, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.CINEMATIC),
             ),
         )
         assertEquals(
@@ -188,6 +195,7 @@ class ClipVisualAdjustmentsTest {
         val cases = listOf(
             ClipCreativeEffectPreset.WARM to ClipVisualEffectType.WARM_TINT,
             ClipCreativeEffectPreset.COOL to ClipVisualEffectType.COOL_TINT,
+            ClipCreativeEffectPreset.CINEMATIC to ClipVisualEffectType.CINEMATIC,
             ClipCreativeEffectPreset.NEGATIVE to ClipVisualEffectType.INVERTED,
             ClipCreativeEffectPreset.GRAYSCALE to ClipVisualEffectType.GRAYSCALE,
             ClipCreativeEffectPreset.SEPIA to ClipVisualEffectType.SEPIA,
@@ -222,6 +230,10 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.COLOR),
         )
         assertEquals(
+            listOf(ClipCreativeEffectPreset.CINEMATIC),
+            clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.CINEMATIC),
+        )
+        assertEquals(
             listOf(
                 ClipCreativeEffectPreset.ORIGINAL,
                 ClipCreativeEffectPreset.NEGATIVE,
@@ -234,7 +246,7 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.VINTAGE),
         )
 
-        // Browser order is category-first (Color, Monochrome, Vintage), not
+        // Browser order is category-first (Color, Cinematic, Monochrome, Vintage), not
         // enum declaration order. Verify that every preset appears exactly once
         // while keeping the category ordering asserted above.
         val browserOrder = ClipCreativeEffectCategory.values()
@@ -243,6 +255,7 @@ class ClipVisualAdjustmentsTest {
             listOf(
                 ClipCreativeEffectPreset.WARM,
                 ClipCreativeEffectPreset.COOL,
+                ClipCreativeEffectPreset.CINEMATIC,
                 ClipCreativeEffectPreset.ORIGINAL,
                 ClipCreativeEffectPreset.NEGATIVE,
                 ClipCreativeEffectPreset.GRAYSCALE,
@@ -290,6 +303,29 @@ class ClipVisualAdjustmentsTest {
         assertEquals(true, matrix[12] > 0f && matrix[13] > 0f && matrix[14] > 0f)
         matrix[12] = 99f
         assertEquals(0.055f, filmFadeRgbMatrix()[12], 0.0001f)
+    }
+
+    @Test
+    fun cinematicMatrixUsesCoolMatteGradeAndPreservesAlpha() {
+        val matrix = cinematicRgbMatrix()
+        assertArrayEquals(
+            floatArrayOf(
+                0.94f, 0.01f, 0.02f, 0f,
+                0f, 0.96f, 0.02f, 0f,
+                -0.01f, 0.02f, 0.94f, 0f,
+                0.015f, 0.025f, 0.045f, 1f,
+            ),
+            matrix,
+            0.0001f,
+        )
+        assertEquals(1f, matrix[15], 0.0001f)
+        assertEquals(0f, matrix[3], 0.0001f)
+        assertEquals(0f, matrix[7], 0.0001f)
+        assertEquals(0f, matrix[11], 0.0001f)
+        assertEquals(true, matrix[0] < 1f && matrix[5] < 1f && matrix[10] < 1f)
+        assertEquals(true, matrix[14] > matrix[12])
+        matrix[14] = 99f
+        assertEquals(0.045f, cinematicRgbMatrix()[14], 0.0001f)
     }
 
     @Test
