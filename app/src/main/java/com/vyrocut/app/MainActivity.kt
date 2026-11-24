@@ -1982,6 +1982,8 @@ private fun VyroCutApp() {
             } else {
             Column(
                 Modifier.fillMaxSize()
+                    // Keep the bottom of the scrollable editor reachable while text fields use the IME.
+                    .imePadding()
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 10.dp, vertical = editorMetrics.contentPaddingVerticalDp.dp),
                 verticalArrangement = Arrangement.spacedBy(editorMetrics.sectionSpacingDp.dp)
