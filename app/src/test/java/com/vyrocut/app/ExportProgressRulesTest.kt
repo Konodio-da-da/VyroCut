@@ -126,4 +126,37 @@ class ExportProgressRulesTest {
             assertEquals("Exporting…", exportActionButtonLabel(stage, isExporting = true))
         }
     }
+
+    @Test
+    fun completionSummarySeparatesVerifiedMeasurementsFromSelectedSettings() {
+        val verifiedOutput = "1920 × 1080 • 00:10 • 1.0 MiB actual • H.264 + AAC"
+        val settings = listOf("1080p", "30 fps", "12 Mbps video", "256 kbps audio", "MP4")
+
+        assertEquals(
+            ExportCompletionSummary(
+                verifiedOutput = verifiedOutput,
+                exportSettings = settings,
+            ),
+            buildExportCompletionSummary(verifiedOutput, settings),
+        )
+    }
+
+    @Test
+    fun completionSummaryTrimsEmptyFieldsAndOmitsMissingSections() {
+        assertEquals(
+            ExportCompletionSummary(
+                verifiedOutput = "1920 × 1080 • 00:10 • 1.0 MiB actual",
+                exportSettings = listOf("MP4"),
+            ),
+            buildExportCompletionSummary(
+                verifiedOutput = "  1920 × 1080 • 00:10 • 1.0 MiB actual  ",
+                exportSettings = listOf("", " MP4 ", "  "),
+            ),
+        )
+        assertEquals(null, buildExportCompletionSummary(null, listOf(" ", "")))
+        assertEquals(
+            ExportCompletionSummary(verifiedOutput = "verified", exportSettings = emptyList()),
+            buildExportCompletionSummary("verified", emptyList()),
+        )
+    }
 }

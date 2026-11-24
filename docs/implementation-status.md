@@ -518,3 +518,9 @@ A control is only considered complete when its operation is connected to the pro
 - Retry intentionally reuses the existing export action callback, so every attempt reruns source inspection, export preflight, audio validation, storage checks, Media3 composition preparation, output verification, and MediaStore publication. No failed temporary output or stale Transformer session is reused.
 - Added pure JVM coverage for failed, active, idle, cancelled, and completed action labels. Export lifecycle, failure classification, cancellation, and publication behavior are unchanged.
 - GitHub Actions verifies compilation and pure presentation logic; actual retry after repairing a source/permission/storage issue still requires device validation.
+
+## Structured export completion summary — 24 November 2026
+- The completion card now separates metadata measured from the verified MP4 (dimensions, duration, actual file size, and available codecs) from the settings selected before rendering (resolution preset, frame rate, video/audio bitrate, and MP4 format).
+- Missing measured output metadata is omitted rather than replaced with an estimate; blank settings are filtered by a pure Kotlin presentation helper.
+- Added JVM tests for section separation, trimming, empty sections, and output-only summaries. Export verification, file fingerprinting, sharing URI, and MediaStore publication are unchanged.
+- GitHub Actions validates compilation and deterministic summary presentation; actual export/share behavior still requires physical-device validation.

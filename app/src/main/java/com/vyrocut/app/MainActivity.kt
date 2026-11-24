@@ -417,7 +417,7 @@ private fun VyroCutApp() {
     var exportSessionId by remember { mutableStateOf<String?>(null) }
     var exportUiStage by remember { mutableStateOf(ExportUiStage.IDLE) }
     var exportProgressPercent by remember { mutableStateOf<Int?>(null) }
-    var completedExportSummary by remember { mutableStateOf<String?>(null) }
+    var completedExportSummary by remember { mutableStateOf<ExportCompletionSummary?>(null) }
     var relinkTargetClipId by remember { mutableStateOf<String?>(null) }
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
@@ -3687,14 +3687,16 @@ private fun VyroCutApp() {
                                                                 verifiedMedia.trackSummary,
                                                                 verifiedMedia.fingerprint.byteCount,
                                                             )
-                                                            completedExportSummary = listOfNotNull(
-                                                                measuredOutputSummary,
-                                                                exportResolution.label,
-                                                                exportFrameRate.summaryLabel,
-                                                                exportVideoBitrate.summaryLabel,
-                                                                exportAudioBitrate.summaryLabel,
-                                                                "MP4",
-                                                            ).joinToString(" • ")
+                                                            completedExportSummary = buildExportCompletionSummary(
+                                                                verifiedOutput = measuredOutputSummary,
+                                                                exportSettings = listOfNotNull(
+                                                                    exportResolution.label,
+                                                                    exportFrameRate.summaryLabel,
+                                                                    exportVideoBitrate.summaryLabel,
+                                                                    exportAudioBitrate.summaryLabel,
+                                                                    "MP4",
+                                                                ),
+                                                            )
                                                             exportUiStage = ExportUiStage.COMPLETE
                                                             exportMessage = "Export complete • Video frames and saved MP4 copy verified; " +
                                                                 (if (expectedBackgroundForVerification != null) {
@@ -3864,7 +3866,34 @@ private fun VyroCutApp() {
                             fontSize = VyroCutTypography.CaptionSp.sp,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(summary, color = StudioText, fontSize = VyroCutTypography.BodySp.sp, fontWeight = FontWeight.SemiBold)
+                        summary.verifiedOutput?.let { output ->
+                            Text(
+                                "VERIFIED OUTPUT",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                output,
+                                color = StudioText,
+                                fontSize = VyroCutTypography.BodySp.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                        if (summary.exportSettings.isNotEmpty()) {
+                            Text(
+                                "EXPORT SETTINGS",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                summary.exportSettings.joinToString(" • "),
+                                color = StudioText,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
                         Text(
                             "Verified and saved to Movies/VyroCut. Use Share to send the MP4.",
                             color = StudioMuted,

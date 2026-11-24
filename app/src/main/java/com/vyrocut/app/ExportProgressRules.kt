@@ -94,3 +94,25 @@ internal fun exportActionButtonLabel(stage: ExportUiStage, isExporting: Boolean)
     else -> "Export MP4"
 }
 
+/**
+ * Keeps facts measured from the published MP4 separate from the settings
+ * selected before rendering, so the completion card cannot imply they are
+ * the same kind of metadata.
+ */
+internal data class ExportCompletionSummary(
+    val verifiedOutput: String?,
+    val exportSettings: List<String>,
+)
+
+internal fun buildExportCompletionSummary(
+    verifiedOutput: String?,
+    exportSettings: List<String>,
+): ExportCompletionSummary? {
+    val cleanOutput = verifiedOutput?.trim()?.takeIf { it.isNotEmpty() }
+    val cleanSettings = exportSettings.map { it.trim() }.filter { it.isNotEmpty() }
+    if (cleanOutput == null && cleanSettings.isEmpty()) return null
+    return ExportCompletionSummary(
+        verifiedOutput = cleanOutput,
+        exportSettings = cleanSettings,
+    )
+}
