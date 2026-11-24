@@ -23,7 +23,6 @@ class ExportProgressRulesTest {
         assertEquals(64, nextExportProgressPercent(64, 64))
         assertEquals(72, nextExportProgressPercent(64, 72))
     }
-}
 
     @Test
     fun preparationAndVerificationStayIndeterminateEvenIfAStalePercentExists() {
