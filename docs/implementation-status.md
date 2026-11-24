@@ -415,3 +415,10 @@ A control is only considered complete when its operation is connected to the pro
 - Audio clips now receive the same accent selection outline as video, text, sticker, and source clips when their stable ID matches the selected audio clip. The selected outline is visible in the corresponding Music, SFX, or Voiceover lane.
 - Selection is presentation-only: tapping an audio clip still selects the same clip, opens the Audio tool, and seeks to its existing timeline start. Audio placement, source/timeline timing, waveform generation/cache, project persistence, preview synchronization, and export composition are unchanged.
 - Added a pure JVM test for matching, non-matching, missing, and blank audio selection IDs. Android CI must verify compilation and the regression test; actual outline rendering and touch behaviour still require device validation.
+
+
+## Timeline ruler hierarchy and edge-safe timecodes — 24 November 2026
+- Distinguished major and minor ruler marks with separate widths, heights, and contrast while retaining the existing absolute project-time tick positions and major-label collision filtering.
+- Ruler timecodes now use platform monospace digits and a compact surface badge. Their width estimate follows the system font scale, and labels shift inward at the content edges rather than being centered partly outside the scrollable timeline.
+- Added pure JVM coverage for tick hierarchy, font-scaled label width, left/center/right label placement, and malformed geometry fallback.
+- No ruler tick timestamps, time-to-pixel mapping, playhead geometry, seeking, horizontal scrolling, clip positions, shared project clock, or VFR indexing were changed. CI verifies compilation and pure rules only; visual appearance and touch behaviour still require Android-device validation.

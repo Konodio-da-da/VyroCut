@@ -24,6 +24,37 @@ internal const val TIMELINE_PLAYHEAD_CAP_WIDTH_DP = 14
 internal const val TIMELINE_PLAYHEAD_CAP_HEIGHT_DP = 9
 internal const val TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP = 2
 
+internal const val TIMELINE_RULER_MAJOR_TICK_WIDTH_DP = 2
+internal const val TIMELINE_RULER_MINOR_TICK_WIDTH_DP = 1
+internal const val TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP = 10
+internal const val TIMELINE_RULER_MINOR_TICK_HEIGHT_DP = 5
+internal const val TIMELINE_RULER_LABEL_HORIZONTAL_PADDING_DP = 3
+internal const val TIMELINE_RULER_LABEL_VERTICAL_PADDING_DP = 1
+internal const val TIMELINE_RULER_LABEL_VERTICAL_OFFSET_DP = 11
+internal const val TIMELINE_RULER_LABEL_CORNER_RADIUS_DP = 3
+internal const val TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP = 2
+
+internal data class TimelineRulerTickVisualMetrics(
+    val widthDp: Int,
+    val heightDp: Int,
+)
+
+internal fun timelineRulerTickVisualMetrics(isMajor: Boolean) = TimelineRulerTickVisualMetrics(
+    widthDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_WIDTH_DP else TIMELINE_RULER_MINOR_TICK_WIDTH_DP,
+    heightDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP else TIMELINE_RULER_MINOR_TICK_HEIGHT_DP,
+)
+
+internal enum class TimelineRulerLabelAlignment {
+    START,
+    CENTER,
+    END,
+}
+
+internal data class TimelineRulerLabelPlacement(
+    val offsetDp: Float,
+    val alignment: TimelineRulerLabelAlignment,
+)
+
 internal data class TimelinePlayheadVisualMetrics(
     val lineWidthDp: Int,
     val outlineWidthDp: Int,
@@ -101,6 +132,50 @@ internal fun timelineRulerLabelMinimumSpacingDp(
  * geometry to preserve enough vertical room. The scale is bounded to avoid an
  * accidental malformed configuration producing unbounded timeline height.
  */
+/**
+ * Includes the label's horizontal pill padding while leaving a small gap
+ * between adjacent labels at the minimum spacing selected for the ruler.
+ */
+internal fun timelineRulerLabelWidthDp(
+    maxLabelCharacters: Int,
+    fontScale: Float,
+): Int = (
+    timelineRulerLabelMinimumSpacingDp(maxLabelCharacters, fontScale) -
+        TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP
+    ).coerceAtLeast(1)
+
+/**
+ * Centers a ruler label on its tick unless that would push the label outside
+ * the scroll-content bounds. Edge labels are aligned inward instead.
+ */
+internal fun timelineRulerLabelPlacement(
+    tickOffsetDp: Float,
+    labelWidthDp: Int,
+    contentWidthDp: Float,
+): TimelineRulerLabelPlacement {
+    val safeWidth = labelWidthDp.coerceAtLeast(1).toFloat()
+    val safeContentWidth = contentWidthDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: safeWidth
+    if (safeContentWidth <= safeWidth) {
+        return TimelineRulerLabelPlacement(0f, TimelineRulerLabelAlignment.START)
+    }
+
+    val safeTickOffset = tickOffsetDp.takeIf { it.isFinite() } ?: 0f
+    val centeredLeft = safeTickOffset - safeWidth / 2f
+    return when {
+        centeredLeft < 0f ->
+            TimelineRulerLabelPlacement(0f, TimelineRulerLabelAlignment.START)
+        centeredLeft + safeWidth > safeContentWidth ->
+            TimelineRulerLabelPlacement(
+                offsetDp = safeContentWidth - safeWidth,
+                alignment = TimelineRulerLabelAlignment.END,
+            )
+        else ->
+            TimelineRulerLabelPlacement(centeredLeft, TimelineRulerLabelAlignment.CENTER)
+    }
+}
+
 internal data class TimelineReadabilityMetrics(
     val rulerHeightDp: Int,
     val videoTrackHeightDp: Int,

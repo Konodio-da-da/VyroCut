@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -5026,6 +5027,10 @@ private fun TimelineEditorStrip(
         maxLabelCharacters = maxRulerLabelCharacters,
         fontScale = density.fontScale,
     )
+    val rulerLabelWidthDp = timelineRulerLabelWidthDp(
+        maxLabelCharacters = maxRulerLabelCharacters,
+        fontScale = density.fontScale,
+    )
     val visibleRulerLabelTimes = selectTimelineRulerLabelTicks(
         ticks = timelineRulerTicks,
         minimumSpacing = rulerLabelMinimumSpacingDp.toFloat(),
@@ -5114,18 +5119,55 @@ private fun TimelineEditorStrip(
         // fractional clip lengths do not reset or drift the time labels.
         Box(Modifier.width(totalWidth).height(timelineMetrics.rulerHeightDp.dp)) {
             timelineRulerTicks.forEach { tick ->
-                Column(
-                    Modifier.offset(x = tick.offsetPx.dp).fillMaxHeight(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box(
-                        Modifier.width(1.dp)
-                            .height(if (tick.isMajor) 10.dp else 6.dp)
-                            .background(StudioMuted.copy(alpha = 0.65f)),
+                val tickMetrics = timelineRulerTickVisualMetrics(tick.isMajor)
+                val tickOffsetDp = tick.offsetPx.takeIf { it.isFinite() } ?: 0f
+                Box(
+                    Modifier.offset(x = (tickOffsetDp - tickMetrics.widthDp / 2f).dp)
+                        .width(tickMetrics.widthDp.dp)
+                        .height(tickMetrics.heightDp.dp)
+                        .background(
+                            color = if (tick.isMajor) {
+                                VyroCutPalette.AccentSoft.copy(alpha = 0.9f)
+                            } else {
+                                StudioMuted.copy(alpha = 0.45f)
+                            },
+                            shape = RoundedCornerShape(1.dp),
+                        ),
+                )
+                if (tick.timeMs in visibleRulerLabelTimes) {
+                    val labelPlacement = timelineRulerLabelPlacement(
+                        tickOffsetDp = tickOffsetDp,
+                        labelWidthDp = rulerLabelWidthDp,
+                        contentWidthDp = totalWidthPx,
                     )
-                    if (tick.timeMs in visibleRulerLabelTimes) {
-                        Text(formatTime(tick.timeMs), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
-                    }
+                    Text(
+                        text = formatTime(tick.timeMs),
+                        modifier = Modifier.offset(
+                            x = labelPlacement.offsetDp.dp,
+                            y = TIMELINE_RULER_LABEL_VERTICAL_OFFSET_DP.dp,
+                        )
+                            .width(rulerLabelWidthDp.dp)
+                            .background(
+                                VyroCutPalette.SurfaceBadge,
+                                RoundedCornerShape(TIMELINE_RULER_LABEL_CORNER_RADIUS_DP.dp),
+                            )
+                            .padding(
+                                horizontal = TIMELINE_RULER_LABEL_HORIZONTAL_PADDING_DP.dp,
+                                vertical = TIMELINE_RULER_LABEL_VERTICAL_PADDING_DP.dp,
+                            ),
+                        color = VyroCutPalette.TextPrimary,
+                        fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp,
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                        textAlign = when (labelPlacement.alignment) {
+                            TimelineRulerLabelAlignment.START -> androidx.compose.ui.text.style.TextAlign.Start
+                            TimelineRulerLabelAlignment.CENTER -> androidx.compose.ui.text.style.TextAlign.Center
+                            TimelineRulerLabelAlignment.END -> androidx.compose.ui.text.style.TextAlign.End
+                        },
+                    )
                 }
             }
             TimelinePlayheadMarker(markerX, timelineMetrics.rulerHeightDp.dp)

@@ -48,6 +48,51 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun majorAndMinorRulerTicksHaveAVisibleVisualHierarchy() {
+        val major = timelineRulerTickVisualMetrics(isMajor = true)
+        val minor = timelineRulerTickVisualMetrics(isMajor = false)
+
+        assertEquals(2, major.widthDp)
+        assertEquals(10, major.heightDp)
+        assertEquals(1, minor.widthDp)
+        assertEquals(5, minor.heightDp)
+        assertTrue(major.widthDp > minor.widthDp)
+        assertTrue(major.heightDp > minor.heightDp)
+    }
+
+    @Test
+    fun rulerLabelWidthIncludesPillPaddingAndRespectsFontScale() {
+        assertEquals(37, timelineRulerLabelWidthDp(5, 1f))
+        assertEquals(53, timelineRulerLabelWidthDp(5, 1.5f))
+        assertEquals(
+            timelineRulerLabelWidthDp(5, 2f),
+            timelineRulerLabelWidthDp(5, 4f),
+        )
+    }
+
+    @Test
+    fun rulerLabelsStayInsideTimelineContentAtBothEdges() {
+        val first = timelineRulerLabelPlacement(0f, 40, 200f)
+        val middle = timelineRulerLabelPlacement(100f, 40, 200f)
+        val last = timelineRulerLabelPlacement(200f, 40, 200f)
+
+        assertEquals(0f, first.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.START, first.alignment)
+        assertEquals(80f, middle.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.CENTER, middle.alignment)
+        assertEquals(160f, last.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.END, last.alignment)
+    }
+
+    @Test
+    fun rulerLabelPlacementUsesSafeBoundsForMalformedGeometry() {
+        val placement = timelineRulerLabelPlacement(Float.NaN, 0, Float.NaN)
+
+        assertEquals(0f, placement.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.START, placement.alignment)
+    }
+
+    @Test
     fun playheadOutlineAndCapStayCenteredOnTheNeedle() {
         val metrics = timelinePlayheadVisualMetrics()
         val geometry = timelinePlayheadGeometry(48f)
