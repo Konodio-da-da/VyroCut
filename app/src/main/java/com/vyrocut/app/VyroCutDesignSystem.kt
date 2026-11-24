@@ -228,6 +228,21 @@ internal object VyroCutAudioPanelMetrics {
     const val HeaderLetterSpacingSp = 1f
 }
 
+/**
+ * Export settings and progress-card geometry. Values preserve the current
+ * export controls while keeping their repeated spacing and card dimensions
+ * in the shared design system.
+ */
+internal object VyroCutExportPanelMetrics {
+    const val SettingsRowGapDp = 8
+    const val SizeSummaryGapDp = 2
+    const val PresetChipGapDp = 6
+    const val ProgressCardSectionGapDp = 8
+    const val CompletionCardSectionGapDp = 4
+    const val CardCornerDp = 10
+    const val CardPaddingDp = 12
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
