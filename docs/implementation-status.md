@@ -476,3 +476,11 @@ A control is only considered complete when its operation is connected to the pro
 - The completion stage alone may display 100%. The existing Transformer listener, decoded MP4 verification, fingerprint/copy integrity checks, cancellation, temporary-file cleanup, and MediaStore publication operations are unchanged.
 - Added pure JVM tests for preparing/verifying indeterminate states, missing rendering progress, the 99% render cap, completed-only 100%, and inactive terminal states.
 - Android CI verifies compilation and pure JVM rules. Actual export progress cadence, encoder completion timing, saved-file playback, and MediaStore behavior still require physical-device validation.
+
+
+## Stage-specific export progress copy — 24 November 2026
+- Made the export progress card describe the work actually happening in each phase. Preparation now explains source/audio/storage checks, rendering explains on-device rendering and cancellation, and verification explains MP4 validation and Movies publication.
+- Replaced the generic “Working…” fallback with phase-specific “Preparing…”, “Rendering…”, and “Verifying…” labels. The displayed percentage policy is unchanged: rendering remains capped at 99%, and only the completed stage may show 100%.
+- Kept the Media3 Transformer lifecycle, decoded validation, integrity checks, cancellation, temporary-file cleanup, and MediaStore publication untouched.
+- Added JVM assertions for each stage's activity label and explanatory copy, including idle, failure, and cancellation states.
+- CI verifies compilation and deterministic presentation rules. Actual export cadence, on-device rendering, and saved MP4 playback still require device validation.

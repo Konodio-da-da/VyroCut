@@ -27,32 +27,59 @@ internal fun nextExportProgressPercent(current: Int?, reported: Int): Int? {
 internal data class ExportProgressPresentation(
     val percent: Int?,
     val isIndeterminate: Boolean,
+    /** Short phase text shown beside the percentage when progress is indeterminate. */
+    val progressLabel: String,
+    /** Explains the work currently happening without implying a later phase is complete. */
+    val detailText: String,
 )
 
 internal fun exportProgressPresentation(
     stage: ExportUiStage,
     reportedPercent: Int?,
 ): ExportProgressPresentation = when (stage) {
-    ExportUiStage.PREPARING,
+    ExportUiStage.PREPARING -> ExportProgressPresentation(
+        percent = null,
+        isIndeterminate = true,
+        progressLabel = "Preparing…",
+        detailText = "Checking source videos, audio lanes and available storage before rendering.",
+    )
     ExportUiStage.VERIFYING -> ExportProgressPresentation(
         percent = null,
         isIndeterminate = true,
+        progressLabel = "Verifying…",
+        detailText = "Checking the rendered video, audio and saved MP4 copy before it appears in Movies.",
     )
     ExportUiStage.RENDERING -> {
         val visiblePercent = reportedPercent?.coerceIn(0, 99)
         ExportProgressPresentation(
             percent = visiblePercent,
             isIndeterminate = visiblePercent == null,
+            progressLabel = "Rendering…",
+            detailText = "Rendering stays on this device. Cancel discards this temporary export.",
         )
     }
     ExportUiStage.COMPLETE -> ExportProgressPresentation(
         percent = 100,
         isIndeterminate = false,
+        progressLabel = "Complete",
+        detailText = "The MP4 passed verification and was saved to Movies/VyroCut.",
     )
-    ExportUiStage.IDLE,
-    ExportUiStage.FAILED,
+    ExportUiStage.IDLE -> ExportProgressPresentation(
+        percent = null,
+        isIndeterminate = false,
+        progressLabel = "Ready",
+        detailText = "Start an export to render a video on this device.",
+    )
+    ExportUiStage.FAILED -> ExportProgressPresentation(
+        percent = null,
+        isIndeterminate = false,
+        progressLabel = "Failed",
+        detailText = "Review the export error above before retrying.",
+    )
     ExportUiStage.CANCELLED -> ExportProgressPresentation(
         percent = null,
         isIndeterminate = false,
+        progressLabel = "Cancelled",
+        detailText = "The temporary export was discarded.",
     )
 }

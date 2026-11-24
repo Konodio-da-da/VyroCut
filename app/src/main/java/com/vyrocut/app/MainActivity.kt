@@ -3829,7 +3829,7 @@ private fun VyroCutApp() {
                             )
                             Spacer(Modifier.weight(1f))
                             Text(
-                                progressPresentation.percent?.let { "$it%" } ?: "Working…",
+                                progressPresentation.percent?.let { "$it%" } ?: progressPresentation.progressLabel,
                                 color = StudioAccent,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
@@ -3844,11 +3844,7 @@ private fun VyroCutApp() {
                             )
                         }
                         Text(
-                            if (exportUiStage == ExportUiStage.VERIFYING) {
-                                "Checking the rendered video, audio and saved MP4 copy before it appears in Movies."
-                            } else {
-                                "Rendering stays on this device. Cancel discards this temporary export."
-                            },
+                            progressPresentation.detailText,
                             color = StudioMuted,
                             fontSize = 9.sp,
                         )

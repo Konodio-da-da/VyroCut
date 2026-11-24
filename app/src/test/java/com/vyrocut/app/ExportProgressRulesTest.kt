@@ -25,50 +25,88 @@ class ExportProgressRulesTest {
     }
 
     @Test
-    fun preparationAndVerificationStayIndeterminateEvenIfAStalePercentExists() {
+    fun preparationAndVerificationStayIndeterminateWithAccuratePhaseCopy() {
         assertEquals(
-            ExportProgressPresentation(percent = null, isIndeterminate = true),
+            ExportProgressPresentation(
+                percent = null,
+                isIndeterminate = true,
+                progressLabel = "Preparing…",
+                detailText = "Checking source videos, audio lanes and available storage before rendering.",
+            ),
             exportProgressPresentation(ExportUiStage.PREPARING, 84),
         )
         assertEquals(
-            ExportProgressPresentation(percent = null, isIndeterminate = true),
+            ExportProgressPresentation(
+                percent = null,
+                isIndeterminate = true,
+                progressLabel = "Verifying…",
+                detailText = "Checking the rendered video, audio and saved MP4 copy before it appears in Movies.",
+            ),
             exportProgressPresentation(ExportUiStage.VERIFYING, 100),
         )
     }
 
     @Test
     fun renderingUsesAvailableProgressButNeverClaimsCompletion() {
+        val expectedDetail =
+            "Rendering stays on this device. Cancel discards this temporary export."
         assertEquals(
-            ExportProgressPresentation(percent = 64, isIndeterminate = false),
+            ExportProgressPresentation(
+                percent = 64,
+                isIndeterminate = false,
+                progressLabel = "Rendering…",
+                detailText = expectedDetail,
+            ),
             exportProgressPresentation(ExportUiStage.RENDERING, 64),
         )
         assertEquals(
-            ExportProgressPresentation(percent = 99, isIndeterminate = false),
+            ExportProgressPresentation(
+                percent = 99,
+                isIndeterminate = false,
+                progressLabel = "Rendering…",
+                detailText = expectedDetail,
+            ),
             exportProgressPresentation(ExportUiStage.RENDERING, 100),
         )
         assertEquals(
-            ExportProgressPresentation(percent = null, isIndeterminate = true),
+            ExportProgressPresentation(
+                percent = null,
+                isIndeterminate = true,
+                progressLabel = "Rendering…",
+                detailText = expectedDetail,
+            ),
             exportProgressPresentation(ExportUiStage.RENDERING, null),
         )
     }
 
     @Test
-    fun onlyCompletedStageMayDisplayOneHundredPercent() {
+    fun onlyCompletedStageMayDisplayOneHundredPercentAndVerifiedCopy() {
         assertEquals(
-            ExportProgressPresentation(percent = 100, isIndeterminate = false),
+            ExportProgressPresentation(
+                percent = 100,
+                isIndeterminate = false,
+                progressLabel = "Complete",
+                detailText = "The MP4 passed verification and was saved to Movies/VyroCut.",
+            ),
             exportProgressPresentation(ExportUiStage.COMPLETE, null),
         )
     }
 
     @Test
     fun idleFailureAndCancellationDoNotShowAnActiveProgressIndicator() {
-        listOf(
-            ExportUiStage.IDLE,
-            ExportUiStage.FAILED,
-            ExportUiStage.CANCELLED,
-        ).forEach { stage ->
+        val expected = mapOf(
+            ExportUiStage.IDLE to ("Ready" to "Start an export to render a video on this device."),
+            ExportUiStage.FAILED to ("Failed" to "Review the export error above before retrying."),
+            ExportUiStage.CANCELLED to ("Cancelled" to "The temporary export was discarded."),
+        )
+        expected.forEach { (stage, copy) ->
             assertEquals(
-                ExportProgressPresentation(percent = null, isIndeterminate = false),
+                ExportProgressPresentation(
+                    percent = null,
+                    isIndeterminate = false,
+                    progressLabel = copy.first,
+                    detailText = copy.second,
+                ),
                 exportProgressPresentation(stage, 73),
             )
         }
