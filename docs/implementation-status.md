@@ -504,3 +504,10 @@ A control is only considered complete when its operation is connected to the pro
 - Non-finite or negative minimum gaps fall back to the shared 2 dp ruler-label gap; an explicit zero gap remains supported while label-width collision checks still apply.
 - Invalid viewport width continues through the existing placement fallback, which collapses labels to one safe position; added JVM tests cover malformed gap, label width, and viewport width inputs.
 - Ruler tick generation, clip geometry, project-time mapping, playhead seeking, scrolling, playback synchronization, and VFR indexing are unchanged. Automated verification is through GitHub Actions; physical-device readability remains unverified.
+
+
+## Editor unknown-width compact fallback — 24 November 2026
+- When the app window width is unavailable or invalid, the editor now defaults to the compact metadata-above-transport layout rather than assuming a 400 dp wide window.
+- The measured-width breakpoint is unchanged: widths below 400 dp stack metadata, while 400 dp and above retain the inline layout. Only the unknown-width fallback changes.
+- Added JVM coverage for zero/negative widths and the default-argument path. Preview sizing, touch targets, tool availability, timeline geometry, playback, project persistence, and export behavior are unchanged.
+- This is a conservative first-measurement/split-window fallback; actual fit still requires physical-device and resized-window validation.

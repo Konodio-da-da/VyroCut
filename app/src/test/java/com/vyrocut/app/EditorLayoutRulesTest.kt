@@ -64,11 +64,20 @@ class EditorLayoutRulesTest {
     }
 
     @Test
-    fun invalidWindowWidthUsesSafeWideFallback() {
+    fun invalidWindowWidthUsesSafeCompactFallback() {
         val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
 
+        assertEquals(true, expected.stackPreviewMetadataAboveTransportControls)
         assertEquals(expected, editorLayoutMetrics(640, 0))
         assertEquals(expected, editorLayoutMetrics(640, -1))
+    }
+
+    @Test
+    fun missingWindowWidthDefaultsToCompactMetadataLayout() {
+        assertEquals(
+            true,
+            editorLayoutMetrics(640).stackPreviewMetadataAboveTransportControls,
+        )
     }
 
     @Test
