@@ -548,3 +548,10 @@ A control is only considered complete when its operation is connected to the pro
 - Waveform strips now draw the center baseline without drawing artificial minimum-height bars for zero-amplitude samples. Digital silence therefore remains visually flat instead of appearing as a row of tiny spikes.
 - Added a pure Kotlin bar-height rule that skips non-finite/non-positive samples, clamps normalized peaks to the canvas, and rejects invalid canvas/minimum-height metrics.
 - The decoder, 96-bucket source-time mapping, waveform cache, audio-track models, Media3 preview players, project clock, and export composition are unchanged. GitHub Actions verifies the pure rendering rule and compilation; actual waveform appearance on device still requires physical-device validation.
+
+
+## Waveform memory-key alignment and load feedback — 24 November 2026
+- Corrected a key mismatch where the audio decoder stored in-memory peaks under a source-revision-aware key while the Audio panel and timeline looked them up under the unversioned URI/trim key. Waveforms now use one stable memory/display key; source revision remains part of the disposable disk-cache key.
+- The in-memory entry tracks the source revision separately. Replaced content behind a stable URI clears stale peaks before decoding, and failed or cancelled attempts are eligible for retry rather than being treated as a successful cache hit.
+- The Audio panel distinguishes loading, unavailable, and successfully decoded digital silence. A ready non-silent waveform has no extra status copy. The timeline consumes the same corrected memory key.
+- Added JVM tests for display/disk key separation, revision invalidation, retry eligibility, and loading/unavailable/silent/audio status labels. MediaExtractor/MediaCodec decoding, waveform bucket timing, Media3 audio preview, shared project clock, project persistence, and export composition are unchanged. CI verifies compilation and pure rules; actual waveform rendering and audio playback still require device validation.

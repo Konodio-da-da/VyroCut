@@ -107,6 +107,81 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun memoryWaveformKeyMatchesUiLookupWhileDiskKeyTracksSourceRevision() {
+        val clip = AudioTrackClip(
+            id = "music-1",
+            type = AudioTrackType.MUSIC,
+            uri = "content://media/audio",
+            name = "Music",
+            startMs = 0L,
+            sourceStartMs = 500L,
+            sourceEndMs = 5_500L,
+            sourceDurationMs = 10_000L,
+        )
+        val memoryKey = audioWaveformMemoryCacheKey(clip)
+
+        assertEquals(audioWaveformCacheKey(clip), memoryKey)
+        assertNotEquals(memoryKey, audioWaveformCacheKey(clip, "size=1024;modified=2000"))
+        assertEquals("unversioned", audioWaveformSourceRevisionKey(null))
+    }
+
+    @Test
+    fun waveformRefreshesWhenSourceRevisionChangesOrPreviousDecodeWasNotReady() {
+        assertTrue(
+            shouldDecodeAudioWaveform(
+                hasCachedWaveform = false,
+                cachedSourceRevisionKey = null,
+                currentSourceRevisionKey = "size=100;modified=1",
+                loadState = null,
+            ),
+        )
+        assertFalse(
+            shouldDecodeAudioWaveform(
+                hasCachedWaveform = true,
+                cachedSourceRevisionKey = "size=100;modified=1",
+                currentSourceRevisionKey = "size=100;modified=1",
+                loadState = AudioWaveformLoadState.READY,
+            ),
+        )
+        assertTrue(
+            shouldDecodeAudioWaveform(
+                hasCachedWaveform = true,
+                cachedSourceRevisionKey = "size=100;modified=1",
+                currentSourceRevisionKey = "size=200;modified=2",
+                loadState = AudioWaveformLoadState.READY,
+            ),
+        )
+        assertTrue(
+            shouldDecodeAudioWaveform(
+                hasCachedWaveform = false,
+                cachedSourceRevisionKey = "size=100;modified=1",
+                currentSourceRevisionKey = "size=100;modified=1",
+                loadState = AudioWaveformLoadState.UNAVAILABLE,
+            ),
+        )
+    }
+
+    @Test
+    fun waveformStatusDistinguishesLoadingUnavailableSilenceAndAudio() {
+        assertEquals(
+            "Loading waveform…",
+            audioWaveformStatusLabel(AudioWaveformLoadState.LOADING, null),
+        )
+        assertEquals(
+            "Waveform unavailable",
+            audioWaveformStatusLabel(AudioWaveformLoadState.UNAVAILABLE, null),
+        )
+        assertEquals(
+            "Silent audio",
+            audioWaveformStatusLabel(AudioWaveformLoadState.READY, List(96) { 0f }),
+        )
+        assertNull(
+            audioWaveformStatusLabel(AudioWaveformLoadState.READY, List(96) { 0.25f }),
+        )
+        assertNull(audioWaveformStatusLabel(null, null))
+    }
+
+    @Test
     fun waveformBarsOmitSilenceAndInvalidSamples() {
         assertNull(audioWaveformBarHalfHeightPx(0f, 100f, 1f))
         assertNull(audioWaveformBarHalfHeightPx(-0.5f, 100f, 1f))

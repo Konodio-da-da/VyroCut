@@ -248,6 +248,12 @@ private fun VyroCutApp() {
     var selectedAudioTrackId by remember { mutableStateOf<String?>(null) }
     var rippleAudioTrimEnabled by remember(activeProjectId) { mutableStateOf(false) }
     var audioWaveforms by remember(activeProjectId) { mutableStateOf<Map<String, List<Float>>>(emptyMap()) }
+    var audioWaveformSourceRevisions by remember(activeProjectId) {
+        mutableStateOf<Map<String, String>>(emptyMap())
+    }
+    var audioWaveformLoadStates by remember(activeProjectId) {
+        mutableStateOf<Map<String, AudioWaveformLoadState>>(emptyMap())
+    }
     var showHome by remember { mutableStateOf(true) }
     var activeTool by remember { mutableStateOf("Edit") }
     var selectedAdjustment by remember { mutableStateOf("Brightness") }
@@ -791,7 +797,7 @@ private fun VyroCutApp() {
         activeProjectId,
         activeTool,
         selectedAudioTrackType,
-        audioTrackClips.map { audioWaveformCacheKey(it) },
+        audioTrackClips.map { audioWaveformMemoryCacheKey(it) },
     ) {
         if (activeTool != "Audio") return@LaunchedEffect
         val selectedLaneClips = audioTrackClips.filter { it.type == selectedAudioTrackType }
@@ -803,10 +809,30 @@ private fun VyroCutApp() {
             }
         }
         var loadedWaveforms = audioWaveforms
+        var loadedSourceRevisions = audioWaveformSourceRevisions
+        var loadedLoadStates = audioWaveformLoadStates
         for (trackClip in selectedLaneClips) {
+            // The in-memory/UI key is stable for this clip's URI and trim range.
+            // Provider revisions belong to the disk-cache key, not the UI lookup.
+            val memoryKey = audioWaveformMemoryCacheKey(trackClip)
             val sourceRevision = sourceRevisionsByUri[trackClip.uri]
-            val key = audioWaveformCacheKey(trackClip, sourceRevision)
-            if (key !in loadedWaveforms) {
+            val sourceRevisionKey = audioWaveformSourceRevisionKey(sourceRevision)
+            if (shouldDecodeAudioWaveform(
+                    hasCachedWaveform = memoryKey in loadedWaveforms,
+                    cachedSourceRevisionKey = loadedSourceRevisions[memoryKey],
+                    currentSourceRevisionKey = sourceRevisionKey,
+                    loadState = loadedLoadStates[memoryKey],
+                )
+            ) {
+                // Never keep showing peaks from an older version of a URI while
+                // the replacement source is being decoded.
+                loadedWaveforms = loadedWaveforms - memoryKey
+                loadedSourceRevisions = loadedSourceRevisions + (memoryKey to sourceRevisionKey)
+                loadedLoadStates = loadedLoadStates + (memoryKey to AudioWaveformLoadState.LOADING)
+                audioWaveforms = loadedWaveforms
+                audioWaveformSourceRevisions = loadedSourceRevisions
+                audioWaveformLoadStates = loadedLoadStates
+
                 val waveform = withContext(Dispatchers.IO) {
                     decodeAudioWaveform(
                         context,
@@ -817,9 +843,17 @@ private fun VyroCutApp() {
                     )
                 }
                 if (waveform != null) {
-                    loadedWaveforms = loadedWaveforms + (key to waveform)
-                    audioWaveforms = loadedWaveforms
+                    loadedWaveforms = loadedWaveforms + (memoryKey to waveform)
                 }
+                loadedLoadStates = loadedLoadStates + (
+                    memoryKey to if (waveform == null) {
+                        AudioWaveformLoadState.UNAVAILABLE
+                    } else {
+                        AudioWaveformLoadState.READY
+                    }
+                )
+                audioWaveforms = loadedWaveforms
+                audioWaveformLoadStates = loadedLoadStates
             }
         }
     }
@@ -2763,10 +2797,22 @@ private fun VyroCutApp() {
                                 ) {
                                     Column(Modifier.weight(1f).padding(horizontal = VyroCutSpacing.SmallDp.dp, vertical = VyroCutAudioPanelMetrics.ClipCardVerticalPaddingDp.dp)) {
                                         Text(trackClip.name, color = StudioText, fontSize = VyroCutTypography.CaptionSp.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        val waveformKey = audioWaveformMemoryCacheKey(trackClip)
+                                        val waveformAmplitudes = audioWaveforms[waveformKey]
                                         AudioWaveformStrip(
-                                            amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
+                                            amplitudes = waveformAmplitudes.orEmpty(),
                                             color = if (trackClip.id == selectedAudioTrackId) StudioAccent else VyroCutPalette.TextSubtle,
                                         )
+                                        audioWaveformStatusLabel(
+                                            audioWaveformLoadStates[waveformKey],
+                                            waveformAmplitudes,
+                                        )?.let { status ->
+                                            Text(
+                                                status,
+                                                color = StudioMuted,
+                                                fontSize = VyroCutTypography.BadgeSp.sp,
+                                            )
+                                        }
                                         Text(
                                             "${formatTime(trackClip.startMs)} – ${formatTime(trackClip.endMs)} • ${(trackClip.volume * 100f).toInt()}%",
                                             color = StudioMuted,
@@ -5408,7 +5454,7 @@ private fun TimelineEditorStrip(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             AudioWaveformStrip(
-                                amplitudes = audioWaveforms[audioWaveformCacheKey(trackClip)].orEmpty(),
+                                amplitudes = audioWaveforms[audioWaveformMemoryCacheKey(trackClip)].orEmpty(),
                                 color = VyroCutPalette.WaveformForeground,
                                 height = timelineMetrics.audioWaveformHeightDp.dp,
                             )

@@ -33,6 +33,46 @@ internal fun audioWaveformSourceRevision(
     lastModifiedMs: Long?,
 ): String? = mediaSourceRevision(sizeBytes, lastModifiedMs)
 
+
+/**
+ * Waveform UI entries are keyed by source URI and trim only. The provider
+ * revision is tracked separately so the visible lookup stays consistent while
+ * the disposable disk cache can still invalidate replaced content URIs.
+ */
+internal fun audioWaveformMemoryCacheKey(clip: AudioTrackClip): String =
+    audioWaveformCacheKey(clip.uri, clip.sourceStartMs, clip.sourceEndMs)
+
+internal fun audioWaveformSourceRevisionKey(sourceRevision: String?): String =
+    sourceRevision?.takeIf { it.isNotBlank() } ?: "unversioned"
+
+internal enum class AudioWaveformLoadState {
+    LOADING,
+    READY,
+    UNAVAILABLE,
+}
+
+internal fun shouldDecodeAudioWaveform(
+    hasCachedWaveform: Boolean,
+    cachedSourceRevisionKey: String?,
+    currentSourceRevisionKey: String,
+    loadState: AudioWaveformLoadState?,
+): Boolean =
+    !hasCachedWaveform ||
+        cachedSourceRevisionKey != currentSourceRevisionKey ||
+        loadState != AudioWaveformLoadState.READY
+
+internal fun audioWaveformStatusLabel(
+    loadState: AudioWaveformLoadState?,
+    amplitudes: List<Float>?,
+): String? = when (loadState) {
+    AudioWaveformLoadState.LOADING -> "Loading waveform…"
+    AudioWaveformLoadState.UNAVAILABLE -> "Waveform unavailable"
+    AudioWaveformLoadState.READY -> if (
+        !amplitudes.isNullOrEmpty() && amplitudes.all { it <= 0.000001f }
+    ) "Silent audio" else null
+    null -> null
+}
+
 /** A disposable cache entry ordered by its most recent successful use. */
 internal data class AudioWaveformCacheEntry(
     val fileName: String,
