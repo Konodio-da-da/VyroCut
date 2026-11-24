@@ -422,3 +422,10 @@ A control is only considered complete when its operation is connected to the pro
 - Ruler timecodes now use platform monospace digits and a compact surface badge. Their width estimate follows the system font scale, and labels shift inward at the content edges rather than being centered partly outside the scrollable timeline.
 - Added pure JVM coverage for tick hierarchy, font-scaled label width, left/center/right label placement, and malformed geometry fallback.
 - No ruler tick timestamps, time-to-pixel mapping, playhead geometry, seeking, horizontal scrolling, clip positions, shared project clock, or VFR indexing were changed. CI verifies compilation and pure rules only; visual appearance and touch behaviour still require Android-device validation.
+
+
+## Timeline track header hierarchy — 24 November 2026
+- Replaced plain VIDEO, TEXT, STICKERS, SOURCE, MUSIC, SFX, and VOICEOVER labels with one reusable compact header treatment: a small semantic marker, a tinted label badge, and the existing detail text.
+- Reused the existing accent and per-lane colors. Audio header badges use the same Music/SFX/Voiceover lane colors already used by their clips, so the label reinforces the track's existing color identity.
+- Badge styling uses horizontal-only padding and retains the existing 11 sp label / 10 sp detail scale; it does not add vertical padding or alter timeline row heights, clip geometry, or timeline-to-time mapping.
+- Added a pure JVM regression test for the compact badge geometry. Android CI must verify compilation and unit tests; visual contrast and readability still require physical-device validation.

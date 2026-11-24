@@ -14,6 +14,13 @@ internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 14
 
 internal const val TIMELINE_TRACK_LABEL_FONT_SP = 11
 internal const val TIMELINE_TRACK_DETAIL_FONT_SP = 10
+
+ // Compact header badges add horizontal identity without increasing track-row height.
+internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = 6
+internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = 4
+internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = 5
+internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = 4
+internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = 8
 internal const val TIMELINE_RULER_LABEL_FONT_SP = 10
 internal const val TIMELINE_CLIP_LABEL_FONT_SP = 11
 internal const val TIMELINE_CLIP_META_FONT_SP = 10

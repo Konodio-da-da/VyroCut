@@ -48,6 +48,17 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun trackHeaderBadgesUseCompactMetricsWithoutExtraVerticalPadding() {
+        assertEquals(6, TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP)
+        assertEquals(4, TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP)
+        assertEquals(5, TIMELINE_TRACK_HEADER_DOT_SIZE_DP)
+        assertEquals(4, TIMELINE_TRACK_HEADER_DOT_GAP_DP)
+        assertEquals(8, TIMELINE_TRACK_HEADER_DETAIL_GAP_DP)
+        assertEquals(11, TIMELINE_TRACK_LABEL_FONT_SP)
+        assertTrue(TIMELINE_TRACK_HEADER_DOT_SIZE_DP < TIMELINE_TRACK_LABEL_FONT_SP)
+    }
+
+    @Test
     fun majorAndMinorRulerTicksHaveAVisibleVisualHierarchy() {
         val major = timelineRulerTickVisualMetrics(isMajor = true)
         val minor = timelineRulerTickVisualMetrics(isMajor = false)
