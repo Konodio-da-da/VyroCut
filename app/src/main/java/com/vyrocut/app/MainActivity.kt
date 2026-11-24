@@ -56,7 +56,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -2946,212 +2945,22 @@ private fun VyroCutApp() {
                     }
                 }
                 if (activeTool == "Stickers") {
-                    Column(
-                        Modifier.fillMaxWidth().background(StudioPanel, RoundedCornerShape(VyroCutShapes.CompactPanelCornerDp.dp))
-                            .padding(horizontal = VyroCutStickerPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutStickerPanelMetrics.VerticalPaddingDp.dp),
-                        verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp),
-                    ) {
-                        Text("STICKER OVERLAYS", color = StudioText, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = FontWeight.Bold)
-                        if (selectedClip == null) {
-                            Text("Select a video clip before adding a sticker.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
-                        } else {
-                            Text("Choose a position, then tap a built-in vector sticker or emoji to add it to this clip.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
-                            Row(
-                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
-                            ) {
-                                ClipStickerPosition.values().forEach { position ->
-                                    FilterChip(
-                                        selected = selectedStickerPosition == position,
-                                        onClick = { selectedStickerPosition = position },
-                                        label = {
-                                            Text(position.name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }, fontSize = VyroCutTypography.ToolLabelSp.sp)
-                                        },
-                                    )
-                                }
-                            }
-                            Text(
-                                "BUILT-IN VECTOR PACK",
-                                color = StudioMuted,
-                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Row(
-                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
-                            ) {
-                                ClipStickerAsset.values().forEach { asset ->
-                                    FilterChip(
-                                        selected = false,
-                                        onClick = { addSelectedClipSticker(asset.fallbackSymbol, asset.id) },
-                                        label = {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            ) {
-                                                Image(
-                                                    painter = painterResource(id = asset.drawableResId),
-                                                    contentDescription = asset.label,
-                                                    modifier = Modifier.size(18.dp),
-                                                )
-                                                Text(asset.label, fontSize = VyroCutTypography.ToolLabelSp.sp)
-                                            }
-                                        },
-                                        enabled = selectedClip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
-                                    )
-                                }
-                            }
-                            Text(
-                                "QUICK EMOJI",
-                                color = StudioMuted,
-                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Row(
-                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
-                            ) {
-                                listOf("⭐", "❤️", "🔥", "😂", "😎", "✨", "🎉", "🚀", "💯", "👏").forEach { symbol ->
-                                    FilterChip(
-                                        selected = false,
-                                        onClick = { addSelectedClipSticker(symbol) },
-                                        label = { Text(symbol, fontSize = VyroCutStickerPanelMetrics.SymbolChipFontSizeSp.sp) },
-                                        enabled = selectedClip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
-                                    )
-                                }
-                            }
-                            Text(
-                                "ADDED • " + selectedClip.allStickerOverlays.size + "/" + MAX_CLIP_STICKER_OVERLAYS,
-                                color = StudioMuted,
-                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            if (selectedClip.allStickerOverlays.isEmpty()) {
-                                Text("No stickers on this clip yet.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
-                            } else {
-                                selectedClip.allStickerOverlays.forEachIndexed { index, sticker ->
-                                    val clipDurationMs = selectedClip.durationMs.coerceAtLeast(1L)
-                                    val safeStartMs = sticker.startMs.coerceIn(0L, clipDurationMs - 1L)
-                                    val safeEndMs = (sticker.endMs ?: clipDurationMs)
-                                        .coerceIn(safeStartMs + 1L, clipDurationMs)
-                                    val durationSeconds = clipDurationMs / 1_000f
-                                    val stickerAsset = ClipStickerAsset.fromId(sticker.assetId)
-                                    var startSeconds by remember(selectedClip.id, sticker) {
-                                        mutableFloatStateOf(safeStartMs / 1_000f)
-                                    }
-                                    var endSeconds by remember(selectedClip.id, sticker) {
-                                        mutableFloatStateOf(safeEndMs / 1_000f)
-                                    }
-                                    var scaleDraft by remember(selectedClip.id, sticker) {
-                                        mutableFloatStateOf(sticker.scale)
-                                    }
-                                    Column(
-                                        Modifier.fillMaxWidth()
-                                            .background(
-                                                if (selectedStickerLayerIndex == index) {
-                                                    VyroCutPalette.SurfaceSelected
-                                                } else {
-                                                    StudioBackground
-                                                },
-                                                RoundedCornerShape(VyroCutShapes.SmallCornerDp.dp),
-                                            )
-                                            .padding(horizontal = VyroCutSpacing.SmallDp.dp, vertical = VyroCutStickerPanelMetrics.LayerVerticalPaddingDp.dp),
-                                        verticalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.LayerItemGapDp.dp),
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (stickerAsset != null) {
-                                                Image(
-                                                    painter = painterResource(id = stickerAsset.drawableResId),
-                                                    contentDescription = stickerAsset.label,
-                                                    modifier = Modifier.size(24.dp),
-                                                )
-                                                Text(
-                                                    stickerAsset.label,
-                                                    color = StudioText,
-                                                    fontSize = VyroCutTypography.CaptionSp.sp,
-                                                )
-                                            } else {
-                                                Text(sticker.symbol, fontSize = VyroCutStickerPanelMetrics.LayerSymbolFontSizeSp.sp)
-                                            }
-                                            Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
-                                            Text(
-                                                sticker.position.name.lowercase().replace('_', ' '),
-                                                color = StudioMuted,
-                                                fontSize = VyroCutTypography.CaptionSp.sp,
-                                            )
-                                            Spacer(Modifier.weight(1f))
-                                            TextButton(
-                                                onClick = { removeSelectedClipSticker(index) },
-                                                contentPadding = PaddingValues(horizontal = VyroCutStickerPanelMetrics.RemoveButtonHorizontalPaddingDp.dp, vertical = 0.dp),
-                                            ) { Text("Remove", color = VyroCutPalette.Danger, fontSize = VyroCutTypography.CaptionSp.sp) }
-                                        }
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                "SIZE ${String.format(java.util.Locale.US, "%.1f", scaleDraft)}×",
-                                                color = StudioMuted,
-                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                            )
-                                            Spacer(Modifier.weight(1f))
-                                            Text(
-                                                "${MIN_CLIP_STICKER_SCALE}× – ${MAX_CLIP_STICKER_SCALE}×",
-                                                color = StudioMuted,
-                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                            )
-                                        }
-                                        Slider(
-                                            value = scaleDraft.coerceIn(MIN_CLIP_STICKER_SCALE, MAX_CLIP_STICKER_SCALE),
-                                            onValueChange = { scaleDraft = it },
-                                            valueRange = MIN_CLIP_STICKER_SCALE..MAX_CLIP_STICKER_SCALE,
-                                            steps = 14,
-                                            onValueChangeFinished = {
-                                                updateSelectedClipStickerScale(index, scaleDraft)
-                                            },
-                                        )
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(
-                                                "IN ${String.format(java.util.Locale.US, "%.1f", startSeconds)}s",
-                                                color = StudioMuted,
-                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                            )
-                                            Spacer(Modifier.weight(1f))
-                                            Text(
-                                                "OUT ${String.format(java.util.Locale.US, "%.1f", endSeconds)}s",
-                                                color = StudioMuted,
-                                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                            )
-                                        }
-                                        Slider(
-                                            value = startSeconds,
-                                            onValueChange = { startSeconds = it },
-                                            valueRange = 0f..durationSeconds,
-                                            onValueChangeFinished = {
-                                                updateSelectedClipStickerTiming(
-                                                    index,
-                                                    startMs = (startSeconds * 1_000f).toLong(),
-                                                )
-                                            },
-                                        )
-                                        Slider(
-                                            value = endSeconds,
-                                            onValueChange = { endSeconds = it },
-                                            valueRange = 0f..durationSeconds,
-                                            onValueChangeFinished = {
-                                                updateSelectedClipStickerTiming(
-                                                    index,
-                                                    endMs = (endSeconds * 1_000f).toLong(),
-                                                )
-                                            },
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                "Clip-local IN/OUT timing • Survives split, trim, save and MP4 export",
-                                color = StudioMuted,
-                                fontSize = VyroCutTypography.ToolLabelSp.sp,
-                            )
-                        }
-                    }
+                    StickerOverlaysPanel(
+                        selectedClip = selectedClip,
+                        selectedStickerPosition = selectedStickerPosition,
+                        selectedStickerLayerIndex = selectedStickerLayerIndex,
+                        onPositionSelected = { selectedStickerPosition = it },
+                        onAddSticker = { symbol, assetId ->
+                            addSelectedClipSticker(symbol, assetId)
+                        },
+                        onRemoveSticker = { index -> removeSelectedClipSticker(index) },
+                        onScaleChange = { index, scale ->
+                            updateSelectedClipStickerScale(index, scale)
+                        },
+                        onTimingChange = { index, startMs, endMs ->
+                            updateSelectedClipStickerTiming(index, startMs, endMs)
+                        },
+                    )
                 }
                 if (activeTool == "Text") {
                     Column(
