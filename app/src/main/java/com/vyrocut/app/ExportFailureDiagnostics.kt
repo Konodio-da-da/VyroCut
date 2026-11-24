@@ -13,6 +13,8 @@ internal enum class ExportFailureCategory {
     SOURCE_PERMISSION,
     SOURCE_UNAVAILABLE,
     UNSUPPORTED_ENCODER,
+    UNSUPPORTED_DECODER,
+    UNSUPPORTED_CODEC,
     INVALID_OUTPUT,
     UNKNOWN,
 }
@@ -72,15 +74,80 @@ internal fun diagnoseExportFailure(
             "truncated",
             "corrupt mp4",
             "undecodable",
+            "failed to decode exported video",
+            "could not decode exported video",
+            "exported video decoder failed",
+            "output decoder failed",
         ) -> ExportFailureCategory.INVALID_OUTPUT
 
-        details.containsAny(
-            "encoder",
-            "mediacodec",
-            "codec",
-            "unsupported format",
-            "no suitable encoder",
-        ) -> ExportFailureCategory.UNSUPPORTED_ENCODER
+        classNames.any { it.contains("encoder") } ||
+            details.containsAny("encoder", "encoding format unsupported", "no suitable encoder") ->
+            ExportFailureCategory.UNSUPPORTED_ENCODER
+
+        classNames.any { it.contains("decoder") } ||
+            details.containsAny(
+                "decoder",
+                "decoding format unsupported",
+                "failed to decode",
+                "could not decode",
+                "unable to decode",
+            ) -> ExportFailureCategory.UNSUPPORTED_DECODER
+
+        classNames.any { className ->
+            val simpleName = className.substringAfterLast('.').substringAfterLast('
+
+        else -> ExportFailureCategory.UNKNOWN
+    }
+
+    val userMessage = when (category) {
+        ExportFailureCategory.STORAGE ->
+            "Not enough free storage is available. Free space and try exporting again."
+
+        ExportFailureCategory.SOURCE_PERMISSION ->
+            if (stage == ExportFailureStage.VERIFYING_OR_PUBLISHING) {
+                "Android denied access while verifying or saving the export. Check storage access and try again."
+            } else {
+                "VyroCut could not read a source file. Re-import or relink the clip and grant access."
+            }
+
+        ExportFailureCategory.SOURCE_UNAVAILABLE ->
+            "A source file is missing or unreadable. Relink the affected clip and try again."
+
+        ExportFailureCategory.UNSUPPORTED_ENCODER ->
+            "This device could not encode the selected media or settings. Try a lower resolution or bitrate."
+
+        ExportFailureCategory.UNSUPPORTED_DECODER ->
+            "This device could not decode one of the source media streams. Try a different source file or re-import the media."
+
+        ExportFailureCategory.UNSUPPORTED_CODEC ->
+            "This device could not process one of the media codecs used by the export. Try a different source format or lower export settings."
+
+        ExportFailureCategory.INVALID_OUTPUT ->
+            "The rendered MP4 failed verification and was not published. Try exporting again."
+
+        ExportFailureCategory.UNKNOWN -> when (stage) {
+            ExportFailureStage.PREPARATION ->
+                "VyroCut could not prepare the export. Check the source clips and export settings."
+
+            ExportFailureStage.RENDERING ->
+                "The device encoder could not complete the render. Try again or reduce export quality."
+
+            ExportFailureStage.VERIFYING_OR_PUBLISHING ->
+                "The rendered MP4 could not be verified or saved to Movies. Nothing was published; check storage and try again."
+        }
+    }
+
+    return ExportFailureDiagnostic(category, userMessage)
+}
+
+private val CODEC_TOKEN_REGEX = Regex("""\bcodec\b""")
+
+private fun String.containsAny(vararg candidates: String): Boolean =
+    candidates.any { candidate -> contains(candidate) }
+)
+            className.contains("mediacodec") || simpleName.startsWith("codec")
+        } || CODEC_TOKEN_REGEX.containsMatchIn(details) || details.contains("unsupported format") ->
+            ExportFailureCategory.UNSUPPORTED_CODEC
 
         stage != ExportFailureStage.VERIFYING_OR_PUBLISHING &&
             (classNames.any { it.contains("filenotfoundexception") || it.contains("nosuchfileexception") } ||

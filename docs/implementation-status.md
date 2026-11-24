@@ -1,3 +1,10 @@
+## Current export codec-diagnostics milestone — 24 November 2026
+- Export failure classification now distinguishes explicit encoder failures, decoder failures, and generic MediaCodec/codec failures instead of treating the substring `codec` inside `decoder` as proof of an encoder problem.
+- Verification-stage decode failures are reported as invalid output; the classifier still avoids exposing provider exception text, source URIs, or private file paths.
+- Pure Kotlin regression tests cover decoder-versus-encoder classification, neutral generic codec guidance, verification-stage invalid output, cyclic cause chains, and the eight-throwable traversal bound.
+- Previous feature head `afd34b798cdf8fd11c77e6ac7f877ceee35f6911` passed `assembleDebug`, `testDebugUnitTest`, and debug APK upload in [Android build #667](https://github.com/Konodio-da-da/VyroCut/actions/runs/45458712144). This diagnostic change requires its own Actions result.
+- Physical-device export failure behavior and real codec exception mappings remain unverified.
+
 ## Current Android export-sharing handoff milestone — 24 November 2026
 - The verified MediaStore MP4 is shared through Android's standard ACTION_SEND chooser with video/mp4, EXTRA_STREAM, ClipData, and temporary read-URI grants on the share and chooser intents.
 - The Share MP4 action reports a recoverable message if Android cannot launch a compatible chooser target or denies access to the published URI. Opening the chooser is not described as a completed share.
