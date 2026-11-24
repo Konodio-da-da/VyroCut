@@ -498,3 +498,9 @@ A control is only considered complete when its operation is connected to the pro
 - This prevents the first or last timecode pill from overlapping a neighboring centered label when edge alignment shifts the pill inward.
 - The final major timecode is retained only when its rendered bounds leave the configured label gap; tick marks, absolute project-time mapping, playhead position, clip geometry, and timeline scrolling are unchanged.
 - Added pure JVM regression cases for colliding start/end labels and for retaining the final edge label when there is enough room. CI is the available automated check; physical-device readability and touch behavior remain unverified.
+
+## Timeline ruler invalid-metric fallback — 24 November 2026
+- Invalid/non-positive label widths now conservatively retain only the first major timecode instead of returning every candidate and risking overlap.
+- Non-finite or negative minimum gaps fall back to the shared 2 dp ruler-label gap; an explicit zero gap remains supported while label-width collision checks still apply.
+- Invalid viewport width continues through the existing placement fallback, which collapses labels to one safe position; added JVM tests cover malformed gap, label width, and viewport width inputs.
+- Ruler tick generation, clip geometry, project-time mapping, playhead seeking, scrolling, playback synchronization, and VFR indexing are unchanged. Automated verification is through GitHub Actions; physical-device readability remains unverified.

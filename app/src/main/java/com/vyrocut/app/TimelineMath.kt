@@ -338,12 +338,20 @@ internal fun selectTimelineRulerLabelTicks(
         .sortedBy { it.timeMs }
         .toList()
     if (candidates.size <= 1) return candidates
-    if (labelWidthDp <= 0 || !minimumGapDp.isFinite() || minimumGapDp <= 0f) return candidates
+    // If the label width is unknown, showing several labels could create
+    // collisions. Keep only the first major label as a conservative fallback.
+    if (labelWidthDp <= 0) return listOf(candidates.first())
+
+    // A missing/negative gap should use the shared visual token, not disable
+    // collision filtering. Zero is valid for callers that want edge-to-edge pills.
+    val safeMinimumGapDp = minimumGapDp
+        .takeIf { it.isFinite() && it >= 0f }
+        ?: TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP.toFloat()
 
     val safeContentWidthDp = contentWidthDp
         .takeIf { it.isFinite() && it > 0f }
         ?: labelWidthDp.toFloat()
-    val requiredSpacingDp = labelWidthDp + minimumGapDp
+    val requiredSpacingDp = labelWidthDp + safeMinimumGapDp
 
     fun labelLeftDp(tick: TimelineRulerTick): Float = timelineRulerLabelPlacement(
         tickOffsetDp = tick.offsetPx,

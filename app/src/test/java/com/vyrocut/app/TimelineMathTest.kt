@@ -1174,16 +1174,15 @@ class TimelineMathTest {
     }
 
     @Test
-    fun invalidRulerLabelSpacingFallsBackToAllFiniteMajorLabels() {
+    fun invalidRulerLabelSpacingUsesTheSharedGapWithoutAllowingCollisions() {
         val ticks = listOf(
             TimelineRulerTick(0L, 0f, true),
-            TimelineRulerTick(5_000L, 1f, true),
-            TimelineRulerTick(10_000L, 2f, false),
-            TimelineRulerTick(15_000L, 3f, true),
+            TimelineRulerTick(5_000L, 39f, true),
+            TimelineRulerTick(10_000L, 58f, true),
         )
 
         assertEquals(
-            listOf(0L, 5_000L, 15_000L),
+            listOf(0L),
             selectTimelineRulerLabelTicks(
                 ticks = ticks,
                 labelWidthDp = 38,
@@ -1192,12 +1191,57 @@ class TimelineMathTest {
             ).map { it.timeMs },
         )
         assertEquals(
-            listOf(0L, 5_000L, 15_000L),
+            listOf(0L),
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 38,
+                contentWidthDp = 160f,
+                minimumGapDp = -1f,
+            ).map { it.timeMs },
+        )
+        assertEquals(
+            listOf(0L, 10_000L),
             selectTimelineRulerLabelTicks(
                 ticks = ticks,
                 labelWidthDp = 38,
                 contentWidthDp = 160f,
                 minimumGapDp = 0f,
+            ).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun invalidRulerLabelWidthKeepsOnlyTheFirstMajorLabel() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 60f, true),
+            TimelineRulerTick(10_000L, 120f, true),
+        )
+
+        assertEquals(
+            listOf(0L),
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 0,
+                contentWidthDp = 160f,
+            ).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun invalidRulerContentWidthFallsBackToOneSafeLabel() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 60f, true),
+            TimelineRulerTick(10_000L, 120f, true),
+        )
+
+        assertEquals(
+            listOf(0L),
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 38,
+                contentWidthDp = Float.NaN,
             ).map { it.timeMs },
         )
     }
