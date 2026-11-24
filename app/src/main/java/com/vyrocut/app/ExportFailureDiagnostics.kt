@@ -94,7 +94,15 @@ internal fun diagnoseExportFailure(
             ) -> ExportFailureCategory.UNSUPPORTED_DECODER
 
         classNames.any { className ->
-            val simpleName = className.substringAfterLast('.').substringAfterLast('
+            val simpleName = className.substringAfterLast('.').substringAfterLast(36.toChar())
+            className.contains("mediacodec") || simpleName.startsWith("codec")
+        } || CODEC_TOKEN_REGEX.containsMatchIn(details) || details.contains("unsupported format") ->
+            ExportFailureCategory.UNSUPPORTED_CODEC
+
+        stage != ExportFailureStage.VERIFYING_OR_PUBLISHING &&
+            (classNames.any { it.contains("filenotfoundexception") || it.contains("nosuchfileexception") } ||
+                details.containsAny("enoent", "source file not found", "failed to open source")) ->
+            ExportFailureCategory.SOURCE_UNAVAILABLE
 
         else -> ExportFailureCategory.UNKNOWN
     }
@@ -140,57 +148,7 @@ internal fun diagnoseExportFailure(
     return ExportFailureDiagnostic(category, userMessage)
 }
 
-private val CODEC_TOKEN_REGEX = Regex("""\bcodec\b""")
-
-private fun String.containsAny(vararg candidates: String): Boolean =
-    candidates.any { candidate -> contains(candidate) }
-)
-            className.contains("mediacodec") || simpleName.startsWith("codec")
-        } || CODEC_TOKEN_REGEX.containsMatchIn(details) || details.contains("unsupported format") ->
-            ExportFailureCategory.UNSUPPORTED_CODEC
-
-        stage != ExportFailureStage.VERIFYING_OR_PUBLISHING &&
-            (classNames.any { it.contains("filenotfoundexception") || it.contains("nosuchfileexception") } ||
-                details.containsAny("enoent", "source file not found", "failed to open source")) ->
-            ExportFailureCategory.SOURCE_UNAVAILABLE
-
-        else -> ExportFailureCategory.UNKNOWN
-    }
-
-    val userMessage = when (category) {
-        ExportFailureCategory.STORAGE ->
-            "Not enough free storage is available. Free space and try exporting again."
-
-        ExportFailureCategory.SOURCE_PERMISSION ->
-            if (stage == ExportFailureStage.VERIFYING_OR_PUBLISHING) {
-                "Android denied access while verifying or saving the export. Check storage access and try again."
-            } else {
-                "VyroCut could not read a source file. Re-import or relink the clip and grant access."
-            }
-
-        ExportFailureCategory.SOURCE_UNAVAILABLE ->
-            "A source file is missing or unreadable. Relink the affected clip and try again."
-
-        ExportFailureCategory.UNSUPPORTED_ENCODER ->
-            "This device could not encode the selected media or settings. Try a lower resolution or bitrate."
-
-        ExportFailureCategory.INVALID_OUTPUT ->
-            "The rendered MP4 failed verification and was not published. Try exporting again."
-
-        ExportFailureCategory.UNKNOWN -> when (stage) {
-            ExportFailureStage.PREPARATION ->
-                "VyroCut could not prepare the export. Check the source clips and export settings."
-
-            ExportFailureStage.RENDERING ->
-                "The device encoder could not complete the render. Try again or reduce export quality."
-
-            ExportFailureStage.VERIFYING_OR_PUBLISHING ->
-                "The rendered MP4 could not be verified or saved to Movies. Nothing was published; check storage and try again."
-        }
-    }
-
-    return ExportFailureDiagnostic(category, userMessage)
-}
+private val CODEC_TOKEN_REGEX = Regex("(^|[^a-z0-9])codec([^a-z0-9]|$)")
 
 private fun String.containsAny(vararg candidates: String): Boolean =
     candidates.any { candidate -> contains(candidate) }
