@@ -443,3 +443,11 @@ A control is only considered complete when its operation is connected to the pro
 - Strength maps linearly from 0–100% to a maximum Gaussian sigma of 5 output pixels. Zero strength remains omitted from the effect list, preserving the no-op path.
 - The shared `createClipVisualEffects` factory supplies the effect to both the Media3 preview player and Transformer export composition; existing per-clip adjustments remain ordered before the creative effect.
 - Added pure JVM coverage for stable ID decoding, effect specification, category/browser ordering, intensity/no-op behavior, and sigma bounds. Android CI verifies compilation and JVM logic; actual blur quality and playback still require device/export validation.
+
+
+## Offline built-in vector sticker pack — 24 November 2026
+- Added six original Android VectorDrawable assets (Star, Heart, Sparkle, Bolt, Crown, and Flower) to a small bundled sticker pack. The assets render locally and do not require network access or external downloads.
+- Sticker overlays retain their existing Unicode `symbol` fallback and add an optional stable `assetId` in the existing `stickerOverlays` JSON entries. Existing emoji-only projects omit the field and decode exactly as before; the project backup format version remains unchanged.
+- The Media3 bitmap-overlay renderer draws known vector assets into the same clip-local timed overlay bitmap used by preview and Transformer export. Unknown future asset IDs fall back to the persisted Unicode symbol rather than making a project unreadable.
+- The Stickers panel now exposes the bundled vector pack alongside the existing quick-emoji row. Position, size, clip-local IN/OUT timing, split/trim rebasing, selection, removal, undo/redo, and the five-overlay limit are retained.
+- Added pure JVM tests for stable asset IDs, resource mappings, unknown-ID fallback, split/trim identity preservation, and project JSON round-tripping including legacy emoji-only entries. CI verifies compilation and JVM persistence rules; actual vector rasterization, visual fit, and MP4 playback still require Android-device/export validation.

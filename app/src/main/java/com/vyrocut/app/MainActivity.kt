@@ -56,6 +56,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -649,7 +650,7 @@ private fun VyroCutApp() {
             }
             player.playWhenReady = false
             val restoredClip = clips[restoreTarget.clipIndex]
-            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.allTextOverlays) + createClipStickerOverlayEffects(restoredClip.allStickerOverlays))
+            player.setVideoEffects(createClipVisualEffects(restoredClip.visualAdjustments) + createClipTextOverlayEffects(restoredClip.allTextOverlays) + createClipStickerOverlayEffects(restoredClip.allStickerOverlays, context))
             player.setVolume(
                 clipAudioPlaybackGain(
                     restoredClip.audioVolume,
@@ -1105,7 +1106,7 @@ private fun VyroCutApp() {
             seekAudioPlayersToProjectPosition(position.timelinePositionMs)
         }
         clips.getOrNull(position.clipIndex)?.let { clip ->
-            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays) + createClipStickerOverlayEffects(clip.allStickerOverlays))
+            player.setVideoEffects(createClipVisualEffects(clip.visualAdjustments) + createClipTextOverlayEffects(clip.allTextOverlays) + createClipStickerOverlayEffects(clip.allStickerOverlays, context))
             player.setVolume(
                 clipAudioPlaybackGain(
                     clip.audioVolume,
@@ -1504,7 +1505,7 @@ private fun VyroCutApp() {
             player.setVideoEffects(
                 createClipVisualEffects(next) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
-                    createClipStickerOverlayEffects(clip.allStickerOverlays),
+                    createClipStickerOverlayEffects(clip.allStickerOverlays, context),
             )
         }
         exportMessage = "Clip visual effects updated"
@@ -1578,12 +1579,12 @@ private fun VyroCutApp() {
             player.setVideoEffects(
                 createClipVisualEffects(updatedClip.visualAdjustments) +
                     createClipTextOverlayEffects(updatedClip.allTextOverlays) +
-                    createClipStickerOverlayEffects(updatedClip.allStickerOverlays),
+                    createClipStickerOverlayEffects(updatedClip.allStickerOverlays, context),
             )
         }
         exportMessage = message
     }
-    fun addSelectedClipSticker(symbol: String) {
+    fun addSelectedClipSticker(symbol: String, assetId: String? = null) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (clip.allStickerOverlays.size >= MAX_CLIP_STICKER_OVERLAYS) {
             exportMessage = "A clip can contain up to $MAX_CLIP_STICKER_OVERLAYS stickers."
@@ -1592,6 +1593,7 @@ private fun VyroCutApp() {
         val overlay = decodeClipStickerOverlay(
             raw = symbol,
             position = selectedStickerPosition.name,
+            assetId = assetId,
         ) ?: return
         val addedIndex = clip.allStickerOverlays.size
         commitSelectedClipStickerOverlays(
@@ -2953,7 +2955,7 @@ private fun VyroCutApp() {
                         if (selectedClip == null) {
                             Text("Select a video clip before adding a sticker.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                         } else {
-                            Text("Choose a sticker position, then tap a symbol to add it to this clip.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
+                            Text("Choose a position, then tap a built-in vector sticker or emoji to add it to this clip.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                             Row(
                                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
@@ -2968,6 +2970,43 @@ private fun VyroCutApp() {
                                     )
                                 }
                             }
+                            Text(
+                                "BUILT-IN VECTOR PACK",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.ToolLabelSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Row(
+                                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
+                            ) {
+                                ClipStickerAsset.values().forEach { asset ->
+                                    FilterChip(
+                                        selected = false,
+                                        onClick = { addSelectedClipSticker(asset.fallbackSymbol, asset.id) },
+                                        label = {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                            ) {
+                                                Image(
+                                                    painter = painterResource(id = asset.drawableResId),
+                                                    contentDescription = asset.label,
+                                                    modifier = Modifier.size(18.dp),
+                                                )
+                                                Text(asset.label, fontSize = VyroCutTypography.ToolLabelSp.sp)
+                                            }
+                                        },
+                                        enabled = selectedClip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
+                                    )
+                                }
+                            }
+                            Text(
+                                "QUICK EMOJI",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.ToolLabelSp.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
                             Row(
                                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                                 horizontalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.ChipGapDp.dp),
@@ -2996,6 +3035,7 @@ private fun VyroCutApp() {
                                     val safeEndMs = (sticker.endMs ?: clipDurationMs)
                                         .coerceIn(safeStartMs + 1L, clipDurationMs)
                                     val durationSeconds = clipDurationMs / 1_000f
+                                    val stickerAsset = ClipStickerAsset.fromId(sticker.assetId)
                                     var startSeconds by remember(selectedClip.id, sticker) {
                                         mutableFloatStateOf(safeStartMs / 1_000f)
                                     }
@@ -3019,7 +3059,20 @@ private fun VyroCutApp() {
                                         verticalArrangement = Arrangement.spacedBy(VyroCutStickerPanelMetrics.LayerItemGapDp.dp),
                                     ) {
                                         Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Text(sticker.symbol, fontSize = VyroCutStickerPanelMetrics.LayerSymbolFontSizeSp.sp)
+                                            if (stickerAsset != null) {
+                                                Image(
+                                                    painter = painterResource(id = stickerAsset.drawableResId),
+                                                    contentDescription = stickerAsset.label,
+                                                    modifier = Modifier.size(24.dp),
+                                                )
+                                                Text(
+                                                    stickerAsset.label,
+                                                    color = StudioText,
+                                                    fontSize = VyroCutTypography.CaptionSp.sp,
+                                                )
+                                            } else {
+                                                Text(sticker.symbol, fontSize = VyroCutStickerPanelMetrics.LayerSymbolFontSizeSp.sp)
+                                            }
                                             Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                                             Text(
                                                 sticker.position.name.lowercase().replace('_', ' '),
@@ -3671,7 +3724,7 @@ private fun VyroCutApp() {
                                                 )?.let(videoEffects::add)
                                             }
                                             videoEffects += createClipTextOverlayEffects(clip.allTextOverlays)
-                                            videoEffects += createClipStickerOverlayEffects(clip.allStickerOverlays)
+                                            videoEffects += createClipStickerOverlayEffects(clip.allStickerOverlays, context)
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(
                                                     Effects(
@@ -4396,6 +4449,7 @@ internal fun encodeProject(clips: List<EditClip>): String {
             clip.allStickerOverlays.forEach { overlay ->
                 put(JSONObject().apply {
                     put("symbol", overlay.symbol)
+                    overlay.assetId?.let { put("assetId", it) }
                     put("scale", overlay.scale.toDouble())
                     put("position", overlay.position.name)
                     put("startMs", overlay.startMs)
@@ -4672,6 +4726,9 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                                 overlayJson.optLong("endMs", Long.MIN_VALUE)
                             } else {
                                 null
+                            },
+                            assetId = overlayJson.optString("assetId").takeIf {
+                                overlayJson.has("assetId") && !overlayJson.isNull("assetId")
                             },
                         ) ?: error("A clip has an invalid sticker overlay")
                         add(overlay)

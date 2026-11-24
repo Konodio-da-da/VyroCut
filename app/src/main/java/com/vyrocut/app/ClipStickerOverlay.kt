@@ -1,5 +1,6 @@
 package com.vyrocut.app
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -29,6 +30,31 @@ internal enum class ClipStickerPosition {
     BOTTOM_RIGHT,
 }
 
+/** Small, bundled vector assets that work without network access. */
+internal enum class ClipStickerAsset(
+    val id: String,
+    val label: String,
+    val fallbackSymbol: String,
+    val drawableResId: Int,
+) {
+    STAR("star", "Star", "⭐", R.drawable.vyro_sticker_star),
+    HEART("heart", "Heart", "❤️", R.drawable.vyro_sticker_heart),
+    SPARKLE("sparkle", "Sparkle", "✨", R.drawable.vyro_sticker_sparkle),
+    BOLT("bolt", "Bolt", "⚡", R.drawable.vyro_sticker_bolt),
+    CROWN("crown", "Crown", "👑", R.drawable.vyro_sticker_crown),
+    FLOWER("flower", "Flower", "🌼", R.drawable.vyro_sticker_flower);
+
+    companion object {
+        fun fromId(id: String?): ClipStickerAsset? =
+            id?.let { candidate -> values().firstOrNull { it.id == candidate } }
+    }
+}
+
+private val CLIP_STICKER_ASSET_ID_PATTERN = Regex("[a-z][a-z0-9-]{0,47}")
+
+internal fun isValidClipStickerAssetId(assetId: String?): Boolean =
+    assetId == null || CLIP_STICKER_ASSET_ID_PATTERN.matches(assetId)
+
 internal data class ClipStickerOverlay(
     val symbol: String,
     val scale: Float = 1f,
@@ -37,6 +63,8 @@ internal data class ClipStickerOverlay(
     val startMs: Long = 0L,
     /** Clip-local end time in milliseconds, exclusive; null means clip end. */
     val endMs: Long? = null,
+    /** Stable optional ID for a bundled vector asset; null keeps legacy Unicode stickers. */
+    val assetId: String? = null,
 ) {
     init {
         require(isValidClipStickerOverlaySymbol(symbol)) {
@@ -47,6 +75,9 @@ internal data class ClipStickerOverlay(
         }
         require(isValidClipStickerOverlayTiming(startMs, endMs)) {
             "Sticker timing is invalid"
+        }
+        require(isValidClipStickerAssetId(assetId)) {
+            "Sticker asset ID must be a lowercase stable identifier"
         }
     }
 }
@@ -200,18 +231,28 @@ internal fun decodeClipStickerOverlay(
     position: String? = null,
     startMs: Long = 0L,
     endMs: Long? = null,
+    assetId: String? = null,
 ): ClipStickerOverlay? {
     val normalized = raw?.trim() ?: return null
+    val normalizedAssetId = assetId?.trim()?.takeIf { it.isNotEmpty() }
     if (!isValidClipStickerOverlaySymbol(normalized) ||
         !isValidClipStickerOverlayScale(scale) ||
-        !isValidClipStickerOverlayTiming(startMs, endMs)
+        !isValidClipStickerOverlayTiming(startMs, endMs) ||
+        !isValidClipStickerAssetId(normalizedAssetId)
     ) return null
     val decodedPosition = if (position == null) {
         ClipStickerPosition.BOTTOM_RIGHT
     } else {
         runCatching { ClipStickerPosition.valueOf(position) }.getOrNull() ?: return null
     }
-    return ClipStickerOverlay(normalized, scale, decodedPosition, startMs, endMs)
+    return ClipStickerOverlay(
+        symbol = normalized,
+        scale = scale,
+        position = decodedPosition,
+        startMs = startMs,
+        endMs = endMs,
+        assetId = normalizedAssetId,
+    )
 }
 
 internal data class ClipStickerOverlayTimelineBounds(
@@ -289,6 +330,7 @@ internal fun calculateClipStickerOverlayLayout(
 @OptIn(UnstableApi::class)
 private class ClipStickerBitmapOverlay(
     private val overlay: ClipStickerOverlay,
+    private val context: Context,
 ) : BitmapOverlay() {
     private var bitmap: Bitmap? = null
     private var transparentBitmap: Bitmap? = null
@@ -304,30 +346,45 @@ private class ClipStickerBitmapOverlay(
         val geometry = checkNotNull(
             calculateClipStickerOverlayLayout(width, height, overlay.scale, overlay.position),
         )
-        val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            textSize = geometry.textSizePx
-            setShadowLayer(
-                (geometry.textSizePx * 0.06f).coerceAtLeast(2f),
-                0f,
-                (geometry.textSizePx * 0.025f).coerceAtLeast(1f),
-                0xAA000000.toInt(),
+        val stickerAsset = ClipStickerAsset.fromId(overlay.assetId)
+        val drawable = stickerAsset?.let { context.getDrawable(it.drawableResId)?.mutate() }
+        if (drawable != null) {
+            val assetSizePx = geometry.textSizePx.roundToInt().coerceAtLeast(1)
+            drawable.setBounds(0, 0, assetSizePx, assetSizePx)
+            canvas.save()
+            canvas.translate(
+                geometry.centerXPx - assetSizePx / 2f,
+                geometry.centerYPx - assetSizePx / 2f,
             )
+            drawable.draw(canvas)
+            canvas.restore()
+        } else {
+            // Unknown future asset IDs intentionally fall back to the persisted Unicode symbol.
+            val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = android.graphics.Color.WHITE
+                textSize = geometry.textSizePx
+                setShadowLayer(
+                    (geometry.textSizePx * 0.06f).coerceAtLeast(2f),
+                    0f,
+                    (geometry.textSizePx * 0.025f).coerceAtLeast(1f),
+                    0xAA000000.toInt(),
+                )
+            }
+            val layoutWidth = (geometry.textSizePx * 2.4f).roundToInt().coerceAtLeast(1)
+            val textLayout = StaticLayout.Builder
+                .obtain(overlay.symbol, 0, overlay.symbol.length, textPaint, layoutWidth)
+                .setAlignment(Layout.Alignment.ALIGN_CENTER)
+                .setIncludePad(false)
+                .setMaxLines(1)
+                .build()
+            canvas.save()
+            canvas.translate(
+                geometry.centerXPx - textLayout.width / 2f,
+                geometry.centerYPx - textLayout.height / 2f,
+            )
+            textLayout.draw(canvas)
+            canvas.restore()
         }
-        val layoutWidth = (geometry.textSizePx * 2.4f).roundToInt().coerceAtLeast(1)
-        val textLayout = StaticLayout.Builder
-            .obtain(overlay.symbol, 0, overlay.symbol.length, textPaint, layoutWidth)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER)
-            .setIncludePad(false)
-            .setMaxLines(1)
-            .build()
-        canvas.save()
-        canvas.translate(
-            geometry.centerXPx - textLayout.width / 2f,
-            geometry.centerYPx - textLayout.height / 2f,
-        )
-        textLayout.draw(canvas)
-        canvas.restore()
 
         val nextTransparentBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
         bitmap?.takeIf { !it.isRecycled }?.recycle()
@@ -353,8 +410,16 @@ private class ClipStickerBitmapOverlay(
 }
 
 @OptIn(UnstableApi::class)
-internal fun createClipStickerOverlayEffects(overlays: List<ClipStickerOverlay>): List<Effect> {
+internal fun createClipStickerOverlayEffects(
+    overlays: List<ClipStickerOverlay>,
+    context: Context,
+): List<Effect> {
     if (overlays.isEmpty()) return emptyList()
     require(overlays.size <= MAX_CLIP_STICKER_OVERLAYS)
-    return listOf(OverlayEffect(overlays.map(::ClipStickerBitmapOverlay)))
+    val applicationContext = context.applicationContext
+    return listOf(
+        OverlayEffect(overlays.map { overlay ->
+            ClipStickerBitmapOverlay(overlay, applicationContext)
+        }),
+    )
 }

@@ -247,4 +247,60 @@ class ClipStickerOverlayTest {
         assertNull(calculateClipStickerOverlayLayout(0, 1_080))
         assertNull(calculateClipStickerOverlayLayout(1_920, 1_080, Float.NaN))
     }
+    @Test
+    fun builtInVectorStickerPackHasUniqueStableIdsAndDrawableResources() {
+        val assets = ClipStickerAsset.values().toList()
+
+        assertEquals(6, assets.size)
+        assertEquals(assets.size, assets.map { it.id }.toSet().size)
+        assets.forEach { asset ->
+            assertTrue(isValidClipStickerAssetId(asset.id))
+            assertTrue(asset.drawableResId > 0)
+            assertTrue(isValidClipStickerOverlaySymbol(asset.fallbackSymbol))
+            assertEquals(asset, ClipStickerAsset.fromId(asset.id))
+        }
+    }
+
+    @Test
+    fun assetStickerIdsDecodeAndUnknownFutureAssetsKeepTheirUnicodeFallback() {
+        val builtIn = decodeClipStickerOverlay("⭐", assetId = "star")
+        assertEquals("star", builtIn?.assetId)
+        assertEquals(ClipStickerAsset.STAR, ClipStickerAsset.fromId(builtIn?.assetId))
+
+        val future = decodeClipStickerOverlay("✨", assetId = "future-shape")
+        assertEquals("future-shape", future?.assetId)
+        assertNull(ClipStickerAsset.fromId(future?.assetId))
+
+        assertNull(decodeClipStickerOverlay("⭐", assetId = "invalid/id"))
+        assertFalse(isValidClipStickerAssetId("UpperCase"))
+        assertTrue(isValidClipStickerAssetId(null))
+    }
+
+    @Test
+    fun builtInAssetIdentitySurvivesStickerSplitAndSourceTrimRebasing() {
+        val sticker = ClipStickerOverlay(
+            symbol = "⭐",
+            startMs = 500L,
+            endMs = 2_500L,
+            assetId = "star",
+        )
+
+        val (left, right) = splitClipStickerOverlayAt(
+            overlay = sticker,
+            splitPositionMs = 1_500L,
+            clipDurationMs = 3_000L,
+        )
+        assertEquals("star", left?.assetId)
+        assertEquals("star", right?.assetId)
+
+        val rebased = rebaseClipStickerOverlayForTrim(
+            overlay = sticker,
+            oldSourceStartMs = 0L,
+            oldSourceEndMs = 3_000L,
+            newSourceStartMs = 250L,
+            newSourceEndMs = 3_000L,
+        )
+        assertEquals("star", rebased?.assetId)
+    }
+
 }

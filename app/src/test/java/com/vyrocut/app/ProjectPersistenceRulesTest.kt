@@ -1,6 +1,7 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -386,4 +387,39 @@ class ProjectPersistenceRulesTest {
         sourceEndMs = 1_000L,
         sourceDurationMs = 1_000L,
     )
+    @Test
+    fun builtInStickerAssetIdsRoundTripWhileLegacyEmojiProjectsRemainUnchanged() {
+        val assetOverlay = ClipStickerOverlay(
+            symbol = "⭐",
+            scale = 1.25f,
+            position = ClipStickerPosition.TOP_LEFT,
+            startMs = 500L,
+            endMs = 2_500L,
+            assetId = ClipStickerAsset.STAR.id,
+        )
+        val legacyEmojiOverlay = ClipStickerOverlay(
+            symbol = "🔥",
+            position = ClipStickerPosition.BOTTOM_RIGHT,
+            startMs = 1_000L,
+            endMs = 2_000L,
+        )
+        val clip = EditClip(
+            id = "clip-asset-stickers",
+            uri = "content://media/video-asset-stickers",
+            name = "Sticker persistence",
+            sourceStartMs = 0L,
+            sourceEndMs = 4_000L,
+            stickerOverlays = listOf(assetOverlay, legacyEmojiOverlay),
+        )
+
+        val encoded = encodeProject(listOf(clip))
+        assertTrue(encoded.contains("\"assetId\":\"star\""))
+        assertEquals(listOf(clip), decodeProjectStrict(encoded))
+
+        val legacyClip = clip.copy(stickerOverlays = listOf(legacyEmojiOverlay))
+        val legacyEncoded = encodeProject(listOf(legacyClip))
+        assertFalse(legacyEncoded.contains("\"assetId\""))
+        assertEquals(listOf(legacyClip), decodeProjectStrict(legacyEncoded))
+    }
+
 }
