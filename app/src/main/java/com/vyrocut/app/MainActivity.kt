@@ -3152,23 +3152,23 @@ private fun VyroCutApp() {
                 )
                 Row(
                     Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.SettingsRowGapDp.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
                         Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.SizeSummaryGapDp.dp),
                     ) {
                         Text(
                             "EXPORT SIZE",
                             color = StudioMuted,
-                            fontSize = 9.sp,
+                            fontSize = VyroCutTypography.ToolLabelSp.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             "${displayedExportSize.widthPx} × ${displayedExportSize.heightPx} • ${exportResolutionPreset.label}",
                             color = StudioText,
-                            fontSize = 10.sp,
+                            fontSize = VyroCutTypography.CaptionSp.sp,
                         )
                     }
                     ExportResolutionPreset.values().forEach { preset ->
@@ -3181,24 +3181,24 @@ private fun VyroCutApp() {
                                     .apply()
                             },
                             enabled = !isExporting && !isReadingMedia,
-                            label = { Text(preset.label, fontSize = 10.sp) },
+                            label = { Text(preset.label, fontSize = VyroCutTypography.CaptionSp.sp) },
                         )
                     }
                 }
                 Text(
                     "Resolution changes the MP4 output size without changing your canvas ratio or preview.",
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                 )
                 Text(
                     "TARGET FPS",
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.PresetChipGapDp.dp),
                 ) {
                     ExportFrameRatePreset.values().forEach { preset ->
                         FilterChip(
@@ -3210,24 +3210,24 @@ private fun VyroCutApp() {
                                     .apply()
                             },
                             enabled = !isExporting && !isReadingMedia,
-                            label = { Text(preset.label, fontSize = 10.sp) },
+                            label = { Text(preset.label, fontSize = VyroCutTypography.CaptionSp.sp) },
                         )
                     }
                 }
                 Text(
                     "Media3 targets the selected average frame rate by dropping frames using source timestamps; lower-rate clips are not interpolated.",
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                 )
                 Text(
                     "VIDEO BITRATE",
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.PresetChipGapDp.dp),
                 ) {
                     ExportVideoBitratePreset.values().forEach { preset ->
                         FilterChip(
@@ -3239,24 +3239,24 @@ private fun VyroCutApp() {
                                     .apply()
                             },
                             enabled = !isExporting && !isReadingMedia,
-                            label = { Text(preset.label, fontSize = 10.sp) },
+                            label = { Text(preset.label, fontSize = VyroCutTypography.CaptionSp.sp) },
                         )
                     }
                 }
                 Text(
                     displayedVideoBitrateSummary,
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                 )
                 Text(
                     "AUDIO BITRATE",
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.PresetChipGapDp.dp),
                 ) {
                     ExportAudioBitratePreset.values().forEach { preset ->
                         FilterChip(
@@ -3268,20 +3268,20 @@ private fun VyroCutApp() {
                                     .apply()
                             },
                             enabled = !isExporting && !isReadingMedia,
-                            label = { Text(preset.label, fontSize = 10.sp) },
+                            label = { Text(preset.label, fontSize = VyroCutTypography.CaptionSp.sp) },
                         )
                     }
                 }
                 Text(
                     exportAudioBitrateSummary(exportAudioBitratePreset),
                     color = StudioMuted,
-                    fontSize = 9.sp,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
                 )
                 displayedExportSizeEstimate?.let { estimate ->
                     Text(
                         "Estimated MP4 size: ${formatExportSizeMiB(estimate.estimatedBytes)}",
                         color = StudioText,
-                        fontSize = 10.sp,
+                        fontSize = VyroCutTypography.CaptionSp.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     val estimateAssumptions = buildList {
@@ -3292,10 +3292,10 @@ private fun VyroCutApp() {
                         (estimateAssumptions + "Approximate; content and device encoders change actual size.")
                             .joinToString(" • "),
                         color = StudioMuted,
-                        fontSize = 9.sp,
+                        fontSize = VyroCutTypography.ToolLabelSp.sp,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.SettingsRowGapDp.dp), modifier = Modifier.fillMaxWidth()) {
                     Button(
                         onClick = {
                             if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
@@ -3812,9 +3812,9 @@ private fun VyroCutApp() {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(StudioPanel, RoundedCornerShape(10.dp))
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                            .background(StudioPanel, RoundedCornerShape(VyroCutExportPanelMetrics.CardCornerDp.dp))
+                            .padding(VyroCutExportPanelMetrics.CardPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.ProgressCardSectionGapDp.dp),
                     ) {
                         val progressPresentation = exportProgressPresentation(
                             stage = exportUiStage,
@@ -3824,14 +3824,14 @@ private fun VyroCutApp() {
                             Text(
                                 exportUiStage.label,
                                 color = StudioText,
-                                fontSize = 11.sp,
+                                fontSize = VyroCutTypography.LabelSp.sp,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Spacer(Modifier.weight(1f))
                             Text(
                                 progressPresentation.percent?.let { "$it%" } ?: progressPresentation.progressLabel,
                                 color = StudioAccent,
-                                fontSize = 11.sp,
+                                fontSize = VyroCutTypography.LabelSp.sp,
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -3846,7 +3846,7 @@ private fun VyroCutApp() {
                         Text(
                             progressPresentation.detailText,
                             color = StudioMuted,
-                            fontSize = 9.sp,
+                            fontSize = VyroCutTypography.ToolLabelSp.sp,
                         )
                     }
                 }
@@ -3854,26 +3854,26 @@ private fun VyroCutApp() {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(StudioPanel, RoundedCornerShape(10.dp))
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                            .background(StudioPanel, RoundedCornerShape(VyroCutExportPanelMetrics.CardCornerDp.dp))
+                            .padding(VyroCutExportPanelMetrics.CardPaddingDp.dp),
+                        verticalArrangement = Arrangement.spacedBy(VyroCutExportPanelMetrics.CompletionCardSectionGapDp.dp),
                     ) {
                         Text(
                             "EXPORT READY",
                             color = StudioAccent,
-                            fontSize = 10.sp,
+                            fontSize = VyroCutTypography.CaptionSp.sp,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(summary, color = StudioText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(summary, color = StudioText, fontSize = VyroCutTypography.BodySp.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             "Verified and saved to Movies/VyroCut. Use Share to send the MP4.",
                             color = StudioMuted,
-                            fontSize = 10.sp,
+                            fontSize = VyroCutTypography.CaptionSp.sp,
                         )
                     }
                 }
-                exportMessage?.let { Text(it, color = StudioAccent, fontSize = 11.sp) }
-                Text("Offline editing • Project autosaves on this device", color = StudioMuted, fontSize = 10.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+                exportMessage?.let { Text(it, color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp) }
+                Text("Offline editing • Project autosaves on this device", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
                 if (showProjects) {
                     AlertDialog(
                         onDismissRequest = { showProjects = false },
