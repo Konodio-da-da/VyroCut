@@ -57,6 +57,17 @@ internal fun timelinePlayheadGeometry(lineLeftDp: Float): TimelinePlayheadGeomet
 
 internal fun timelineClipSelectionBorderWidthDp(isSelected: Boolean): Int =
     if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else 0
+
+/**
+ * Returns the shared selection outline width for an audio clip only when its
+ * stable ID matches the currently selected audio clip.
+ */
+internal fun timelineAudioClipSelectionBorderWidthDp(
+    clipId: String,
+    selectedAudioTrackId: String?,
+): Int = timelineClipSelectionBorderWidthDp(
+    isSelected = clipId.isNotBlank() && selectedAudioTrackId == clipId,
+)
 private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = 0.62f
 private const val TIMELINE_RULER_LABEL_GAP_DP = 8f
 private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = 32

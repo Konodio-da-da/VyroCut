@@ -2237,6 +2237,7 @@ private fun VyroCutApp() {
                     audioTracks = audioTrackClips,
                     audioWaveforms = audioWaveforms,
                     selectedIndex = selectedIndex,
+                    selectedAudioTrackId = selectedAudioTrackId,
                     playheadPositionMs = timelinePositionMs.toLong(),
                     isPlaying = isPlaying,
                     onSelectAudioTrack = { trackClip ->
@@ -4987,6 +4988,7 @@ private fun TimelineEditorStrip(
     audioTracks: List<AudioTrackClip>,
     audioWaveforms: Map<String, List<Float>>,
     selectedIndex: Int,
+    selectedAudioTrackId: String?,
     playheadPositionMs: Long,
     isPlaying: Boolean,
     onSelectAudioTrack: (AudioTrackClip) -> Unit,
@@ -5424,6 +5426,14 @@ private fun TimelineEditorStrip(
                             .width((endPx - startPx).coerceAtLeast(6f).dp)
                             .fillMaxHeight()
                             .background(laneColor, RoundedCornerShape(4.dp))
+                            .border(
+                                width = timelineAudioClipSelectionBorderWidthDp(
+                                    clipId = trackClip.id,
+                                    selectedAudioTrackId = selectedAudioTrackId,
+                                ).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(4.dp),
+                            )
                             .clickable { onSelectAudioTrack(trackClip) }
                             .padding(horizontal = 5.dp),
                         contentAlignment = Alignment.CenterStart,

@@ -75,6 +75,17 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun audioClipSelectionOutlineFollowsTheSelectedStableId() {
+        assertEquals(
+            TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP,
+            timelineAudioClipSelectionBorderWidthDp("audio-1", "audio-1"),
+        )
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("audio-1", "audio-2"))
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("audio-1", null))
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("", ""))
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)

@@ -409,3 +409,9 @@ A control is only considered complete when its operation is connected to the pro
 - Added a third vertical-density tier below the existing 520 dp tight-window breakpoint: 3 dp between editor sections and 2 dp outer vertical padding, while retaining 4 dp compact spacing from 520–599 dp and 6 dp standard spacing at 600 dp and above.
 - The editor remains vertically scrollable. No tools, timeline rows, playback actions, or accessibility touch targets are hidden or reduced; preview sizing, project-clock behaviour, and timeline geometry are unchanged.
 - Added pure JVM boundary coverage for the tight-to-compact transition. CI can verify layout-rule calculations and compilation; actual screen fit still requires physical-device validation.
+
+
+## Timeline selected-audio visibility — 24 November 2026
+- Audio clips now receive the same accent selection outline as video, text, sticker, and source clips when their stable ID matches the selected audio clip. The selected outline is visible in the corresponding Music, SFX, or Voiceover lane.
+- Selection is presentation-only: tapping an audio clip still selects the same clip, opens the Audio tool, and seeks to its existing timeline start. Audio placement, source/timeline timing, waveform generation/cache, project persistence, preview synchronization, and export composition are unchanged.
+- Added a pure JVM test for matching, non-matching, missing, and blank audio selection IDs. Android CI must verify compilation and the regression test; actual outline rendering and touch behaviour still require device validation.
