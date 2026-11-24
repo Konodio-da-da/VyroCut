@@ -491,3 +491,10 @@ A control is only considered complete when its operation is connected to the pro
 - Reused the shared typography scale for export labels, values, and helper copy.
 - Replaced only existing styling literals in the export settings, progress, and completion UI. Numeric values are unchanged; export preferences, bitrate calculations, progress stages, Transformer lifecycle, cancellation, validation, and MediaStore publication are untouched.
 - Added a JVM regression assertion for every export-panel metric. CI compilation and unit tests are the available automated checks; compact-window fit and actual export interaction still require Android-device validation.
+
+
+## Timeline ruler edge-collision correction — 24 November 2026
+- Ruler-label selection now measures the actual rendered label-left positions after the same start/end clamping used by Compose, instead of comparing only tick-center distances.
+- This prevents the first or last timecode pill from overlapping a neighboring centered label when edge alignment shifts the pill inward.
+- The final major timecode is retained only when its rendered bounds leave the configured label gap; tick marks, absolute project-time mapping, playhead position, clip geometry, and timeline scrolling are unchanged.
+- Added pure JVM regression cases for colliding start/end labels and for retaining the final edge label when there is enough room. CI is the available automated check; physical-device readability and touch behavior remain unverified.

@@ -4891,17 +4891,14 @@ private fun TimelineEditorStrip(
         .filter { it.isMajor }
         .maxOfOrNull { formatTime(it.timeMs).length }
         ?: 5
-    val rulerLabelMinimumSpacingDp = timelineRulerLabelMinimumSpacingDp(
-        maxLabelCharacters = maxRulerLabelCharacters,
-        fontScale = density.fontScale,
-    )
     val rulerLabelWidthDp = timelineRulerLabelWidthDp(
         maxLabelCharacters = maxRulerLabelCharacters,
         fontScale = density.fontScale,
     )
     val visibleRulerLabelTimes = selectTimelineRulerLabelTicks(
         ticks = timelineRulerTicks,
-        minimumSpacing = rulerLabelMinimumSpacingDp.toFloat(),
+        labelWidthDp = rulerLabelWidthDp,
+        contentWidthDp = totalWidthPx,
     ).mapTo(mutableSetOf()) { it.timeMs }
     val markerX = calculateTimelinePlayheadOffsetPx(
         clipDurationsMs = timelineClipDurationsMs,

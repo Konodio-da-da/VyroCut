@@ -329,34 +329,45 @@ internal fun calculateTimelineRulerTicks(
  */
 internal fun selectTimelineRulerLabelTicks(
     ticks: List<TimelineRulerTick>,
-    minimumSpacing: Float,
+    labelWidthDp: Int,
+    contentWidthDp: Float,
+    minimumGapDp: Float = TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP.toFloat(),
 ): List<TimelineRulerTick> {
     val candidates = ticks.asSequence()
         .filter { it.isMajor && it.offsetPx.isFinite() }
         .sortedBy { it.timeMs }
         .toList()
     if (candidates.size <= 1) return candidates
-    if (!minimumSpacing.isFinite() || minimumSpacing <= 0f) return candidates
+    if (labelWidthDp <= 0 || !minimumGapDp.isFinite() || minimumGapDp <= 0f) return candidates
+
+    val safeContentWidthDp = contentWidthDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: labelWidthDp.toFloat()
+    val requiredSpacingDp = labelWidthDp + minimumGapDp
+
+    fun labelLeftDp(tick: TimelineRulerTick): Float = timelineRulerLabelPlacement(
+        tickOffsetDp = tick.offsetPx,
+        labelWidthDp = labelWidthDp,
+        contentWidthDp = safeContentWidthDp,
+    ).offsetDp
 
     val selected = mutableListOf(candidates.first())
+    var previousLabelLeftDp = labelLeftDp(candidates.first())
+
     candidates.subList(1, candidates.lastIndex).forEach { candidate ->
-        val previous = selected.last()
-        if (
-            candidate.offsetPx >= previous.offsetPx &&
-            candidate.offsetPx - previous.offsetPx >= minimumSpacing
-        ) {
+        val candidateLeftDp = labelLeftDp(candidate)
+        if (candidateLeftDp - previousLabelLeftDp >= requiredSpacingDp) {
             selected += candidate
+            previousLabelLeftDp = candidateLeftDp
         }
     }
 
     val lastCandidate = candidates.last()
-    val previous = selected.last()
-    if (
-        lastCandidate.timeMs != previous.timeMs &&
-        lastCandidate.offsetPx >= previous.offsetPx &&
-        lastCandidate.offsetPx - previous.offsetPx >= minimumSpacing
-    ) {
-        selected += lastCandidate
+    if (lastCandidate.timeMs != selected.last().timeMs) {
+        val lastLabelLeftDp = labelLeftDp(lastCandidate)
+        if (lastLabelLeftDp - previousLabelLeftDp >= requiredSpacingDp) {
+            selected += lastCandidate
+        }
     }
     return selected
 }

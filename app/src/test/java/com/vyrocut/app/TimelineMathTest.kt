@@ -1135,7 +1135,11 @@ class TimelineMathTest {
 
         assertEquals(
             listOf(0L, 10_000L, 20_000L),
-            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 45f).map { it.timeMs },
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 37,
+                contentWidthDp = 160f,
+            ).map { it.timeMs },
         )
     }
 
@@ -1149,7 +1153,7 @@ class TimelineMathTest {
 
         assertEquals(
             listOf(0L),
-            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 40f).map { it.timeMs },
+            selectTimelineRulerLabelTicks(ticks, labelWidthDp = 38, contentWidthDp = 100f).map { it.timeMs },
         )
     }
 
@@ -1165,7 +1169,7 @@ class TimelineMathTest {
 
         assertEquals(
             listOf(0L, 10_000L),
-            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 40f).map { it.timeMs },
+            selectTimelineRulerLabelTicks(ticks, labelWidthDp = 38, contentWidthDp = 160f).map { it.timeMs },
         )
     }
 
@@ -1180,11 +1184,64 @@ class TimelineMathTest {
 
         assertEquals(
             listOf(0L, 5_000L, 15_000L),
-            selectTimelineRulerLabelTicks(ticks, minimumSpacing = Float.NaN).map { it.timeMs },
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 38,
+                contentWidthDp = 160f,
+                minimumGapDp = Float.NaN,
+            ).map { it.timeMs },
         )
         assertEquals(
             listOf(0L, 5_000L, 15_000L),
-            selectTimelineRulerLabelTicks(ticks, minimumSpacing = 0f).map { it.timeMs },
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 38,
+                contentWidthDp = 160f,
+                minimumGapDp = 0f,
+            ).map { it.timeMs },
+        )
+    }
+
+    @Test
+    fun rulerLabelSelectionAccountsForStartAndEndClampingBeforeCheckingCollisions() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 39f, true),
+            TimelineRulerTick(10_000L, 78f, true),
+            TimelineRulerTick(15_000L, 121f, true),
+            TimelineRulerTick(20_000L, 160f, true),
+        )
+
+        val selected = selectTimelineRulerLabelTicks(
+            ticks = ticks,
+            labelWidthDp = 37,
+            contentWidthDp = 160f,
+        )
+
+        assertEquals(listOf(0L, 10_000L, 15_000L), selected.map { it.timeMs })
+        val renderedLefts = selected.map {
+            timelineRulerLabelPlacement(it.offsetPx, 37, 160f).offsetDp
+        }
+        assertTrue(renderedLefts.zipWithNext().all { (left, next) -> next - left >= 39f })
+    }
+
+    @Test
+    fun rulerLabelSelectionRetainsTheFinalEdgeLabelWhenItsRenderedBoundsFit() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 39f, true),
+            TimelineRulerTick(10_000L, 78f, true),
+            TimelineRulerTick(15_000L, 121f, true),
+            TimelineRulerTick(20_000L, 200f, true),
+        )
+
+        assertEquals(
+            listOf(0L, 10_000L, 15_000L, 20_000L),
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 37,
+                contentWidthDp = 200f,
+            ).map { it.timeMs },
         )
     }
 
