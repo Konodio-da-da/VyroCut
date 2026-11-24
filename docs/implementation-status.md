@@ -542,3 +542,9 @@ A control is only considered complete when its operation is connected to the pro
 - The selected audio-lane clip uses muted text for its time/volume metadata on that selected surface, so this corrects a real low-contrast state without changing layout dimensions or selection behavior.
 - Added pure JVM contrast regression coverage for muted, primary, and danger text across every shared studio surface, plus the subtle waveform color's non-text contrast on the unselected clip surface.
 - No timeline timing, waveform data/cache, playback, audio synchronization, project persistence, export, or MediaStore behavior changed. Android CI verifies compilation and deterministic color calculations; visual appearance still requires device validation.
+
+
+## Silent waveform rendering — 24 November 2026
+- Waveform strips now draw the center baseline without drawing artificial minimum-height bars for zero-amplitude samples. Digital silence therefore remains visually flat instead of appearing as a row of tiny spikes.
+- Added a pure Kotlin bar-height rule that skips non-finite/non-positive samples, clamps normalized peaks to the canvas, and rejects invalid canvas/minimum-height metrics.
+- The decoder, 96-bucket source-time mapping, waveform cache, audio-track models, Media3 preview players, project clock, and export composition are unchanged. GitHub Actions verifies the pure rendering rule and compilation; actual waveform appearance on device still requires physical-device validation.

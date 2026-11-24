@@ -107,6 +107,30 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun waveformBarsOmitSilenceAndInvalidSamples() {
+        assertNull(audioWaveformBarHalfHeightPx(0f, 100f, 1f))
+        assertNull(audioWaveformBarHalfHeightPx(-0.5f, 100f, 1f))
+        assertNull(audioWaveformBarHalfHeightPx(Float.NaN, 100f, 1f))
+        assertNull(audioWaveformBarHalfHeightPx(Float.POSITIVE_INFINITY, 100f, 1f))
+    }
+
+    @Test
+    fun waveformBarsScalePositivePeaksAndRespectCanvasBounds() {
+        assertEquals(23f, audioWaveformBarHalfHeightPx(0.5f, 100f, 1f)!!, 0.0001f)
+        assertEquals(46f, audioWaveformBarHalfHeightPx(2f, 100f, 1f)!!, 0.0001f)
+        assertEquals(1f, audioWaveformBarHalfHeightPx(0.001f, 100f, 1f)!!, 0.0001f)
+        assertEquals(5f, audioWaveformBarHalfHeightPx(1f, 10f, 8f)!!, 0.0001f)
+    }
+
+    @Test
+    fun waveformBarsRejectInvalidCanvasGeometry() {
+        assertNull(audioWaveformBarHalfHeightPx(0.5f, 0f, 1f))
+        assertNull(audioWaveformBarHalfHeightPx(0.5f, Float.NaN, 1f))
+        assertNull(audioWaveformBarHalfHeightPx(0.5f, 100f, -1f))
+        assertNull(audioWaveformBarHalfHeightPx(0.5f, 100f, Float.POSITIVE_INFINITY))
+    }
+
+    @Test
     fun cacheKeySeparatesWaveformBucketResolutions() {
         val uri = "content://media/track"
         val defaultResolution = audioWaveformCacheKey(uri, 0L, 5_000L)

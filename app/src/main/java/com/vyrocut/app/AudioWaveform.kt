@@ -442,6 +442,27 @@ private fun writeWaveformCache(directory: File, destination: File, values: List<
     }
 }
 
+/**
+ * Returns a visible waveform bar height, or null for silence/invalid samples.
+ * Silence is represented by the center baseline rather than artificial spikes.
+ */
+internal fun audioWaveformBarHalfHeightPx(
+    amplitude: Float,
+    canvasHeightPx: Float,
+    minimumHalfHeightPx: Float,
+): Float? {
+    if (!amplitude.isFinite() || amplitude <= 0f ||
+        !canvasHeightPx.isFinite() || canvasHeightPx <= 0f ||
+        !minimumHalfHeightPx.isFinite() || minimumHalfHeightPx < 0f
+    ) return null
+
+    val maximumHalfHeight = canvasHeightPx / 2f
+    val minimumHalfHeight = minimumHalfHeightPx.coerceAtMost(maximumHalfHeight)
+    return (amplitude.coerceIn(0f, 1f) * canvasHeightPx * 0.46f)
+        .coerceAtLeast(minimumHalfHeight)
+        .coerceAtMost(maximumHalfHeight)
+}
+
 @androidx.compose.runtime.Composable
 internal fun AudioWaveformStrip(
     amplitudes: List<Float>,
@@ -463,8 +484,11 @@ internal fun AudioWaveformStrip(
         val bucketWidth = size.width / amplitudes.size.toFloat()
         val strokeWidth = (bucketWidth * 0.58f).coerceIn(1.dp.toPx(), 3.dp.toPx())
         amplitudes.forEachIndexed { index, amplitude ->
-            val normalized = amplitude.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
-            val halfHeight = (normalized * size.height * 0.46f).coerceAtLeast(1.dp.toPx())
+            val halfHeight = audioWaveformBarHalfHeightPx(
+                amplitude = amplitude,
+                canvasHeightPx = size.height,
+                minimumHalfHeightPx = 1.dp.toPx(),
+            ) ?: return@forEachIndexed
             val x = (index + 0.5f) * bucketWidth
             drawLine(
                 color = color,
