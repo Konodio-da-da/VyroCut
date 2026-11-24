@@ -116,3 +116,17 @@ internal fun buildExportCompletionSummary(
         exportSettings = cleanSettings,
     )
 }
+
+/** Reasons the Android Sharesheet could not be opened for a verified export. */
+internal enum class ExportShareFailureReason {
+    NO_COMPATIBLE_APP,
+    URI_ACCESS_DENIED,
+}
+
+/** Gives the user a recovery action without claiming that a share was completed. */
+internal fun exportShareFailureMessage(reason: ExportShareFailureReason): String = when (reason) {
+    ExportShareFailureReason.NO_COMPATIBLE_APP ->
+        "Android couldn't find an app to share this MP4. Install or enable a sharing app, then try again."
+    ExportShareFailureReason.URI_ACCESS_DENIED ->
+        "Android denied access to the saved MP4. Export again, then retry sharing."
+}

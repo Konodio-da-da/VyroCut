@@ -1,5 +1,7 @@
 package com.vyrocut.app
 
+import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -3801,13 +3803,32 @@ private fun VyroCutApp() {
                     }
                     exportedUri?.let { uri ->
                         OutlinedButton(onClick = {
+                            exportMessage = null
                             val share = Intent(Intent.ACTION_SEND).apply {
                                 type = "video/mp4"
                                 putExtra(Intent.EXTRA_STREAM, uri)
+                                clipData = ClipData.newUri(
+                                    context.contentResolver,
+                                    "VyroCut exported video",
+                                    uri,
+                                )
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(share, "Share exported video"))
-                        }) { Text("Share") }
+                            val chooser = Intent.createChooser(share, "Share exported video").apply {
+                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            }
+                            try {
+                                context.startActivity(chooser)
+                            } catch (_: ActivityNotFoundException) {
+                                exportMessage = exportShareFailureMessage(
+                                    ExportShareFailureReason.NO_COMPATIBLE_APP,
+                                )
+                            } catch (_: SecurityException) {
+                                exportMessage = exportShareFailureMessage(
+                                    ExportShareFailureReason.URI_ACCESS_DENIED,
+                                )
+                            }
+                        }) { Text("Share MP4") }
                     }
                 }
                 if (isExporting) {
@@ -3895,7 +3916,7 @@ private fun VyroCutApp() {
                             )
                         }
                         Text(
-                            "Verified and saved to Movies/VyroCut. Use Share to send the MP4.",
+                            "Saved to Movies/VyroCut. Share MP4 opens Android's app chooser for this saved copy.",
                             color = StudioMuted,
                             fontSize = VyroCutTypography.CaptionSp.sp,
                         )

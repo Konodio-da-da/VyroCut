@@ -1,3 +1,8 @@
+## Current Android export-sharing handoff milestone — 24 November 2026
+- The verified MediaStore MP4 is shared through Android's standard ACTION_SEND chooser with video/mp4, EXTRA_STREAM, ClipData, and temporary read-URI grants on the share and chooser intents.
+- The Share MP4 action reports a recoverable message if Android cannot launch a compatible chooser target or denies access to the published URI. Opening the chooser is not described as a completed share.
+- Pure Kotlin tests cover the failure-recovery copy. GitHub Actions can verify compilation and JVM tests; actual receiver-app URI access and chooser behavior still require physical-device validation.
+
 ## Current VFR decode-order normalization milestone — 15 November 2026
 - MediaExtractor timestamp collection no longer assumes that sample presentation timestamps are monotonically increasing in compressed-sample iteration order. B-frame streams can carry composition timestamps that move backwards while samples remain in decode order.
 - The bounded scanner now collects source-range samples through two sync samples at/after trim OUT, so a leading B-frame after the first post-trim sync sample is not discarded by an early PTS cutoff. The scan is capped at 120,000 visited samples and returns no index rather than publishing a partial one when the cap is reached.

@@ -159,4 +159,16 @@ class ExportProgressRulesTest {
             buildExportCompletionSummary("verified", emptyList()),
         )
     }
+
+    @Test
+    fun shareFailureMessagesOfferSpecificRecoveryWithoutClaimingSuccess() {
+        assertEquals(
+            "Android couldn't find an app to share this MP4. Install or enable a sharing app, then try again.",
+            exportShareFailureMessage(ExportShareFailureReason.NO_COMPATIBLE_APP),
+        )
+        assertEquals(
+            "Android denied access to the saved MP4. Export again, then retry sharing.",
+            exportShareFailureMessage(ExportShareFailureReason.URI_ACCESS_DENIED),
+        )
+    }
 }
