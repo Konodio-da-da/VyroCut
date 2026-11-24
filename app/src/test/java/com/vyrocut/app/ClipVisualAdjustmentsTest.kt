@@ -103,6 +103,7 @@ class ClipVisualAdjustmentsTest {
         assertEquals(ClipCreativeEffectPreset.WARM, clipCreativeEffectPresetFromId("warm"))
         assertEquals(ClipCreativeEffectPreset.COOL, clipCreativeEffectPresetFromId("cool"))
         assertEquals(ClipCreativeEffectPreset.CINEMATIC, clipCreativeEffectPresetFromId("cinematic"))
+        assertEquals(ClipCreativeEffectPreset.SOFT_FOCUS, clipCreativeEffectPresetFromId("soft-focus"))
         assertEquals(ClipCreativeEffectPreset.NEGATIVE, clipCreativeEffectPresetFromId("negative"))
         assertEquals(ClipCreativeEffectPreset.GRAYSCALE, clipCreativeEffectPresetFromId("grayscale"))
         assertEquals(ClipCreativeEffectPreset.SEPIA, clipCreativeEffectPresetFromId("sepia"))
@@ -132,6 +133,12 @@ class ClipVisualAdjustmentsTest {
             ),
         )
         assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.SOFT_FOCUS, 1f)),
+            createClipVisualEffectSpecs(
+                ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.SOFT_FOCUS),
+            ),
+        )
+        assertEquals(
             listOf(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, 1f)),
             createClipVisualEffectSpecs(
                 ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.NEGATIVE),
@@ -155,6 +162,16 @@ class ClipVisualAdjustmentsTest {
                 ClipVisualAdjustments(creativeEffectPreset = ClipCreativeEffectPreset.FILM_FADE),
             ),
         )
+    }
+
+    @Test
+    fun softFocusSigmaScalesWithStrengthAndRejectsInvalidInputs() {
+        assertEquals(0f, softFocusSigmaPx(0f), 0.0001f)
+        assertEquals(1.25f, softFocusSigmaPx(0.25f), 0.0001f)
+        assertEquals(MAX_SOFT_FOCUS_SIGMA_PX, softFocusSigmaPx(1f), 0.0001f)
+        assertEquals(false, runCatching { softFocusSigmaPx(-0.01f) }.isSuccess)
+        assertEquals(false, runCatching { softFocusSigmaPx(1.01f) }.isSuccess)
+        assertEquals(false, runCatching { softFocusSigmaPx(Float.NaN) }.isSuccess)
     }
 
     @Test
@@ -196,6 +213,7 @@ class ClipVisualAdjustmentsTest {
             ClipCreativeEffectPreset.WARM to ClipVisualEffectType.WARM_TINT,
             ClipCreativeEffectPreset.COOL to ClipVisualEffectType.COOL_TINT,
             ClipCreativeEffectPreset.CINEMATIC to ClipVisualEffectType.CINEMATIC,
+            ClipCreativeEffectPreset.SOFT_FOCUS to ClipVisualEffectType.SOFT_FOCUS,
             ClipCreativeEffectPreset.NEGATIVE to ClipVisualEffectType.INVERTED,
             ClipCreativeEffectPreset.GRAYSCALE to ClipVisualEffectType.GRAYSCALE,
             ClipCreativeEffectPreset.SEPIA to ClipVisualEffectType.SEPIA,
@@ -234,6 +252,10 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.CINEMATIC),
         )
         assertEquals(
+            listOf(ClipCreativeEffectPreset.SOFT_FOCUS),
+            clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.LENS),
+        )
+        assertEquals(
             listOf(
                 ClipCreativeEffectPreset.ORIGINAL,
                 ClipCreativeEffectPreset.NEGATIVE,
@@ -246,7 +268,7 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.VINTAGE),
         )
 
-        // Browser order is category-first (Color, Cinematic, Monochrome, Vintage), not
+        // Browser order is category-first (Color, Cinematic, Lens, Monochrome, Vintage), not
         // enum declaration order. Verify that every preset appears exactly once
         // while keeping the category ordering asserted above.
         val browserOrder = ClipCreativeEffectCategory.values()
@@ -256,6 +278,7 @@ class ClipVisualAdjustmentsTest {
                 ClipCreativeEffectPreset.WARM,
                 ClipCreativeEffectPreset.COOL,
                 ClipCreativeEffectPreset.CINEMATIC,
+                ClipCreativeEffectPreset.SOFT_FOCUS,
                 ClipCreativeEffectPreset.ORIGINAL,
                 ClipCreativeEffectPreset.NEGATIVE,
                 ClipCreativeEffectPreset.GRAYSCALE,

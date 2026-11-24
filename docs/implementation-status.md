@@ -437,3 +437,9 @@ A control is only considered complete when its operation is connected to the pro
 - Preview and Transformer export both use the shared `createClipVisualEffects` factory, so the same ordered effect specification is used in both paths. Existing clip adjustments remain composed before the creative look.
 - The stable preset ID is stored through the existing visual-adjustment JSON field; no project schema or migration change is required. Existing preset IDs and older project defaults are unchanged.
 - Added pure JVM coverage for ID decoding, category ordering, full/partial/zero intensity, matrix coefficients, alpha preservation, and defensive matrix copies. CI verifies compilation and JVM logic only; visual grading and playback still require device/export validation.
+
+## Soft Focus lens effect — 24 November 2026
+- Added a persisted `soft-focus` creative-effect preset in the Lens category, using Media3 1.5.1 `GaussianBlur` rather than a UI-only look.
+- Strength maps linearly from 0–100% to a maximum Gaussian sigma of 5 output pixels. Zero strength remains omitted from the effect list, preserving the no-op path.
+- The shared `createClipVisualEffects` factory supplies the effect to both the Media3 preview player and Transformer export composition; existing per-clip adjustments remain ordered before the creative effect.
+- Added pure JVM coverage for stable ID decoding, effect specification, category/browser ordering, intensity/no-op behavior, and sigma bounds. Android CI verifies compilation and JVM logic; actual blur quality and playback still require device/export validation.

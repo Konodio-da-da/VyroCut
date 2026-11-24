@@ -4,6 +4,7 @@ import androidx.media3.common.Effect
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
+import androidx.media3.effect.GaussianBlur
 import androidx.media3.effect.HslAdjustment
 import androidx.media3.effect.RgbAdjustment
 import androidx.media3.effect.RgbFilter
@@ -37,6 +38,7 @@ internal data class ClipVisualAdjustments(
 internal enum class ClipCreativeEffectCategory(val label: String) {
     COLOR("COLOR"),
     CINEMATIC("CINEMATIC"),
+    LENS("LENS"),
     MONOCHROME("NEUTRAL & MONOCHROME"),
     VINTAGE("VINTAGE"),
 }
@@ -50,6 +52,7 @@ internal enum class ClipCreativeEffectPreset(
     WARM("warm", "Warm", ClipCreativeEffectCategory.COLOR),
     COOL("cool", "Cool", ClipCreativeEffectCategory.COLOR),
     CINEMATIC("cinematic", "Cinematic", ClipCreativeEffectCategory.CINEMATIC),
+    SOFT_FOCUS("soft-focus", "Soft Focus", ClipCreativeEffectCategory.LENS),
     NEGATIVE("negative", "Negative", ClipCreativeEffectCategory.MONOCHROME),
     GRAYSCALE("grayscale", "Grayscale", ClipCreativeEffectCategory.MONOCHROME),
     SEPIA("sepia", "Sepia", ClipCreativeEffectCategory.VINTAGE),
@@ -108,6 +111,7 @@ internal enum class ClipVisualEffectType {
     WARM_TINT,
     COOL_TINT,
     CINEMATIC,
+    SOFT_FOCUS,
     INVERTED,
     GRAYSCALE,
     SEPIA,
@@ -146,12 +150,21 @@ internal fun createClipVisualEffectSpecs(
             ClipCreativeEffectPreset.WARM -> add(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, intensity))
             ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, intensity))
             ClipCreativeEffectPreset.CINEMATIC -> add(ClipVisualEffectSpec(ClipVisualEffectType.CINEMATIC, intensity))
+            ClipCreativeEffectPreset.SOFT_FOCUS -> add(ClipVisualEffectSpec(ClipVisualEffectType.SOFT_FOCUS, intensity))
             ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
             ClipCreativeEffectPreset.GRAYSCALE -> add(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, intensity))
             ClipCreativeEffectPreset.SEPIA -> add(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, intensity))
             ClipCreativeEffectPreset.FILM_FADE -> add(ClipVisualEffectSpec(ClipVisualEffectType.FILM_FADE, intensity))
         }
     }
+}
+
+internal const val MAX_SOFT_FOCUS_SIGMA_PX = 5f
+
+/** Maps normalized strength to Media3 GaussianBlur sigma, expressed in output pixels. */
+internal fun softFocusSigmaPx(intensity: Float): Float {
+    require(intensity.isFinite() && intensity in 0f..1f) { "Effect intensity must be between 0 and 1" }
+    return MAX_SOFT_FOCUS_SIGMA_PX * intensity
 }
 
 internal fun blendRgbMatrixWithIdentity(matrix: FloatArray, intensity: Float): FloatArray {
@@ -260,6 +273,7 @@ internal fun createClipVisualEffects(
             if (spec.amount >= 1f) FilmFadeRgbMatrix else IntensityRgbMatrix(FilmFadeRgbMatrix, spec.amount)
         ClipVisualEffectType.CINEMATIC ->
             if (spec.amount >= 1f) CinematicRgbMatrix else IntensityRgbMatrix(CinematicRgbMatrix, spec.amount)
+        ClipVisualEffectType.SOFT_FOCUS -> GaussianBlur(softFocusSigmaPx(spec.amount))
     }
 }
 
