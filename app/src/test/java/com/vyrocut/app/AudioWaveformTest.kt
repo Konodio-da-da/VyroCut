@@ -182,6 +182,61 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun waveformUiCacheDropsEntriesForRemovedAndTrimmedClipsAcrossAllLanes() {
+        val retained = retainAudioWaveformUiCache(
+            activeMemoryKeys = setOf("music-current", "voiceover-current"),
+            waveforms = mapOf(
+                "music-current" to listOf(0.25f, 0.75f),
+                "voiceover-current" to listOf(0.5f),
+                "music-old-trim" to listOf(1f),
+                "deleted-sfx" to listOf(0.1f),
+            ),
+            sourceRevisions = mapOf(
+                "music-current" to "size=100;modified=1",
+                "voiceover-current" to "size=200;modified=2",
+                "music-old-trim" to "size=100;modified=1",
+            ),
+            loadStates = mapOf(
+                "music-current" to AudioWaveformLoadState.READY,
+                "voiceover-current" to AudioWaveformLoadState.LOADING,
+                "deleted-sfx" to AudioWaveformLoadState.UNAVAILABLE,
+            ),
+        )
+
+        assertEquals(
+            mapOf(
+                "music-current" to listOf(0.25f, 0.75f),
+                "voiceover-current" to listOf(0.5f),
+            ),
+            retained.waveforms,
+        )
+        assertEquals(
+            mapOf(
+                "music-current" to "size=100;modified=1",
+                "voiceover-current" to "size=200;modified=2",
+            ),
+            retained.sourceRevisions,
+        )
+        assertEquals(
+            mapOf(
+                "music-current" to AudioWaveformLoadState.READY,
+                "voiceover-current" to AudioWaveformLoadState.LOADING,
+            ),
+            retained.loadStates,
+        )
+
+        val emptyProject = retainAudioWaveformUiCache(
+            activeMemoryKeys = emptySet(),
+            waveforms = retained.waveforms,
+            sourceRevisions = retained.sourceRevisions,
+            loadStates = retained.loadStates,
+        )
+        assertTrue(emptyProject.waveforms.isEmpty())
+        assertTrue(emptyProject.sourceRevisions.isEmpty())
+        assertTrue(emptyProject.loadStates.isEmpty())
+    }
+
+    @Test
     fun waveformBarsOmitSilenceAndInvalidSamples() {
         assertNull(audioWaveformBarHalfHeightPx(0f, 100f, 1f))
         assertNull(audioWaveformBarHalfHeightPx(-0.5f, 100f, 1f))

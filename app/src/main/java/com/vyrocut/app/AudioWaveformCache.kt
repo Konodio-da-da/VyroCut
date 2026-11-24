@@ -73,6 +73,30 @@ internal fun audioWaveformStatusLabel(
     null -> null
 }
 
+
+/**
+ * Compose-side waveform state is useful only while a clip with the same source
+ * URI and trim range remains in the project. The disk cache is independent, so
+ * undo can restore an old trim without retaining every historical peak list in
+ * memory for the lifetime of the project.
+ */
+internal data class AudioWaveformUiCache(
+    val waveforms: Map<String, List<Float>>,
+    val sourceRevisions: Map<String, String>,
+    val loadStates: Map<String, AudioWaveformLoadState>,
+)
+
+internal fun retainAudioWaveformUiCache(
+    activeMemoryKeys: Set<String>,
+    waveforms: Map<String, List<Float>>,
+    sourceRevisions: Map<String, String>,
+    loadStates: Map<String, AudioWaveformLoadState>,
+): AudioWaveformUiCache = AudioWaveformUiCache(
+    waveforms = waveforms.filterKeys { it in activeMemoryKeys },
+    sourceRevisions = sourceRevisions.filterKeys { it in activeMemoryKeys },
+    loadStates = loadStates.filterKeys { it in activeMemoryKeys },
+)
+
 /** A disposable cache entry ordered by its most recent successful use. */
 internal data class AudioWaveformCacheEntry(
     val fileName: String,

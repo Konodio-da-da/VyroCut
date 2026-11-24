@@ -555,3 +555,10 @@ A control is only considered complete when its operation is connected to the pro
 - The in-memory entry tracks the source revision separately. Replaced content behind a stable URI clears stale peaks before decoding, and failed or cancelled attempts are eligible for retry rather than being treated as a successful cache hit.
 - The Audio panel distinguishes loading, unavailable, and successfully decoded digital silence. A ready non-silent waveform has no extra status copy. The timeline consumes the same corrected memory key.
 - Added JVM tests for display/disk key separation, revision invalidation, retry eligibility, and loading/unavailable/silent/audio status labels. MediaExtractor/MediaCodec decoding, waveform bucket timing, Media3 audio preview, shared project clock, project persistence, and export composition are unchanged. CI verifies compilation and pure rules; actual waveform rendering and audio playback still require device validation.
+
+
+## Waveform UI cache lifecycle — 25 November 2026
+- The in-memory waveform, source-revision, and load-state maps are now pruned against the current project's audio clip URI/trim keys whenever the audio edit-decision list changes, even when the Audio tool is closed.
+- Removing a clip or changing its source trim no longer leaves its old peak list and status entries retained in Compose state. All active lanes are retained so the timeline can continue showing previously loaded Music, SFX, and Voiceover waveforms.
+- The disposable disk cache remains independent; undoing a trim can reload the previous waveform from disk without keeping every historical trim in memory.
+- Added pure JVM coverage for pruning removed clips, superseded trim ranges, all three state maps, cross-lane retention, and an empty project. MediaExtractor/MediaCodec decoding, cache file format/LRU, Media3 preview, shared project clock, project persistence, and export composition are unchanged. GitHub Actions validates compilation and pure logic; device memory behavior and playback remain unverified.

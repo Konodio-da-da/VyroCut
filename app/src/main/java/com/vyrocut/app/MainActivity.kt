@@ -799,6 +799,28 @@ private fun VyroCutApp() {
         selectedAudioTrackType,
         audioTrackClips.map { audioWaveformMemoryCacheKey(it) },
     ) {
+        // Keep Compose's in-memory waveform maps bounded by the current project's
+        // edit-decision list. Removed clips and old trim ranges can be restored
+        // from the disposable disk cache if the user later undoes the edit.
+        val activeWaveformKeys = audioTrackClips
+            .map(::audioWaveformMemoryCacheKey)
+            .toSet()
+        val retainedWaveformCache = retainAudioWaveformUiCache(
+            activeMemoryKeys = activeWaveformKeys,
+            waveforms = audioWaveforms,
+            sourceRevisions = audioWaveformSourceRevisions,
+            loadStates = audioWaveformLoadStates,
+        )
+        if (audioWaveforms != retainedWaveformCache.waveforms) {
+            audioWaveforms = retainedWaveformCache.waveforms
+        }
+        if (audioWaveformSourceRevisions != retainedWaveformCache.sourceRevisions) {
+            audioWaveformSourceRevisions = retainedWaveformCache.sourceRevisions
+        }
+        if (audioWaveformLoadStates != retainedWaveformCache.loadStates) {
+            audioWaveformLoadStates = retainedWaveformCache.loadStates
+        }
+
         if (activeTool != "Audio") return@LaunchedEffect
         val selectedLaneClips = audioTrackClips.filter { it.type == selectedAudioTrackType }
         // Re-read provider metadata whenever the Audio tool/lane is opened. A
@@ -808,9 +830,9 @@ private fun VyroCutApp() {
                 MediaMetadataReader.audioWaveformSourceRevision(context, Uri.parse(rawUri))
             }
         }
-        var loadedWaveforms = audioWaveforms
-        var loadedSourceRevisions = audioWaveformSourceRevisions
-        var loadedLoadStates = audioWaveformLoadStates
+        var loadedWaveforms = retainedWaveformCache.waveforms
+        var loadedSourceRevisions = retainedWaveformCache.sourceRevisions
+        var loadedLoadStates = retainedWaveformCache.loadStates
         for (trackClip in selectedLaneClips) {
             // The in-memory/UI key is stable for this clip's URI and trim range.
             // Provider revisions belong to the disk-cache key, not the UI lookup.
