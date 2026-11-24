@@ -13,7 +13,7 @@ class VyroCutDesignSystemTest {
         assertEquals(Color(0xFF0FE8B8), VyroCutPalette.Accent)
         assertEquals(Color(0xFF00E5FF), VyroCutPalette.AccentSecondary)
         assertEquals(Color(0xFFE5EDEA), VyroCutPalette.TextPrimary)
-        assertEquals(Color(0xFF9BAAA5), VyroCutPalette.TextMuted)
+        assertEquals(Color(0xFFA0B0A9), VyroCutPalette.TextMuted)
     }
 
     @Test
@@ -311,6 +311,45 @@ class VyroCutDesignSystemTest {
                 VyroCutExportPanelMetrics.CardCornerDp,
                 VyroCutExportPanelMetrics.CardPaddingDp,
             ),
+        )
+    }
+
+
+    @Test
+    fun semanticTextColorsMeetNormalTextContrastAcrossStudioSurfaces() {
+        val surfaces = listOf(
+            VyroCutPalette.Background,
+            VyroCutPalette.Surface,
+            VyroCutPalette.SurfaceElevated,
+            VyroCutPalette.SurfaceToolbar,
+            VyroCutPalette.SurfaceSelected,
+            VyroCutPalette.SurfaceSelectedTimeline,
+            VyroCutPalette.SurfaceTimeline,
+            VyroCutPalette.SurfaceClip,
+            VyroCutPalette.SurfaceBadge,
+            VyroCutPalette.SurfaceTrack,
+        )
+
+        surfaces.forEach { surface ->
+            assertTrue(
+                "Muted text contrast on $surface must meet 4.5:1",
+                contrastRatio(VyroCutPalette.TextMuted, surface) >= 4.5,
+            )
+            assertTrue(
+                "Primary text contrast on $surface must meet 4.5:1",
+                contrastRatio(VyroCutPalette.TextPrimary, surface) >= 4.5,
+            )
+            assertTrue(
+                "Danger text contrast on $surface must meet 4.5:1",
+                contrastRatio(VyroCutPalette.Danger, surface) >= 4.5,
+            )
+        }
+    }
+
+    @Test
+    fun subtleWaveformColorKeepsNonTextContrastOnUnselectedAudioClipSurface() {
+        assertTrue(
+            contrastRatio(VyroCutPalette.TextSubtle, VyroCutPalette.SurfaceClip) >= 3.0,
         )
     }
 
