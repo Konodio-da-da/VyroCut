@@ -1094,10 +1094,15 @@ class TimelineMathTest {
             clipWidthsPx = listOf(320f),
             gapPx = 6f,
         )
-        assertEquals(2_000, cappedTicks.size)
+        assertTrue(cappedTicks.size in 2..42)
         assertEquals(2_000_000L, cappedTicks.last().timeMs)
         assertEquals(320f, cappedTicks.last().offsetPx, 0.001f)
         assertTrue(cappedTicks.last().isMajor)
+        assertTrue(
+            cappedTicks.zipWithNext().all { (previous, next) ->
+                next.offsetPx - previous.offsetPx >= TIMELINE_RULER_MIN_TICK_SPACING_DP - 0.001f
+            },
+        )
 
         val shortProjectTicks = calculateTimelineRulerTicks(
             clipDurationsMs = listOf(500L),
@@ -1117,11 +1122,83 @@ class TimelineMathTest {
             clipWidthsPx = listOf(320f),
             gapPx = 6f,
         )
-        assertTrue(ticks.size <= 2_000)
+        assertTrue(ticks.size in 2..42)
         assertEquals(0L, ticks.first().timeMs)
         assertEquals(Long.MAX_VALUE, ticks.last().timeMs)
+        assertTrue(
+            ticks.zipWithNext().all { (previous, next) ->
+                next.offsetPx - previous.offsetPx >= TIMELINE_RULER_MIN_TICK_SPACING_DP - 0.01f
+            },
+        )
     }
 
+
+    @Test
+    fun rulerTicksThinCompressedClipsAndPreserveMajorMarksAndProjectEnd() {
+        val ticks = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(60_000L),
+            clipWidthsPx = listOf(320f),
+            gapPx = 6f,
+        )
+
+        assertEquals(0L, ticks.first().timeMs)
+        assertEquals(60_000L, ticks.last().timeMs)
+        assertTrue(ticks.size < 30)
+        assertTrue(ticks.any { it.timeMs == 5_000L && it.isMajor })
+        assertTrue(ticks.any { it.timeMs == 10_000L && it.isMajor })
+        assertTrue(
+            ticks.zipWithNext().all { (previous, next) ->
+                next.offsetPx - previous.offsetPx >= TIMELINE_RULER_MIN_TICK_SPACING_DP - 0.001f
+            },
+        )
+    }
+
+    @Test
+    fun rulerTickDensityFollowsRenderedWidthRatherThanOnlyProjectDuration() {
+        val compressed = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(60_000L),
+            clipWidthsPx = listOf(320f),
+            gapPx = 6f,
+        )
+        val expanded = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(60_000L),
+            clipWidthsPx = listOf(1_600f),
+            gapPx = 6f,
+        )
+
+        assertTrue(compressed.size < expanded.size)
+        assertEquals(60_000L, compressed.last().timeMs)
+        assertEquals(60_000L, expanded.last().timeMs)
+    }
+
+    @Test
+    fun invalidMinimumRulerTickSpacingLeavesTheBoundedTickSetUnfiltered() {
+        val unfiltered = calculateTimelineRulerTicks(
+            clipDurationsMs = listOf(60_000L),
+            clipWidthsPx = listOf(320f),
+            gapPx = 6f,
+            minimumTickSpacingDp = 0f,
+        )
+
+        assertEquals(
+            unfiltered,
+            calculateTimelineRulerTicks(
+                clipDurationsMs = listOf(60_000L),
+                clipWidthsPx = listOf(320f),
+                gapPx = 6f,
+                minimumTickSpacingDp = Float.NaN,
+            ),
+        )
+        assertEquals(
+            unfiltered,
+            calculateTimelineRulerTicks(
+                clipDurationsMs = listOf(60_000L),
+                clipWidthsPx = listOf(320f),
+                gapPx = 6f,
+                minimumTickSpacingDp = -1f,
+            ),
+        )
+    }
 
     @Test
     fun rulerLabelsSkipCrowdedMajorTicksAndKeepTheEndWhenSpaceAllows() {

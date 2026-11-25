@@ -47,6 +47,7 @@ internal const val TIMELINE_RULER_LABEL_VERTICAL_PADDING_DP = 1
 internal const val TIMELINE_RULER_LABEL_VERTICAL_OFFSET_DP = 11
 internal const val TIMELINE_RULER_LABEL_CORNER_RADIUS_DP = 3
 internal const val TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP = 2
+internal const val TIMELINE_RULER_MIN_TICK_SPACING_DP = 8
 
 internal data class TimelineRulerTickVisualMetrics(
     val widthDp: Int,

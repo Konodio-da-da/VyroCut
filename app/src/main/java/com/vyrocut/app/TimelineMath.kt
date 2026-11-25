@@ -263,7 +263,9 @@ internal data class TimelineRulerTick(
  * labels aligned with the same time-to-pixel mapping used by the playhead.
  *
  * Very long projects increase the tick interval so the ruler never creates an
- * unbounded number of Compose children.
+ * unbounded number of Compose children. Ticks are then thinned by their rendered
+ * horizontal spacing, keeping compressed long clips from drawing hundreds of
+ * visually indistinguishable marks.
  */
 internal fun calculateTimelineRulerTicks(
     clipDurationsMs: List<Long>,
@@ -271,6 +273,7 @@ internal fun calculateTimelineRulerTicks(
     gapPx: Float,
     tickIntervalMs: Long = 1_000L,
     majorIntervalMs: Long = 5_000L,
+    minimumTickSpacingDp: Float = 8f,
 ): List<TimelineRulerTick> {
     if (tickIntervalMs <= 0L || majorIntervalMs <= 0L) return emptyList()
     val totalDurationMs = calculateTimelineDurationMs(clipDurationsMs)
@@ -316,7 +319,37 @@ internal fun calculateTimelineRulerTicks(
             ticks[ticks.lastIndex] = endTick
         }
     }
-    return ticks
+    val safeMinimumSpacingDp = minimumTickSpacingDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: return ticks
+    if (ticks.size <= 2) return ticks
+
+    val visibleTicks = mutableListOf<TimelineRulerTick>()
+    ticks.forEach { tick ->
+        val previous = visibleTicks.lastOrNull()
+        if (previous == null) {
+            visibleTicks += tick
+            return@forEach
+        }
+
+        val renderedSpacingDp = tick.offsetPx - previous.offsetPx
+        val isProjectEnd = tick.timeMs == totalDurationMs
+        when {
+            // Always retain the project-end marker. If it nearly overlaps the
+            // previous mark, replace that mark rather than adding visual clutter.
+            isProjectEnd && renderedSpacingDp < safeMinimumSpacingDp && visibleTicks.size > 1 ->
+                visibleTicks[visibleTicks.lastIndex] = tick
+            isProjectEnd ->
+                visibleTicks += tick
+            renderedSpacingDp >= safeMinimumSpacingDp ->
+                visibleTicks += tick
+            // Prefer a major mark over a nearby minor mark without reducing the
+            // spacing already established from the preceding visible mark.
+            tick.isMajor && !previous.isMajor ->
+                visibleTicks[visibleTicks.lastIndex] = tick
+        }
+    }
+    return visibleTicks
 }
 
 /**

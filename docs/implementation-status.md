@@ -634,3 +634,11 @@ A control is only considered complete when its operation is connected to the pro
 - The existing tight/compact/regular preview minimums remain enforced. Font scales at or below the threshold retain the exact previous preview heights; invalid font-scale values still fall back to 1.0.
 - The existing compact-width breakpoint, metadata stacking rule, section spacing, scroll behavior, preview content, timeline geometry, and playback controls are unchanged. The Compose caller already supplies the current window bounds and LocalDensity font scale.
 - Added pure JVM tests for gradual reduction, cap behavior, all three minimum-height classes, below-threshold compatibility, and invalid font-scale fallback. GitHub Actions validates compilation and deterministic layout math; actual text fit and accessibility layout still require Android window/device validation.
+
+## 2026-11-25 — Timeline ruler density
+
+- Timeline ruler ticks now use an 8dp minimum projected spacing after the existing absolute project-time mapping is calculated.
+- Compressed long clips therefore render fewer, more distinguishable tick marks; major marks are preferred over nearby minor marks, and the project-end marker remains visible.
+- The existing 2,000-candidate safety cap, clip-boundary mapping, label-collision selection, and playhead mapping remain in place.
+- Added JVM regression coverage for compressed versus expanded clips, major-mark retention, project-end retention, invalid spacing inputs, and very long durations.
+- This is source/CI work only; visual fit and touch behavior still require Android-device validation.

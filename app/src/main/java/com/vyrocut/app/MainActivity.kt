@@ -5086,7 +5086,12 @@ private fun TimelineEditorStrip(
     val clipWidthsPx = with(density) { clipWidths.map { it.dp.toPx() } }
     val gapPx = with(density) { gap.dp.toPx() }
     val totalDuration = calculateTimelineDurationMs(timelineClipDurationsMs).coerceAtLeast(1L)
-    val timelineRulerTicks = calculateTimelineRulerTicks(timelineClipDurationsMs, clipWidths, gap)
+    val timelineRulerTicks = calculateTimelineRulerTicks(
+        clipDurationsMs = timelineClipDurationsMs,
+        clipWidthsPx = clipWidths,
+        gapPx = gap,
+        minimumTickSpacingDp = TIMELINE_RULER_MIN_TICK_SPACING_DP.toFloat(),
+    )
     val maxRulerLabelCharacters = timelineRulerTicks
         .asSequence()
         .filter { it.isMajor }
