@@ -572,3 +572,9 @@ A control is only considered complete when its operation is connected to the pro
 - Routed timeline track labels, details, ruler timecodes, clip labels/metadata, and sticker glyph sizing through the shared `VyroCutTypography` scale.
 - Replaced the timeline header's remaining inline 10/11 sp sizes and 1.3 sp letter spacing with shared tokens. Existing rendered values are unchanged.
 - Added a pure JVM regression test tying the timeline metrics to the design-system tokens. Timeline row geometry, ruler spacing math, playhead positioning, project time mapping, and editor behavior are unchanged; device readability remains unverified.
+
+## Editor typography token consolidation — 25 November 2026
+- Added a shared 12 sp small-body typography token and made the project-home search placeholder reuse it.
+- Replaced remaining inline 10/11/12/22 sp values in the editor header, preview speed, project actions, empty timeline state, and media relink feedback with shared typography tokens. Their numeric values are unchanged.
+- Added JVM assertions for the shared scale and the home-metric token reference. No layout geometry, text content, project behavior, playback, timeline timing, or export behavior changed.
+- CI verifies compilation and pure token rules; actual text fit and accessibility scaling still require Android-device/window validation.
