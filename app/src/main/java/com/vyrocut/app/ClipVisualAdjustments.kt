@@ -71,6 +71,17 @@ internal fun clipCreativeEffectPresetFromId(id: String?): ClipCreativeEffectPres
         ClipCreativeEffectPreset.values().firstOrNull { it.id == id }
     }
 
+/**
+ * Removes only the creative look, preserving the clip's manual brightness,
+ * contrast, saturation, and hue adjustments.
+ */
+internal fun resetClipCreativeEffect(
+    adjustments: ClipVisualAdjustments,
+): ClipVisualAdjustments = adjustments.copy(
+    creativeEffectPreset = ClipCreativeEffectPreset.ORIGINAL,
+    creativeEffectIntensity = DEFAULT_CREATIVE_EFFECT_INTENSITY,
+)
+
 internal fun isValidClipVisualAdjustments(
     brightness: Int,
     contrast: Int,

@@ -2493,13 +2493,43 @@ private fun VyroCutApp() {
                             .padding(horizontal = VyroCutEffectsPanelMetrics.HorizontalPaddingDp.dp, vertical = VyroCutEffectsPanelMetrics.VerticalPaddingDp.dp),
                         verticalArrangement = Arrangement.spacedBy(VyroCutEffectsPanelMetrics.SectionGapDp.dp),
                     ) {
-                        Text(
-                            "VIDEO EFFECTS",
-                            color = StudioText,
-                            fontSize = VyroCutTypography.LabelSp.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = VyroCutEffectsPanelMetrics.HeaderLetterSpacingSp.sp,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                "VIDEO EFFECTS",
+                                color = StudioText,
+                                fontSize = VyroCutTypography.LabelSp.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = VyroCutEffectsPanelMetrics.HeaderLetterSpacingSp.sp,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            if (selectedClip != null &&
+                                selectedClip.visualAdjustments.creativeEffectPreset != ClipCreativeEffectPreset.ORIGINAL
+                            ) {
+                                TextButton(
+                                    onClick = {
+                                        selectedClip?.let { clip ->
+                                            val reset = resetClipCreativeEffect(clip.visualAdjustments)
+                                            clipCreativeEffectIntensityDraft =
+                                                reset.creativeEffectIntensity.toFloat()
+                                            commitSelectedClipVisualAdjustments(
+                                                brightness = clipBrightnessDraft.toInt(),
+                                                contrast = clipContrastDraft.toInt(),
+                                                saturation = clipSaturationDraft.toInt(),
+                                                hueShiftDegrees = clipHueShiftDraft.toInt(),
+                                                creativeEffectPreset = reset.creativeEffectPreset,
+                                                creativeEffectIntensity = reset.creativeEffectIntensity,
+                                            )
+                                        }
+                                    },
+                                    contentPadding = PaddingValues(
+                                        horizontal = VyroCutEffectsPanelMetrics.ResetButtonHorizontalPaddingDp.dp,
+                                        vertical = VyroCutEffectsPanelMetrics.ResetButtonVerticalPaddingDp.dp,
+                                    ),
+                                ) {
+                                    Text("Original", fontSize = VyroCutTypography.CaptionSp.sp)
+                                }
+                            }
+                        }
                         if (selectedClip == null) {
                             Text("Select a video clip to apply an effect.", color = StudioMuted, fontSize = VyroCutTypography.CaptionSp.sp)
                         } else {
@@ -2558,7 +2588,7 @@ private fun VyroCutApp() {
                                             )
                                         },
                                         contentPadding = PaddingValues(horizontal = VyroCutEffectsPanelMetrics.ResetButtonHorizontalPaddingDp.dp, vertical = VyroCutEffectsPanelMetrics.ResetButtonVerticalPaddingDp.dp),
-                                    ) { Text("Reset", fontSize = VyroCutTypography.CaptionSp.sp) }
+                                    ) { Text("Reset strength", fontSize = VyroCutTypography.CaptionSp.sp) }
                                 }
                                 Slider(
                                     value = clipCreativeEffectIntensityDraft.coerceIn(0f, 100f),

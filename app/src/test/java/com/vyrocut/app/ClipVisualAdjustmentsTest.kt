@@ -34,6 +34,42 @@ class ClipVisualAdjustmentsTest {
     }
 
     @Test
+    fun resettingCreativeEffectRestoresOriginalAndPreservesManualAdjustments() {
+        val adjustments = ClipVisualAdjustments(
+            brightness = 18,
+            contrast = -12,
+            saturation = 27,
+            hueShiftDegrees = 45,
+            creativeEffectPreset = ClipCreativeEffectPreset.SEPIA,
+            creativeEffectIntensity = 38,
+        )
+
+        assertEquals(
+            ClipVisualAdjustments(
+                brightness = 18,
+                contrast = -12,
+                saturation = 27,
+                hueShiftDegrees = 45,
+                creativeEffectPreset = ClipCreativeEffectPreset.ORIGINAL,
+                creativeEffectIntensity = DEFAULT_CREATIVE_EFFECT_INTENSITY,
+            ),
+            resetClipCreativeEffect(adjustments),
+        )
+    }
+
+    @Test
+    fun resettingAnOriginalClipIsIdempotent() {
+        val original = ClipVisualAdjustments(
+            brightness = -8,
+            contrast = 11,
+            saturation = -20,
+            hueShiftDegrees = -30,
+        )
+
+        assertEquals(original, resetClipCreativeEffect(original))
+    }
+
+    @Test
     fun hueShiftIsBoundedToAHalfTurnInEitherDirection() {
         assertEquals(
             ClipVisualAdjustments(hueShiftDegrees = -180),
