@@ -217,6 +217,17 @@ class TimelineVisualMetricsTest {
         assertEquals(Int.MAX_VALUE, timelineTextTrackHeightDp(MAX_CLIP_TEXT_OVERLAYS, Int.MAX_VALUE))
     }
     @Test
+    fun timelineShapeMetricsPreserveExistingVisualRadii() {
+        assertEquals(1, TIMELINE_RULER_TICK_CORNER_RADIUS_DP)
+        assertEquals(2, TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP)
+        assertEquals(2, TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP)
+        assertEquals(3, TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP)
+        assertEquals(4, TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP)
+        assertEquals(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP, TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP)
+        assertEquals(5, TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP)
+    }
+
+    @Test
     fun timelineTypographyUsesSharedDesignSystemTokens() {
         assertEquals(VyroCutTypography.LabelSp, TIMELINE_TRACK_LABEL_FONT_SP)
         assertEquals(VyroCutTypography.CaptionSp, TIMELINE_TRACK_DETAIL_FONT_SP)
