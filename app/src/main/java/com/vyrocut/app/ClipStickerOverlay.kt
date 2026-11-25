@@ -139,10 +139,6 @@ internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boole
     startMs >= 0L && (endMs == null || endMs > startMs)
 
 /**
- * Updates a sticker's clip-local interval without allowing it to escape the owning clip.
- * An end equal to the clip duration is stored as null, meaning "through clip end".
- */
-/**
  * Normalized clip-local timing and the non-crossing ranges for the IN/OUT controls.
  * The IN handle can move only up to one millisecond before OUT; OUT can move
  * only from one millisecond after IN through the clip end.
