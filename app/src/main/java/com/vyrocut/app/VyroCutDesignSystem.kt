@@ -83,12 +83,13 @@ internal object VyroCutShapes {
     const val PillCornerDp = 24
 }
 
-/** Small, explicit type scale for the existing home and tool-dock hierarchy. */
+/** Small, explicit type scale shared by the home, editor, and timeline. */
 internal object VyroCutTypography {
     const val BadgeSp = 8
     const val ToolLabelSp = 9
     const val CaptionSp = 10
     const val LabelSp = 11
+    const val SmallBodySp = 12
     const val BodySp = 14
     const val SectionTitleSp = 20
     const val BrandSp = 22
@@ -119,7 +120,7 @@ internal object VyroCutControlMetrics {
 internal object VyroCutHomeMetrics {
     const val ProjectListItemGapDp = 14
     const val SearchFieldHeightDp = 50
-    const val SearchPlaceholderSp = 12
+    const val SearchPlaceholderSp = VyroCutTypography.SmallBodySp
     const val SearchIconSizeDp = 18
     const val ImportButtonSizeDp = 42
     const val ImportIconSizeDp = 27
