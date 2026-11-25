@@ -1367,6 +1367,47 @@ class TimelineMathTest {
     }
 
     @Test
+    fun rulerLabelSelectionReplacesCrowdedIntermediateLabelToKeepProjectEnd() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 100f, true),
+            TimelineRulerTick(10_000L, 150f, true),
+        )
+
+        val selected = selectTimelineRulerLabelTicks(
+            ticks = ticks,
+            labelWidthDp = 60,
+            contentWidthDp = 200f,
+            minimumGapDp = 2f,
+        )
+
+        assertEquals(listOf(0L, 10_000L), selected.map { it.timeMs })
+        val renderedLefts = selected.map {
+            timelineRulerLabelPlacement(it.offsetPx, 60, 200f).offsetDp
+        }
+        assertTrue(renderedLefts.zipWithNext().all { (left, next) -> next - left >= 62f })
+    }
+
+    @Test
+    fun rulerLabelSelectionKeepsFirstWhenProjectEndCannotFitWithoutOverlap() {
+        val ticks = listOf(
+            TimelineRulerTick(0L, 0f, true),
+            TimelineRulerTick(5_000L, 50f, true),
+            TimelineRulerTick(10_000L, 80f, true),
+        )
+
+        assertEquals(
+            listOf(0L),
+            selectTimelineRulerLabelTicks(
+                ticks = ticks,
+                labelWidthDp = 60,
+                contentWidthDp = 200f,
+                minimumGapDp = 2f,
+            ).map { it.timeMs },
+        )
+    }
+
+    @Test
     fun playbackProgressUsesFrameAlignedCadenceWhenPtsIndexIsAvailable() {
         assertEquals(33L, playbackProgressUpdateIntervalMs(isPlaying = true))
         assertEquals(16L, playbackProgressUpdateIntervalMs(isPlaying = true, hasPresentationTimestampIndex = true))

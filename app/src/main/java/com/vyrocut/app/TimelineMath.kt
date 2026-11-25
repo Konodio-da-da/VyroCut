@@ -356,8 +356,9 @@ internal fun calculateTimelineRulerTicks(
  * Selects major ruler labels whose estimated text bounds do not overlap.
  *
  * Tick marks remain available at every interval; this helper only controls
- * which timecode labels are drawn. The first major label is retained, and the
- * final major label is retained when it has enough room after the previous one.
+ * which timecode labels are drawn. The first major label is retained; the final
+ * major label takes priority over crowded intermediate labels when it fits
+ * without overlapping the first.
  * Offsets use the same coordinate unit as TimelineRulerTick.offsetPx.
  */
 internal fun selectTimelineRulerLabelTicks(
@@ -406,7 +407,17 @@ internal fun selectTimelineRulerLabelTicks(
     val lastCandidate = candidates.last()
     if (lastCandidate.timeMs != selected.last().timeMs) {
         val lastLabelLeftDp = labelLeftDp(lastCandidate)
-        if (lastLabelLeftDp - previousLabelLeftDp >= requiredSpacingDp) {
+        // Keep the project endpoint when possible by removing only trailing
+        // intermediate labels that would collide with it. The first label is
+        // never removed; if the endpoints cannot fit together, keep the first.
+        while (
+            selected.size > 1 &&
+            lastLabelLeftDp - labelLeftDp(selected.last()) < requiredSpacingDp
+        ) {
+            selected.removeAt(selected.lastIndex)
+        }
+        val remainingPreviousLabelLeftDp = labelLeftDp(selected.last())
+        if (lastLabelLeftDp - remainingPreviousLabelLeftDp >= requiredSpacingDp) {
             selected += lastCandidate
         }
     }

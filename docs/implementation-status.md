@@ -649,3 +649,10 @@ A control is only considered complete when its operation is connected to the pro
 - The curve is applied only when converting cached normalized peak values into bar heights. Cached peak buckets, source media, playback volume, project timing, and export audio remain unchanged; zero-amplitude silence still draws only the center baseline.
 - Added pure JVM coverage for silence and invalid values, monotonic ordering, quiet-peak lift, full-scale clamping, and resulting bar geometry.
 - This is a deterministic rendering-math change. Actual contrast/readability across display densities and colors still requires Android-device validation.
+
+## 2026-11-25 — Timeline ruler endpoint-label priority
+- Ruler label selection now gives the final major project-time label priority over trailing intermediate labels when the endpoint can fit without colliding with the first label.
+- Only conflicting intermediate labels are removed; if even the first and final labels cannot fit together, the first remains and labels never overlap.
+- Tick positions, absolute project-time mapping, playhead mapping, and the 2,000-tick safety bound are unchanged.
+- Added pure JVM regression coverage for replacing a crowded intermediate label with the project-end label and for retaining the first label when the endpoints cannot fit.
+- This is source/CI work only; actual ruler appearance and scrolling still require Android-device validation.
