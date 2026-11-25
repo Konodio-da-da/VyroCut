@@ -390,4 +390,35 @@ class VyroCutDesignSystemTest {
         assertEquals(0xB8000000.toInt(), VyroCutPalette.MediaOverlayCaptionBackground.toArgb())
         assertEquals(0xAA000000.toInt(), VyroCutPalette.StickerFallbackTextShadow.toArgb())
     }
+
+    @Test
+    fun waveformRendererTokensPreserveExistingAppearance() {
+        assertEquals(
+            listOf(24f, 0.28f, 1f, 0.58f, 1f, 3f, 1f),
+            listOf(
+                VyroCutWaveformMetrics.StripDefaultHeightDp,
+                VyroCutWaveformMetrics.StripBaselineAlpha,
+                VyroCutWaveformMetrics.StripBaselineStrokeWidthDp,
+                VyroCutWaveformMetrics.StripStrokeWidthRatio,
+                VyroCutWaveformMetrics.StripMinimumStrokeWidthDp,
+                VyroCutWaveformMetrics.StripMaximumStrokeWidthDp,
+                VyroCutWaveformMetrics.StripMinimumBarHalfHeightDp,
+            ),
+        )
+        assertEquals(
+            listOf(0.45f, 1f, 1.5f, 1f, 2f, 0.06f, 0.45f, 0.55f),
+            listOf(
+                VyroCutWaveformMetrics.ClipBaselineAlpha,
+                VyroCutWaveformMetrics.ClipBaselineStrokeWidthDp,
+                VyroCutWaveformMetrics.ClipBarGapDp,
+                VyroCutWaveformMetrics.ClipBarMinimumWidthDp,
+                VyroCutWaveformMetrics.ClipBarMinimumHeightDp,
+                VyroCutWaveformMetrics.ClipAmplitudeFloor,
+                VyroCutWaveformMetrics.ClipBarBaseAlpha,
+                VyroCutWaveformMetrics.ClipBarPeakAlpha,
+            ),
+        )
+        assertEquals(1f, VyroCutWaveformMetrics.ClipBarBaseAlpha + VyroCutWaveformMetrics.ClipBarPeakAlpha, 0f)
+    }
+
 }
