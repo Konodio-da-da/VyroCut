@@ -194,9 +194,9 @@ private fun StickerLayersEditor(
     clip: EditClip,
     selectedLayerIndex: Int,
     onRemoveSticker: (Int) -> Unit,
-    onScaleChange: (Float) -> Unit,
-    onRotationChange: (Float) -> Unit,
-    onTimingChange: (Long?, Long?) -> Unit,
+    onScaleChange: (Int, Float) -> Unit,
+    onRotationChange: (Int, Float) -> Unit,
+    onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Text(
         "ADDED • ${clip.allStickerOverlays.size}/${MAX_CLIP_STICKER_OVERLAYS}",
@@ -236,6 +236,7 @@ private fun StickerLayerEditor(
     selected: Boolean,
     onRemove: () -> Unit,
     onScaleChange: (Float) -> Unit,
+    onRotationChange: (Float) -> Unit,
     onTimingChange: (Long?, Long?) -> Unit,
 ) {
     val safeDurationMs = clipDurationMs.coerceAtLeast(1L)
