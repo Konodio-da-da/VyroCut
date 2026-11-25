@@ -249,6 +249,31 @@ internal object VyroCutExportPanelMetrics {
     const val CardPaddingDp = 12
 }
 
+
+/**
+ * Shared waveform renderer metrics. The strip is used by audio lanes and the
+ * Audio tool; the compact clip waveform keeps its own proportions. Values
+ * intentionally preserve the existing renderers' visual output.
+ */
+internal object VyroCutWaveformMetrics {
+    const val StripDefaultHeightDp = 24f
+    const val StripBaselineAlpha = 0.28f
+    const val StripBaselineStrokeWidthDp = 1f
+    const val StripStrokeWidthRatio = 0.58f
+    const val StripMinimumStrokeWidthDp = 1f
+    const val StripMaximumStrokeWidthDp = 3f
+    const val StripMinimumBarHalfHeightDp = 1f
+
+    const val ClipBaselineAlpha = 0.45f
+    const val ClipBaselineStrokeWidthDp = 1f
+    const val ClipBarGapDp = 1.5f
+    const val ClipBarMinimumWidthDp = 1f
+    const val ClipBarMinimumHeightDp = 2f
+    const val ClipAmplitudeFloor = 0.06f
+    const val ClipBarBaseAlpha = 0.45f
+    const val ClipBarPeakAlpha = 0.55f
+}
+
 internal fun vyroCutColorScheme(): ColorScheme = darkColorScheme(
     primary = VyroCutPalette.Accent,
     onPrimary = VyroCutPalette.AccentInk,
