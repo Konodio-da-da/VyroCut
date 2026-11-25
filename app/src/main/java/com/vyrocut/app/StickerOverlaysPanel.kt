@@ -85,7 +85,7 @@ internal fun StickerOverlaysPanel(
                 onTimingChange = onTimingChange,
             )
             Text(
-                "Clip-local IN/OUT timing • Survives split, trim, save and MP4 export",
+                "IN/OUT handles stay ordered • Survives split, trim, save and MP4 export",
                 color = VyroCutPalette.TextMuted,
                 fontSize = VyroCutTypography.ToolLabelSp.sp,
             )
@@ -241,10 +241,23 @@ private fun StickerLayerEditor(
     onTimingChange: (Long?, Long?) -> Unit,
 ) {
     val safeDurationMs = clipDurationMs.coerceAtLeast(1L)
-    val safeStartMs = sticker.startMs.coerceIn(0L, safeDurationMs - 1L)
-    val safeEndMs = (sticker.endMs ?: safeDurationMs)
-        .coerceIn(safeStartMs + 1L, safeDurationMs)
+    val timingBounds = checkNotNull(
+        calculateClipStickerTimingSliderBounds(
+            clipDurationMs = safeDurationMs,
+            requestedStartMs = sticker.startMs,
+            requestedEndMs = sticker.endMs ?: safeDurationMs,
+        ),
+    )
+    val safeStartMs = timingBounds.startMs
+    val safeEndMs = timingBounds.endMs
     val durationSeconds = safeDurationMs / 1_000f
+    val startSliderMaxSeconds = timingBounds.startSliderMaxMs / 1_000f
+    val endSliderMinSeconds = timingBounds.endSliderMinMs / 1_000f
+    // Avoid a collapsed Float range for extremely short or very long clips.
+    val canAdjustStart = timingBounds.startSliderMaxMs > 0L &&
+        startSliderMaxSeconds < durationSeconds
+    val canAdjustEnd = timingBounds.endSliderMinMs < safeDurationMs &&
+        endSliderMinSeconds > 0f && endSliderMinSeconds < durationSeconds
     val stickerAsset = ClipStickerAsset.fromId(sticker.assetId)
     var startSeconds by remember(clipId, sticker) {
         mutableFloatStateOf(safeStartMs / 1_000f)
@@ -367,17 +380,25 @@ private fun StickerLayerEditor(
             )
         }
         Slider(
-            value = startSeconds,
+            value = startSeconds.coerceIn(
+                0f,
+                if (canAdjustStart) startSliderMaxSeconds else durationSeconds,
+            ),
             onValueChange = { startSeconds = it },
-            valueRange = 0f..durationSeconds,
+            valueRange = if (canAdjustStart) 0f..startSliderMaxSeconds else 0f..durationSeconds,
+            enabled = canAdjustStart,
             onValueChangeFinished = {
                 onTimingChange((startSeconds * 1_000f).toLong(), null)
             },
         )
         Slider(
-            value = endSeconds,
+            value = endSeconds.coerceIn(
+                if (canAdjustEnd) endSliderMinSeconds else 0f,
+                durationSeconds,
+            ),
             onValueChange = { endSeconds = it },
-            valueRange = 0f..durationSeconds,
+            valueRange = if (canAdjustEnd) endSliderMinSeconds..durationSeconds else 0f..durationSeconds,
+            enabled = canAdjustEnd,
             onValueChangeFinished = {
                 onTimingChange(null, (endSeconds * 1_000f).toLong())
             },
