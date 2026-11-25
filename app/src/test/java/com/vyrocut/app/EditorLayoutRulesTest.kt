@@ -149,6 +149,10 @@ class EditorLayoutRulesTest {
             editorLayoutMetrics(560, 600, fontScale = 2f).previewHeightDp,
         )
         assertEquals(
+            MIN_EDITOR_PREVIEW_HEIGHT_DP,
+            editorLayoutMetrics(600, 600, fontScale = 2f).previewHeightDp,
+        )
+        assertEquals(
             MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
             editorLayoutMetrics(320, 600, fontScale = 2f).previewHeightDp,
         )
