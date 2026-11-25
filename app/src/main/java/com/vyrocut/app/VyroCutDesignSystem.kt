@@ -114,6 +114,26 @@ internal object VyroCutControlMetrics {
 
 
 /**
+ * Editor header, preview, transport and timeline-control geometry.
+ * Values intentionally preserve the current Compose layout while centralizing
+ * repeated styling literals for safe future refinement.
+ */
+internal object VyroCutEditorChromeMetrics {
+    const val HorizontalContentPaddingDp = 10
+    const val ProjectNavigationButtonHorizontalPaddingDp = 4
+    const val BrandIconSizeDp = 28
+    const val BrandTitleStartPaddingDp = 9
+    const val PreviewCanvasCornerDp = 8
+    const val EmptyPreviewIconSizeDp = 38
+    const val EmptyPreviewIconGapDp = 6
+    const val CompactIconButtonSizeDp = 36
+    const val TransportIconSizeDp = 18
+    const val PlaybackSpeedButtonHorizontalPaddingDp = 5
+    const val ScrubberSectionGapDp = 2
+    const val TimelineActionButtonHorizontalPaddingDp = 8
+}
+
+/**
  * Home-screen-specific geometry retained as semantic tokens during styling
  * consolidation. Values intentionally match the existing Compose layout.
  */

@@ -2056,16 +2056,16 @@ private fun VyroCutApp() {
             Column(
                 Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 10.dp, vertical = editorMetrics.contentPaddingVerticalDp.dp),
+                    .padding(horizontal = VyroCutEditorChromeMetrics.HorizontalContentPaddingDp.dp, vertical = editorMetrics.contentPaddingVerticalDp.dp),
                 verticalArrangement = Arrangement.spacedBy(editorMetrics.sectionSpacingDp.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TextButton(
                         onClick = { saveProject(clips); player.pause(); showHome = true },
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp.dp, vertical = 0.dp)
                     ) { Text("‹ Projects", color = StudioAccent, fontSize = VyroCutTypography.SmallBodySp.sp) }
-                    Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(28.dp))
-                    Text("VyroCut", color = StudioText, fontSize = VyroCutTypography.BrandSp.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 9.dp))
+                    Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(VyroCutEditorChromeMetrics.BrandIconSizeDp.dp))
+                    Text("VyroCut", color = StudioText, fontSize = VyroCutTypography.BrandSp.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = VyroCutEditorChromeMetrics.BrandTitleStartPaddingDp.dp))
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { showProjects = true }) {
                         Text(projects.firstOrNull { it.id == activeProjectId }?.name ?: "Project", color = StudioAccent, maxLines = 1)
@@ -2074,13 +2074,13 @@ private fun VyroCutApp() {
                 }
                 Box(
                     Modifier.fillMaxWidth().height(editorMetrics.previewHeightDp.dp)
-                        .background(canvasBackground, RoundedCornerShape(8.dp)),
+                        .background(canvasBackground, RoundedCornerShape(VyroCutEditorChromeMetrics.PreviewCanvasCornerDp.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedClip == null) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(38.dp))
-                            Spacer(Modifier.height(6.dp))
+                            Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(VyroCutEditorChromeMetrics.EmptyPreviewIconSizeDp.dp))
+                            Spacer(Modifier.height(VyroCutEditorChromeMetrics.EmptyPreviewIconGapDp.dp))
                             Text("Import a video to start editing", color = StudioMuted, fontSize = VyroCutTypography.SmallBodySp.sp)
                         }
                     } else {
@@ -2137,13 +2137,13 @@ private fun VyroCutApp() {
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
                         enabled = selectedClip != null && !isResolvingFrameStep,
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(VyroCutEditorChromeMetrics.CompactIconButtonSizeDp.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipPrevious,
                             contentDescription = "Previous frame",
                             tint = StudioAccent,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportIconSizeDp.dp),
                         )
                     }
                     IconButton(
@@ -2181,13 +2181,13 @@ private fun VyroCutApp() {
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
                         enabled = selectedClip != null && !isResolvingFrameStep,
-                        modifier = Modifier.size(36.dp),
+                        modifier = Modifier.size(VyroCutEditorChromeMetrics.CompactIconButtonSizeDp.dp),
                     ) {
                         Icon(
                             Icons.Default.SkipNext,
                             contentDescription = "Next frame",
                             tint = StudioAccent,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportIconSizeDp.dp),
                         )
                     }
                     TextButton(
@@ -2202,7 +2202,7 @@ private fun VyroCutApp() {
                                 .apply()
                         },
                         enabled = selectedClip != null,
-                        contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
+                        contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.PlaybackSpeedButtonHorizontalPaddingDp.dp, vertical = 0.dp),
                     ) {
                         Text(previewPlaybackSpeedLabel(previewPlaybackSpeed), color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                     }
@@ -2226,7 +2226,7 @@ private fun VyroCutApp() {
                         Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlaying) "Pause" else "Play")
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(VyroCutEditorChromeMetrics.ScrubberSectionGapDp.dp)) {
                     Slider(
                         value = timelinePositionMs.coerceIn(0f, timelineDurationMs.toFloat()),
                         onValueChange = {
@@ -2248,10 +2248,10 @@ private fun VyroCutApp() {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("TIMELINE", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp, letterSpacing = VyroCutTypography.TimelineSectionLetterSpacingSp.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.TimelineActionButtonHorizontalPaddingDp.dp, vertical = 0.dp)) {
                         Text("Undo", fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
                     }
-                    TextButton(onClick = { redoEdit() }, enabled = redoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
+                    TextButton(onClick = { redoEdit() }, enabled = redoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.TimelineActionButtonHorizontalPaddingDp.dp, vertical = 0.dp)) {
                         Text("Redo", fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
                     }
                     Text("${clips.size} clips", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
@@ -2259,7 +2259,7 @@ private fun VyroCutApp() {
                         IconButton(
                             onClick = { showClipActions = true },
                             enabled = selectedClip != null,
-                            modifier = Modifier.size(36.dp),
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.CompactIconButtonSizeDp.dp),
                         ) {
                             Icon(Icons.Default.MoreHoriz, "Clip actions", tint = StudioMuted)
                         }

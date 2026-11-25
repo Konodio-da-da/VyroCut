@@ -120,6 +120,27 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun editorChromeMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(10, 4, 28, 9, 8, 38, 6, 36, 18, 5, 2, 8),
+            listOf(
+                VyroCutEditorChromeMetrics.HorizontalContentPaddingDp,
+                VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp,
+                VyroCutEditorChromeMetrics.BrandIconSizeDp,
+                VyroCutEditorChromeMetrics.BrandTitleStartPaddingDp,
+                VyroCutEditorChromeMetrics.PreviewCanvasCornerDp,
+                VyroCutEditorChromeMetrics.EmptyPreviewIconSizeDp,
+                VyroCutEditorChromeMetrics.EmptyPreviewIconGapDp,
+                VyroCutEditorChromeMetrics.CompactIconButtonSizeDp,
+                VyroCutEditorChromeMetrics.TransportIconSizeDp,
+                VyroCutEditorChromeMetrics.PlaybackSpeedButtonHorizontalPaddingDp,
+                VyroCutEditorChromeMetrics.ScrubberSectionGapDp,
+                VyroCutEditorChromeMetrics.TimelineActionButtonHorizontalPaddingDp,
+            ),
+        )
+    }
+
+    @Test
     fun sharedTypographyTokensRemainPositiveAndOrdered() {
         assertEquals(
             listOf(8, 9, 10, 11, 12, 14, 20, 22, 23),
