@@ -81,6 +81,7 @@ internal fun StickerOverlaysPanel(
                 selectedLayerIndex = selectedStickerLayerIndex,
                 onRemoveSticker = onRemoveSticker,
                 onScaleChange = onScaleChange,
+                onRotationChange = onRotationChange,
                 onTimingChange = onTimingChange,
             )
             Text(
