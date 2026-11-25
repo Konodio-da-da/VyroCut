@@ -122,12 +122,13 @@ class VyroCutDesignSystemTest {
     @Test
     fun sharedTypographyTokensRemainPositiveAndOrdered() {
         assertEquals(
-            listOf(8, 9, 10, 11, 14, 20, 22, 23),
+            listOf(8, 9, 10, 11, 12, 14, 20, 22, 23),
             listOf(
                 VyroCutTypography.BadgeSp,
                 VyroCutTypography.ToolLabelSp,
                 VyroCutTypography.CaptionSp,
                 VyroCutTypography.LabelSp,
+                VyroCutTypography.SmallBodySp,
                 VyroCutTypography.BodySp,
                 VyroCutTypography.SectionTitleSp,
                 VyroCutTypography.BrandSp,
@@ -136,6 +137,15 @@ class VyroCutDesignSystemTest {
         )
     }
 
+
+    @Test
+    fun editorTypographyUsesSharedTokensWithoutChangingRenderedSizes() {
+        assertEquals(12, VyroCutTypography.SmallBodySp)
+        assertEquals(VyroCutTypography.SmallBodySp, VyroCutHomeMetrics.SearchPlaceholderSp)
+        assertEquals(11, VyroCutTypography.LabelSp)
+        assertEquals(10, VyroCutTypography.CaptionSp)
+        assertEquals(22, VyroCutTypography.BrandSp)
+    }
 
     @Test
     fun projectHomeMetricsPreserveExistingLayoutDimensions() {
