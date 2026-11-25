@@ -2039,6 +2039,7 @@ private fun VyroCutApp() {
                     val editorMetrics = editorLayoutMetrics(
                         windowHeightDp = maxHeight.value.roundToInt(),
                         windowWidthDp = maxWidth.value.roundToInt(),
+                        fontScale = LocalDensity.current.fontScale,
                     )
             Column(
                 Modifier.fillMaxSize()

@@ -10,6 +10,7 @@ internal const val MAX_EDITOR_PREVIEW_HEIGHT_DP = 168
 internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = 520
 internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = 600
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 400
+internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = 1.15f
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP = 560
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP = EDITOR_COMPACT_WINDOW_WIDTH_DP - 1
 
@@ -33,17 +34,20 @@ internal data class EditorLayoutMetrics(
 )
 
 /**
- * Uses the app window height (not physical-device dimensions) so split-screen
- * and resized windows receive the same compact treatment as short displays.
+ * Uses the app window bounds and current font scale (not physical-device
+ * dimensions) so split-screen, resized windows, and larger accessibility text
+ * receive the same compact treatment as short displays.
  */
 internal fun editorLayoutMetrics(
     windowHeightDp: Int,
     windowWidthDp: Int = EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP,
+    fontScale: Float = 1f,
 ): EditorLayoutMetrics {
     val safeHeight = windowHeightDp.takeIf { it > 0 }
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP
     val safeWidth = windowWidthDp.takeIf { it > 0 }
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
+    val safeFontScale = fontScale.takeIf { it.isFinite() && it > 0f } ?: 1f
     val tight = safeHeight < EDITOR_TIGHT_WINDOW_HEIGHT_DP
     val compact = safeHeight < EDITOR_COMPACT_WINDOW_HEIGHT_DP
 
@@ -80,7 +84,9 @@ internal fun editorLayoutMetrics(
         previewHeightDp = previewHeight,
         sectionSpacingDp = sectionSpacing,
         contentPaddingVerticalDp = contentPadding,
-        stackPreviewMetadataAboveTransportControls = safeWidth < EDITOR_COMPACT_WINDOW_WIDTH_DP,
+        stackPreviewMetadataAboveTransportControls =
+            safeWidth < EDITOR_COMPACT_WINDOW_WIDTH_DP ||
+                safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD,
     )
 }
 

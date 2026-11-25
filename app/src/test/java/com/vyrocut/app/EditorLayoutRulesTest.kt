@@ -101,6 +101,45 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun largeFontScaleStacksPreviewMetadataEvenOnWideWindows() {
+        assertEquals(
+            true,
+            editorLayoutMetrics(
+                windowHeightDp = 640,
+                windowWidthDp = 600,
+                fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD,
+            ).stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            true,
+            editorLayoutMetrics(640, 600, fontScale = 1.3f)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+    }
+
+    @Test
+    fun fontScaleBelowThresholdKeepsWidePreviewMetadataInline() {
+        assertEquals(
+            false,
+            editorLayoutMetrics(
+                windowHeightDp = 640,
+                windowWidthDp = 600,
+                fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD - 0.001f,
+            ).stackPreviewMetadataAboveTransportControls,
+        )
+    }
+
+    @Test
+    fun invalidFontScaleFallsBackWithoutChangingWidthRules() {
+        val expected = editorLayoutMetrics(640, 600, fontScale = 1f)
+
+        assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = 0f))
+        assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = -1f))
+        assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = Float.NaN))
+        assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = Float.POSITIVE_INFINITY))
+    }
+
+    @Test
     fun invalidWindowHeightUsesSafeFallback() {
         val expected = editorLayoutMetrics(EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP)
 
