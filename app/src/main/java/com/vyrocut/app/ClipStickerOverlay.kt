@@ -368,7 +368,7 @@ private class ClipStickerBitmapOverlay(
                     (geometry.textSizePx * 0.06f).coerceAtLeast(2f),
                     0f,
                     (geometry.textSizePx * 0.025f).coerceAtLeast(1f),
-                    0xAA000000.toInt(),
+                    VyroCutPalette.StickerFallbackTextShadow.toArgb(),
                 )
             }
             val layoutWidth = (geometry.textSizePx * 2.4f).roundToInt().coerceAtLeast(1)

@@ -562,3 +562,8 @@ A control is only considered complete when its operation is connected to the pro
 - Removing a clip or changing its source trim no longer leaves its old peak list and status entries retained in Compose state. All active lanes are retained so the timeline can continue showing previously loaded Music, SFX, and Voiceover waveforms.
 - The disposable disk cache remains independent; undoing a trim can reload the previous waveform from disk without keeping every historical trim in memory.
 - Added pure JVM coverage for pruning removed clips, superseded trim ranges, all three state maps, cross-lane retention, and an empty project. MediaExtractor/MediaCodec decoding, cache file format/LRU, Media3 preview, shared project clock, project persistence, and export composition are unchanged. GitHub Actions validates compilation and pure logic; device memory behavior and playback remain unverified.
+
+## Media overlay renderer color-token consolidation — 25 November 2026
+- Moved the existing text shadow, caption background, and Unicode sticker fallback shadow ARGB values into semantic media-overlay design tokens.
+- Updated the Media3 bitmap overlay renderers to consume those shared tokens through `toArgb()`. The exact ARGB values are preserved, so caption/sticker appearance and geometry are unchanged.
+- Added a JVM regression test that locks all three ARGB values. Android CI validates compilation and deterministic token conversion; actual overlay appearance and exported playback still require physical-device validation.

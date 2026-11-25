@@ -50,6 +50,9 @@ internal object VyroCutPalette {
     val CanvasBlack = Color.Black
     val CanvasWhite = Color.White
     val MediaOverlayText = Color.White
+    val MediaOverlayTextShadow = Color(0x99000000)
+    val MediaOverlayCaptionBackground = Color(0xB8000000)
+    val StickerFallbackTextShadow = Color(0xAA000000)
     val MediaOverlayScrim = Color.Black.copy(alpha = 0.68f)
     val WaveformForeground = Color.White.copy(alpha = 0.9f)
 

@@ -304,7 +304,7 @@ private class ClipTextBitmapOverlay(
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             color = VyroCutPalette.MediaOverlayText.toArgb()
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-            setShadowLayer(2f, 0f, 2f, 0x99000000.toInt())
+            setShadowLayer(2f, 0f, 2f, VyroCutPalette.MediaOverlayTextShadow.toArgb())
             textSize = (height * 0.052f * overlay.fontScale).coerceIn(18f, 96f)
         }
         val maxTextWidth = (width * 0.86f).toInt().coerceAtLeast(1)
@@ -325,7 +325,7 @@ private class ClipTextBitmapOverlay(
         )
 
         val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xB8000000.toInt()
+            color = VyroCutPalette.MediaOverlayCaptionBackground.toArgb()
             style = Paint.Style.FILL
         }
         canvas.drawRoundRect(

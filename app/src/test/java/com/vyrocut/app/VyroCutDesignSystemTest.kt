@@ -373,4 +373,11 @@ class VyroCutDesignSystemTest {
             0.7152 * linear(color.green) +
             0.0722 * linear(color.blue)
     }
+
+    @Test
+    fun mediaOverlayRendererColorsPreserveExistingArgbValues() {
+        assertEquals(0x99000000.toInt(), VyroCutPalette.MediaOverlayTextShadow.toArgb())
+        assertEquals(0xB8000000.toInt(), VyroCutPalette.MediaOverlayCaptionBackground.toArgb())
+        assertEquals(0xAA000000.toInt(), VyroCutPalette.StickerFallbackTextShadow.toArgb())
+    }
 }
