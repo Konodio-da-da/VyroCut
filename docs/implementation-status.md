@@ -614,3 +614,10 @@ A control is only considered complete when its operation is connected to the pro
 - MediaStore publication checks cancellation before creating a row, between copy/read-back stages, and before clearing IS_PENDING. If cancellation arrives while a row is pending, the existing failure cleanup deletes that row. Cancellation during verification exits before publication begins.
 - The Cancel control invalidates the existing session and signals the token; it does not alter Media3 composition, source timestamp indexing, project clock/audio synchronization, export preflight, output validation rules, or the final byte-integrity contract.
 - Added pure JVM tests for active/cancelled state, idempotence, explicit cancellation exceptions, and cross-thread visibility. CI validates compilation and token rules; cancellation latency, Android decoder interruption, and MediaStore provider behaviour still require physical-device validation.
+
+
+## Clip-action row design-token consolidation — 25 November 2026
+- Added semantic metrics for the video import/split/trim action row's 6 dp button gap and existing 10 dp corner shape.
+- Routed the Import, Split at playhead, and Trim buttons through the shared metrics; numeric dimensions are unchanged.
+- Added a pure JVM regression test that locks the gap and ties the corner token to the shared compact-panel shape.
+- Clip import, split timing, overlay rebasing, trim validation, selection, and delete behavior are unchanged. GitHub Actions validates compilation and token rules; touch behavior and compact-window fit still require Android-device/window validation.

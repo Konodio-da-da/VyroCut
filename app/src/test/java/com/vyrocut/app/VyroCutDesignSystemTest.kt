@@ -141,6 +141,13 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun clipActionRowMetricsPreserveExistingGeometry() {
+        assertEquals(6, VyroCutClipActionMetrics.ButtonGapDp)
+        assertEquals(VyroCutShapes.CompactPanelCornerDp, VyroCutClipActionMetrics.ButtonCornerDp)
+        assertEquals(10, VyroCutClipActionMetrics.ButtonCornerDp)
+    }
+
+    @Test
     fun sharedTypographyTokensRemainPositiveAndOrdered() {
         assertEquals(
             listOf(8, 9, 10, 11, 12, 14, 20, 22, 23),

@@ -134,6 +134,15 @@ internal object VyroCutEditorChromeMetrics {
 }
 
 /**
+ * Geometry for the video import/split/trim action row.
+ * Values preserve the current button spacing and corner shape.
+ */
+internal object VyroCutClipActionMetrics {
+    const val ButtonGapDp = 6
+    const val ButtonCornerDp = VyroCutShapes.CompactPanelCornerDp
+}
+
+/**
  * Home-screen-specific geometry retained as semantic tokens during styling
  * consolidation. Values intentionally match the existing Compose layout.
  */

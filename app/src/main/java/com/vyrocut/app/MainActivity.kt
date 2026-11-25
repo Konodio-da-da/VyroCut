@@ -2357,12 +2357,12 @@ private fun VyroCutApp() {
                     }
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(horizontalArrangement = Arrangement.spacedBy(VyroCutClipActionMetrics.ButtonGapDp.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(
                         onClick = { mediaPicker.launch(arrayOf("video/*")) },
                         enabled = !isReadingMedia,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
                     ) {
                         Icon(Icons.Default.Add, null); Text("Import", maxLines = 1)
                     }
@@ -2419,7 +2419,7 @@ private fun VyroCutApp() {
                                 clip.sourceEndMs,
                                 player.currentPosition,
                             ) != null
-                    } == true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(10.dp)) {
+                    } == true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)) {
                         Icon(Icons.Default.ContentCut, null); Text("Split at playhead", maxLines = 1)
                     }
                     OutlinedButton(
@@ -2429,7 +2429,7 @@ private fun VyroCutApp() {
                             selectedClip.uri !in missingMediaUris &&
                             !isReadingMedia,
                         modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp)
+                        shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
                     ) { Text("Trim", maxLines = 1) }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = VyroCutPalette.Danger)
