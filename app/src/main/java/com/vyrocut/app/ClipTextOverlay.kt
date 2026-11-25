@@ -1,5 +1,6 @@
 package com.vyrocut.app
 
+import androidx.compose.ui.graphics.toArgb
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -301,7 +302,7 @@ private class ClipTextBitmapOverlay(
         val nextBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(nextBitmap)
         val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
+            color = VyroCutPalette.MediaOverlayText.toArgb()
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             setShadowLayer(2f, 0f, 2f, 0x99000000.toInt())
             textSize = (height * 0.052f * overlay.fontScale).coerceIn(18f, 96f)

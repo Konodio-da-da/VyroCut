@@ -1,5 +1,6 @@
 package com.vyrocut.app
 
+import androidx.compose.ui.graphics.toArgb
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -361,7 +362,7 @@ private class ClipStickerBitmapOverlay(
         } else {
             // Unknown future asset IDs intentionally fall back to the persisted Unicode symbol.
             val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = android.graphics.Color.WHITE
+                color = VyroCutPalette.MediaOverlayText.toArgb()
                 textSize = geometry.textSizePx
                 setShadowLayer(
                     (geometry.textSizePx * 0.06f).coerceAtLeast(2f),

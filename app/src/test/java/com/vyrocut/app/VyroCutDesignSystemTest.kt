@@ -1,6 +1,7 @@
 package com.vyrocut.app
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +29,7 @@ class VyroCutDesignSystemTest {
         assertEquals(Color.Black, VyroCutPalette.CanvasBlack)
         assertEquals(Color.White, VyroCutPalette.CanvasWhite)
         assertEquals(Color.White, VyroCutPalette.MediaOverlayText)
+        assertEquals(0xFFFFFFFF.toInt(), VyroCutPalette.MediaOverlayText.toArgb())
         assertEquals(Color.Black.copy(alpha = 0.68f), VyroCutPalette.MediaOverlayScrim)
         assertEquals(Color.White.copy(alpha = 0.9f), VyroCutPalette.WaveformForeground)
         assertEquals(Color.Black, VyroCutPalette.OnDanger)
