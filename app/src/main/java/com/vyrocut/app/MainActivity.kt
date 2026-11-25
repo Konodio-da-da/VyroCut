@@ -2050,9 +2050,9 @@ private fun VyroCutApp() {
                     TextButton(
                         onClick = { saveProject(clips); player.pause(); showHome = true },
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
-                    ) { Text("‹ Projects", color = StudioAccent, fontSize = 12.sp) }
+                    ) { Text("‹ Projects", color = StudioAccent, fontSize = VyroCutTypography.SmallBodySp.sp) }
                     Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(28.dp))
-                    Text("VyroCut", color = StudioText, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 9.dp))
+                    Text("VyroCut", color = StudioText, fontSize = VyroCutTypography.BrandSp.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 9.dp))
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { showProjects = true }) {
                         Text(projects.firstOrNull { it.id == activeProjectId }?.name ?: "Project", color = StudioAccent, maxLines = 1)
@@ -2068,7 +2068,7 @@ private fun VyroCutApp() {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(Icons.Default.Movie, null, tint = StudioMuted, modifier = Modifier.size(38.dp))
                             Spacer(Modifier.height(6.dp))
-                            Text("Import a video to start editing", color = StudioMuted, fontSize = 12.sp)
+                            Text("Import a video to start editing", color = StudioMuted, fontSize = VyroCutTypography.SmallBodySp.sp)
                         }
                     } else {
                         AndroidView(
@@ -2191,7 +2191,7 @@ private fun VyroCutApp() {
                         enabled = selectedClip != null,
                         contentPadding = PaddingValues(horizontal = 5.dp, vertical = 0.dp),
                     ) {
-                        Text(previewPlaybackSpeedLabel(previewPlaybackSpeed), color = StudioAccent, fontSize = 11.sp)
+                        Text(previewPlaybackSpeedLabel(previewPlaybackSpeed), color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
                     }
                     FilledTonalButton(onClick = {
                         if (player.isPlaying) {
@@ -4014,11 +4014,11 @@ private fun VyroCutApp() {
                                         TextButton(onClick = {
                                             projectToRename = project
                                             renameProjectName = project.name
-                                        }) { Text("Rename", fontSize = 11.sp) }
+                                        }) { Text("Rename", fontSize = VyroCutTypography.LabelSp.sp) }
                                         TextButton(
                                             onClick = { projectToDelete = project },
                                             enabled = projects.size > 1
-                                        ) { Text("Delete", color = if (projects.size > 1) VyroCutPalette.Danger else StudioMuted, fontSize = 11.sp) }
+                                        ) { Text("Delete", color = if (projects.size > 1) VyroCutPalette.Danger else StudioMuted, fontSize = VyroCutTypography.LabelSp.sp) }
                                     }
                                 }
                                 HorizontalDivider()
@@ -4038,7 +4038,7 @@ private fun VyroCutApp() {
                                 Text(
                                     "Backups save your edit list, media references, canvas settings and preview speed. Keep the original video and audio files available; media files are not copied into the backup.",
                                     color = StudioMuted,
-                                    fontSize = 10.sp
+                                    fontSize = VyroCutTypography.CaptionSp.sp
                                 )
                                 OutlinedTextField(
                                     value = newProjectName,
@@ -5052,7 +5052,7 @@ private fun TimelineEditorStrip(
     if (clips.isEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("VIDEO", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
-            Text("Import footage to build your timeline", color = StudioMuted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 18.dp))
+            Text("Import footage to build your timeline", color = StudioMuted, fontSize = VyroCutTypography.SmallBodySp.sp, modifier = Modifier.padding(vertical = 18.dp))
         }
         return
     }
@@ -5577,7 +5577,7 @@ private fun EditorPreviewMetadata(
             Text(
                 subtitle,
                 color = subtitleColor,
-                fontSize = 11.sp,
+                fontSize = VyroCutTypography.LabelSp.sp,
             )
         }
         if (relinkLabel != null && onRelink != null) {
@@ -5586,7 +5586,7 @@ private fun EditorPreviewMetadata(
                 enabled = relinkEnabled,
                 contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
             ) {
-                Text(relinkLabel, fontSize = 11.sp)
+                Text(relinkLabel, fontSize = VyroCutTypography.LabelSp.sp)
             }
         }
     }
