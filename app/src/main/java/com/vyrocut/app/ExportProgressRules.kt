@@ -81,15 +81,22 @@ internal fun exportProgressPresentation(
         percent = null,
         isIndeterminate = false,
         progressLabel = "Failed",
-        detailText = "Review the export error above before retrying.",
+        detailText = "The export stopped before a verified MP4 was saved. Review the export message below before retrying.",
     )
     ExportUiStage.CANCELLED -> ExportProgressPresentation(
         percent = null,
         isIndeterminate = false,
         progressLabel = "Cancelled",
-        detailText = "The temporary export was discarded.",
+        detailText = "The active export was cancelled; its temporary file was discarded.",
     )
 }
+
+/**
+ * Keeps terminal failure and cancellation feedback visible after the active
+ * progress indicator has stopped. IDLE and COMPLETE use their own UI sections.
+ */
+internal fun shouldShowExportStatusCard(stage: ExportUiStage, isExporting: Boolean): Boolean =
+    isExporting || stage == ExportUiStage.FAILED || stage == ExportUiStage.CANCELLED
 
 /**
  * Makes a failed export's existing, fully revalidated action explicit.
