@@ -145,7 +145,7 @@ private fun StickerAssetPicker(
                             Image(
                                 painter = painterResource(id = asset.drawableResId),
                                 contentDescription = asset.label,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(VyroCutStickerPanelMetrics.AssetIconSizeDp.dp),
                             )
                             Text(asset.label, fontSize = VyroCutTypography.ToolLabelSp.sp)
                         }
@@ -289,7 +289,7 @@ private fun StickerLayerEditor(
                 Image(
                     painter = painterResource(id = stickerAsset.drawableResId),
                     contentDescription = stickerAsset.label,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(VyroCutStickerPanelMetrics.LayerAssetIconSizeDp.dp),
                 )
                 Text(
                     stickerAsset.label,

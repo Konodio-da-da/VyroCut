@@ -241,6 +241,8 @@ internal object VyroCutStickerPanelMetrics {
     const val LayerItemGapDp = 3
     const val SymbolChipFontSizeSp = 19
     const val LayerSymbolFontSizeSp = 20
+    const val AssetIconSizeDp = 18
+    const val LayerAssetIconSizeDp = 24
     const val RemoveButtonHorizontalPaddingDp = 6
 }
 

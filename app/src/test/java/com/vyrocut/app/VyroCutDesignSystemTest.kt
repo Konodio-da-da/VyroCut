@@ -291,7 +291,7 @@ class VyroCutDesignSystemTest {
     @Test
     fun stickerPanelMetricsPreserveExistingLayoutDimensions() {
         assertEquals(
-            listOf(10, 9, 6, 6, 3, 6),
+            listOf(10, 9, 6, 6, 3, 6, 18, 24),
             listOf(
                 VyroCutStickerPanelMetrics.HorizontalPaddingDp,
                 VyroCutStickerPanelMetrics.VerticalPaddingDp,
@@ -299,6 +299,8 @@ class VyroCutDesignSystemTest {
                 VyroCutStickerPanelMetrics.LayerVerticalPaddingDp,
                 VyroCutStickerPanelMetrics.LayerItemGapDp,
                 VyroCutStickerPanelMetrics.RemoveButtonHorizontalPaddingDp,
+                VyroCutStickerPanelMetrics.AssetIconSizeDp,
+                VyroCutStickerPanelMetrics.LayerAssetIconSizeDp,
             ),
         )
         assertEquals(19, VyroCutStickerPanelMetrics.SymbolChipFontSizeSp)
