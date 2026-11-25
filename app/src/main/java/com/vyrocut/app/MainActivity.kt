@@ -423,6 +423,7 @@ private fun VyroCutApp() {
     var activeTransformer by remember { mutableStateOf<Transformer?>(null) }
     var activeExportFile by remember { mutableStateOf<File?>(null) }
     var exportSessionId by remember { mutableStateOf<String?>(null) }
+    var activeExportCancellationToken by remember { mutableStateOf<ExportCancellationToken?>(null) }
     var exportUiStage by remember { mutableStateOf(ExportUiStage.IDLE) }
     var exportProgressPercent by remember { mutableStateOf<Int?>(null) }
     var completedExportSummary by remember { mutableStateOf<ExportCompletionSummary?>(null) }
@@ -3415,6 +3416,7 @@ private fun VyroCutApp() {
                         onClick = {
                             if (clips.isNotEmpty() && !isExporting && !isReadingMedia) {
                                 val exportSession = java.util.UUID.randomUUID().toString()
+                                val exportCancellationToken = ExportCancellationToken()
                                 val exportClips = clips.toList()
                                 val exportAudioTracks = audioTrackClips.toList()
                                 val exportCanvasSettings = projectCanvasSettingsFor(canvasAspectRatio, canvasBackground)
@@ -3450,6 +3452,7 @@ private fun VyroCutApp() {
                                     )
                                 }
                                 exportSessionId = exportSession
+                                activeExportCancellationToken = exportCancellationToken
                                 isExporting = true
                                 exportUiStage = ExportUiStage.PREPARING
                                 exportProgressPercent = null
@@ -3472,6 +3475,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
 
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export stopped: $preflightError"
                                         return@exportPreparation
@@ -3480,6 +3484,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
 
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export stopped: audio lanes contain an invalid or overlapping segment."
                                         return@exportPreparation
@@ -3501,6 +3506,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
 
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export stopped: audio source could not be verified for ${invalidAudioSource.name}. Relink it before exporting."
                                         return@exportPreparation
@@ -3536,6 +3542,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
 
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Could not create the temporary export directory"
                                         return@exportPreparation
@@ -3555,6 +3562,7 @@ private fun VyroCutApp() {
                                     if (silenceCacheRequiredBytes == null) {
                                         exportUiStage = ExportUiStage.FAILED
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Audio-track gaps exceed the supported temporary WAV cache size."
                                         return@exportPreparation
@@ -3585,6 +3593,7 @@ private fun VyroCutApp() {
                                     if (storageCheck?.status == ExportStoragePreflightStatus.INSUFFICIENT) {
                                         exportUiStage = ExportUiStage.FAILED
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export stopped: ${describeExportStoragePreflight(storageCheck)}"
                                         return@exportPreparation
@@ -3607,6 +3616,7 @@ private fun VyroCutApp() {
                                             if (isExportSessionCurrent(exportSessionId, exportSession)) {
                                                 exportUiStage = ExportUiStage.FAILED
                                                 isExporting = false
+                                                activeExportCancellationToken = null
                                                 exportSessionId = null
                                                 exportMessage = "Could not prepare audio-track gaps: ${error.message}"
                                             }
@@ -3730,6 +3740,7 @@ private fun VyroCutApp() {
                                         exportUiStage = ExportUiStage.FAILED
 
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.PREPARATION, error).userMessage}"
                                         return@exportPreparation
@@ -3782,11 +3793,14 @@ private fun VyroCutApp() {
                                                                     expectedCanvasSize = exportCanvasSize,
                                                                     canvasVisualClips = canvasVisualClips,
                                                                     expectedBackgroundArgb = expectedBackgroundForVerification,
+                                                                    cancellationToken = exportCancellationToken,
                                                                 )
+                                                                exportCancellationToken.throwIfCancelled()
                                                                 val uri = publishExportToMovies(
                                                                     context,
                                                                     outputFile,
                                                                     verifiedMedia.fingerprint,
+                                                                    cancellationToken = exportCancellationToken,
                                                                 )
                                                                 uri to verifiedMedia
                                                             }
@@ -3803,6 +3817,7 @@ private fun VyroCutApp() {
                                                         isExporting = false
                                                         activeTransformer = null
                                                         activeExportFile = null
+                                                        activeExportCancellationToken = null
                                                         exportSessionId = null
                                                         publishResult.onSuccess { (uri, verifiedMedia) ->
                                                             exportedUri = uri
@@ -3844,6 +3859,7 @@ private fun VyroCutApp() {
                                                         isExporting = false
                                                         activeTransformer = null
                                                         activeExportFile = null
+                                                        activeExportCancellationToken = null
                                                         exportSessionId = null
                                                         exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.RENDERING, exception).userMessage}"
                                                     }
@@ -3853,6 +3869,7 @@ private fun VyroCutApp() {
                                         outputFile.delete()
                                         exportUiStage = ExportUiStage.FAILED
                                         isExporting = false
+                                        activeExportCancellationToken = null
                                         exportSessionId = null
                                         exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.PREPARATION, error).userMessage}"
                                         return@exportPreparation
@@ -3896,6 +3913,7 @@ private fun VyroCutApp() {
                                                 isExporting = false
                                                 activeTransformer = null
                                                 activeExportFile = null
+                                                activeExportCancellationToken = null
                                                 exportSessionId = null
                                                 exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.RENDERING, error).userMessage}"
                                             }
@@ -3912,6 +3930,8 @@ private fun VyroCutApp() {
                     }
                     if (isExporting) {
                         OutlinedButton(onClick = {
+                            activeExportCancellationToken?.cancel()
+                            activeExportCancellationToken = null
                             exportSessionId = null
                             exportUiStage = ExportUiStage.CANCELLED
                             exportProgressPercent = null
@@ -3987,7 +4007,7 @@ private fun VyroCutApp() {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         } else {
                             LinearProgressIndicator(
-                                progress = (progressPresentation.percent ?: 0) / 100f,
+                                progress = { (progressPresentation.percent ?: 0) / 100f },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }

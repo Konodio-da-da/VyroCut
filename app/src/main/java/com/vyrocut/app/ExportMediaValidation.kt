@@ -25,7 +25,9 @@ internal fun verifyExportedMp4(
     expectedCanvasSize: ExportCanvasSize? = null,
     canvasVisualClips: List<ExportCanvasVisualClip> = emptyList(),
     expectedBackgroundArgb: Int? = null,
+    cancellationToken: ExportCancellationToken? = null,
 ): VerifiedExportMedia {
+    cancellationToken?.throwIfCancelled()
     check(file.isFile && file.length() > 0L) { "Transformer produced an empty MP4" }
 
     val extractor = MediaExtractor()
@@ -38,6 +40,7 @@ internal fun verifyExportedMp4(
         var audioMimeType: String? = null
 
         for (index in 0 until extractor.trackCount) {
+            cancellationToken?.throwIfCancelled()
             val format = extractor.getTrackFormat(index)
             val mimeType = format.getString(MediaFormat.KEY_MIME)
             when (mimeType?.substringBefore('/')) {
@@ -62,6 +65,7 @@ internal fun verifyExportedMp4(
         var lastVideoSampleTimeUs = -1L
         if (extractor.sampleTime < 0L) extractor.advance()
         while (extractor.sampleTrackIndex >= 0) {
+            cancellationToken?.throwIfCancelled()
             val trackIndex = extractor.sampleTrackIndex
             if (trackIndex in videoTracks) {
                 videoSamples++
@@ -103,6 +107,7 @@ internal fun verifyExportedMp4(
     }
 
     val sourceHasAudio = distinctExportSourceUris(sourceUris).any { sourceUri ->
+        cancellationToken?.throwIfCancelled()
         val source = MediaExtractor()
         try {
             source.setDataSource(context, Uri.parse(sourceUri), null)
@@ -120,8 +125,9 @@ internal fun verifyExportedMp4(
 
     // Demuxing proves that packets exist; decode real frames and PCM before
     // publishing so a structurally valid but undecodable MP4 is never exposed.
+    cancellationToken?.throwIfCancelled()
     expectedCanvasSize?.let { canvas ->
-        verifyExportedVideoFrames(file, clipDurationsMs, canvas)
+        verifyExportedVideoFrames(file, clipDurationsMs, canvas, cancellationToken)
     }
     if (expectedBackgroundArgb != null) {
         check(canvasVisualClips.isNotEmpty()) {
@@ -133,17 +139,18 @@ internal fun verifyExportedMp4(
                 ?: error("Canvas dimensions are required for background verification"),
             clips = canvasVisualClips,
             expectedBackgroundArgb = expectedBackgroundArgb,
+            cancellationToken = cancellationToken,
         )
     }
     if (sourceHasAudio) {
-        verifyExportedAudioSamples(file, expectedDurationMs)
+        verifyExportedAudioSamples(file, expectedDurationMs, cancellationToken)
     }
 
     // Bind publication to the exact bytes that passed demux and decoder validation.
     // Return the measured track metadata with the fingerprint so the completion
     // UI reports the output that was actually verified, not the requested settings.
     return VerifiedExportMedia(
-        fingerprint = FileInputStream(file).use(::fingerprintExportStream),
+        fingerprint = FileInputStream(file).use { input -> fingerprintExportStream(input, cancellationToken) },
         trackSummary = summary,
     )
 }
@@ -153,13 +160,16 @@ internal fun publishExportToMovies(
     context: Context,
     file: File,
     verifiedFingerprint: ExportFileFingerprint,
+    cancellationToken: ExportCancellationToken? = null,
 ): Uri {
+    cancellationToken?.throwIfCancelled()
     check(exportFileFingerprintsMatch(verifiedFingerprint, verifiedFingerprint)) {
         "The verified MP4 fingerprint is invalid"
     }
 
     // A process death during Transformer can leave an app-private partial MP4.
     // Retire only old VyroCut temporary exports, never this verified file.
+    cancellationToken?.throwIfCancelled()
     file.parentFile?.let { directory ->
         cleanupStaleExportTemporaryFiles(directory, protectedFile = file)
     }
@@ -172,26 +182,32 @@ internal fun publishExportToMovies(
             put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/VyroCut")
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
+        cancellationToken?.throwIfCancelled()
         destination = context.contentResolver.insert(
             MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
             values,
         ) ?: error("Could not create a Movies library entry")
 
+        cancellationToken?.throwIfCancelled()
         val copiedFingerprint = context.contentResolver.openOutputStream(destination!!)?.use { output ->
-            FileInputStream(file).use { input -> copyAndFingerprintExport(input, output) }
+            FileInputStream(file).use { input -> copyAndFingerprintExport(input, output, cancellationToken) }
         } ?: error("Could not write the exported video")
+        cancellationToken?.throwIfCancelled()
         check(exportFileFingerprintsMatch(verifiedFingerprint, copiedFingerprint)) {
             "The temporary MP4 changed after verification; the export was not published"
         }
 
         // MediaStore owns a separate copy. Read it back while the row is still pending
         // and verify its bytes before making the video visible to other applications.
-        val storedFingerprint = context.contentResolver.openInputStream(destination!!)?.use(::fingerprintExportStream)
-            ?: error("Could not read back the saved Movies video")
+        val storedFingerprint = context.contentResolver.openInputStream(destination!!)?.use { input ->
+            fingerprintExportStream(input, cancellationToken)
+        } ?: error("Could not read back the saved Movies video")
+        cancellationToken?.throwIfCancelled()
         check(exportFileFingerprintsMatch(verifiedFingerprint, storedFingerprint)) {
             "The saved Movies video does not match the verified MP4"
         }
 
+        cancellationToken?.throwIfCancelled()
         val publishedRows = context.contentResolver.update(
             destination!!,
             ContentValues().apply { put(MediaStore.Video.Media.IS_PENDING, 0) },
@@ -199,6 +215,7 @@ internal fun publishExportToMovies(
             null,
         )
         check(publishedRows > 0) { "Could not finish publishing the video" }
+        cancellationToken?.throwIfCancelled()
         return destination!!
     } catch (error: Throwable) {
         destination?.let { uri ->

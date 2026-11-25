@@ -61,6 +61,8 @@ Record device model, Android version, source formats, project duration, export d
    - Open the exported MP4 in a separate player; seek near the beginning, middle, every clip boundary, and end.
    - Verify dimensions, duration, clip order, text, source audio, lane audio, fades, and absence of frozen/black frames.
    - Cancel one export and confirm no incomplete MP4 is published.
+   - Cancel during a long verification pass and confirm decoder checks stop at the next bounded checkpoint before MediaStore publication begins.
+   - Cancel while MediaStore is copying or reading back the MP4; confirm any pending row is deleted and no incomplete video is visible.
 
 5. **Device compatibility**
    - Repeat with mixed resolutions, frame rates, orientations, and common device codecs.

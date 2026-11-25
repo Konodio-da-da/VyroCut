@@ -12,21 +12,29 @@ internal data class ExportFileFingerprint(
 )
 
 /** Reads a stream incrementally so large exports never need to be loaded into memory. */
-internal fun fingerprintExportStream(input: InputStream): ExportFileFingerprint =
-    consumeExportStream(input, output = null)
+internal fun fingerprintExportStream(
+    input: InputStream,
+    cancellationToken: ExportCancellationToken? = null,
+): ExportFileFingerprint = consumeExportStream(input, output = null, cancellationToken)
 
 /** Copies a stream while calculating the fingerprint of the bytes actually read from it. */
 internal fun copyAndFingerprintExport(
     input: InputStream,
     output: OutputStream,
-): ExportFileFingerprint = consumeExportStream(input, output)
+    cancellationToken: ExportCancellationToken? = null,
+): ExportFileFingerprint = consumeExportStream(input, output, cancellationToken)
 
-private fun consumeExportStream(input: InputStream, output: OutputStream?): ExportFileFingerprint {
+private fun consumeExportStream(
+    input: InputStream,
+    output: OutputStream?,
+    cancellationToken: ExportCancellationToken?,
+): ExportFileFingerprint {
     val digest = MessageDigest.getInstance("SHA-256")
     val buffer = ByteArray(64 * 1024)
     var byteCount = 0L
 
     while (true) {
+        cancellationToken?.throwIfCancelled()
         val read = input.read(buffer)
         if (read < 0) break
         if (read == 0) {
@@ -47,6 +55,7 @@ private fun consumeExportStream(input: InputStream, output: OutputStream?): Expo
         digest.update(buffer, 0, read)
         byteCount += read.toLong()
     }
+    cancellationToken?.throwIfCancelled()
     output?.flush()
 
     val hash = digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }

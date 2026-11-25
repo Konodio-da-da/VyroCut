@@ -149,14 +149,17 @@ internal fun verifyExportedVideoFrames(
     file: File,
     clipDurationsMs: List<Long>,
     expectedCanvasSize: ExportCanvasSize,
+    cancellationToken: ExportCancellationToken? = null,
 ) {
     val probes = exportFrameProbePositionsMs(clipDurationsMs)
     check(probes.isNotEmpty()) { "The project has invalid clip durations for video decoding" }
 
     val retriever = MediaMetadataRetriever()
     try {
+        cancellationToken?.throwIfCancelled()
         retriever.setDataSource(file.absolutePath)
         probes.forEach { positionMs ->
+            cancellationToken?.throwIfCancelled()
             val timeUs = if (positionMs > Long.MAX_VALUE / 1_000L) {
                 Long.MAX_VALUE
             } else {
@@ -190,6 +193,7 @@ internal fun verifyExportedCanvasBackgroundPixels(
     canvasSize: ExportCanvasSize,
     clips: List<ExportCanvasVisualClip>,
     expectedBackgroundArgb: Int,
+    cancellationToken: ExportCancellationToken? = null,
 ): Int {
     check(file.isFile && file.length() > 0L) { "The exported MP4 is unavailable for canvas verification" }
     check(clips.isNotEmpty()) { "Source dimensions are unavailable for canvas background verification" }
@@ -198,8 +202,10 @@ internal fun verifyExportedCanvasBackgroundPixels(
     var timelineStartMs = 0L
     var verifiedPixelCount = 0
     try {
+        cancellationToken?.throwIfCancelled()
         retriever.setDataSource(file.absolutePath)
         clips.forEachIndexed { index, clip ->
+            cancellationToken?.throwIfCancelled()
             check(clip.durationMs > 0L) { "Clip ${index + 1} has no duration for canvas verification" }
             check(clip.sourceWidthPx > 0 && clip.sourceHeightPx > 0) {
                 "Clip ${index + 1} has invalid source dimensions for canvas verification"
@@ -255,14 +261,20 @@ internal fun verifyExportedCanvasBackgroundPixels(
  * byte count of each decoded buffer are used to measure its actual timeline
  * coverage, rather than accepting the first non-empty output buffer.
  */
-internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
+internal fun verifyExportedAudioSamples(
+    file: File,
+    expectedDurationMs: Long,
+    cancellationToken: ExportCancellationToken? = null,
+) {
     val extractor = MediaExtractor()
     var decoder: MediaCodec? = null
     try {
+        cancellationToken?.throwIfCancelled()
         extractor.setDataSource(file.absolutePath)
         var audioTrackIndex = -1
         var audioFormat: MediaFormat? = null
         for (index in 0 until extractor.trackCount) {
+            cancellationToken?.throwIfCancelled()
             val candidate = extractor.getTrackFormat(index)
             if (candidate.getString(MediaFormat.KEY_MIME)?.startsWith("audio/") == true) {
                 audioTrackIndex = index
@@ -294,6 +306,7 @@ internal fun verifyExportedAudioSamples(file: File, expectedDurationMs: Long) {
         var totalGapUs = 0L
 
         while (!outputEnded) {
+            cancellationToken?.throwIfCancelled()
             var madeProgress = false
             if (!inputEnded) {
                 val inputIndex = activeDecoder.dequeueInputBuffer(10_000L)
