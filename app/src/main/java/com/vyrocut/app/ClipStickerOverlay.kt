@@ -142,18 +142,52 @@ internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boole
  * Updates a sticker's clip-local interval without allowing it to escape the owning clip.
  * An end equal to the clip duration is stored as null, meaning "through clip end".
  */
+/**
+ * Normalized clip-local timing and the non-crossing ranges for the IN/OUT controls.
+ * The IN handle can move only up to one millisecond before OUT; OUT can move
+ * only from one millisecond after IN through the clip end.
+ */
+internal data class ClipStickerTimingSliderBounds(
+    val startMs: Long,
+    val endMs: Long,
+    val startSliderMaxMs: Long,
+    val endSliderMinMs: Long,
+)
+
+internal fun calculateClipStickerTimingSliderBounds(
+    clipDurationMs: Long,
+    requestedStartMs: Long,
+    requestedEndMs: Long,
+): ClipStickerTimingSliderBounds? {
+    if (clipDurationMs <= 0L) return null
+    val startMs = requestedStartMs.coerceIn(0L, clipDurationMs - 1L)
+    val endMs = requestedEndMs.coerceIn(startMs + 1L, clipDurationMs)
+    return ClipStickerTimingSliderBounds(
+        startMs = startMs,
+        endMs = endMs,
+        startSliderMaxMs = endMs - 1L,
+        endSliderMinMs = startMs + 1L,
+    )
+}
+
+/**
+ * Updates a sticker's clip-local interval without allowing it to escape the owning clip.
+ * An end equal to the clip duration is stored as null, meaning "through clip end".
+ */
 internal fun updateClipStickerOverlayTiming(
     overlay: ClipStickerOverlay,
     clipDurationMs: Long,
     requestedStartMs: Long,
     requestedEndMs: Long,
 ): ClipStickerOverlay? {
-    if (clipDurationMs <= 0L) return null
-    val startMs = requestedStartMs.coerceIn(0L, clipDurationMs - 1L)
-    val endMs = requestedEndMs.coerceIn(startMs + 1L, clipDurationMs)
+    val bounds = calculateClipStickerTimingSliderBounds(
+        clipDurationMs = clipDurationMs,
+        requestedStartMs = requestedStartMs,
+        requestedEndMs = requestedEndMs,
+    ) ?: return null
     return overlay.copy(
-        startMs = startMs,
-        endMs = endMs.takeIf { it < clipDurationMs },
+        startMs = bounds.startMs,
+        endMs = bounds.endMs.takeIf { it < clipDurationMs },
     )
 }
 
