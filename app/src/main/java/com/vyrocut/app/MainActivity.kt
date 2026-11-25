@@ -5041,13 +5041,13 @@ private fun TimelinePlayheadMarker(
             Modifier.offset(x = geometry.capLeftDp.dp)
                 .width(metrics.capWidthDp.dp)
                 .height(metrics.capHeightDp.dp)
-                .background(VyroCutPalette.TimelinePlayheadOutline, RoundedCornerShape(3.dp)),
+                .background(VyroCutPalette.TimelinePlayheadOutline, RoundedCornerShape(TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP.dp)),
         )
         Box(
             Modifier.offset(x = (geometry.capLeftDp + 1f).dp)
                 .width((metrics.capWidthDp - 2).dp)
                 .height((metrics.capHeightDp - 2).dp)
-                .background(VyroCutPalette.TimelinePlayhead, RoundedCornerShape(2.dp)),
+                .background(VyroCutPalette.TimelinePlayhead, RoundedCornerShape(TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP.dp)),
         )
     }
 }
@@ -5197,7 +5197,7 @@ private fun TimelineEditorStrip(
                             } else {
                                 StudioMuted.copy(alpha = 0.45f)
                             },
-                            shape = RoundedCornerShape(1.dp),
+                            shape = RoundedCornerShape(TIMELINE_RULER_TICK_CORNER_RADIUS_DP.dp),
                         ),
                 )
                 if (tick.timeMs in visibleRulerLabelTimes) {
@@ -5244,11 +5244,11 @@ private fun TimelineEditorStrip(
                 clips.forEachIndexed { index, clip ->
                     Column(
                         Modifier.width(clipWidths[index].dp)
-                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip, RoundedCornerShape(5.dp))
+                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip, RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp))
                             .border(
                                 width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
                                 color = VyroCutPalette.TimelineSelectionOutline,
-                                shape = RoundedCornerShape(5.dp),
+                                shape = RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp),
                             )
                             .padding(3.dp)
                     ) {
@@ -5256,11 +5256,11 @@ private fun TimelineEditorStrip(
                             ClipThumbnail(clip, Modifier.fillMaxSize())
                             Text(
                                 "V" + (index + 1), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                             Text(
                                 formatTime(clip.durationMs), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
-                                modifier = Modifier.align(Alignment.BottomEnd).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                modifier = Modifier.align(Alignment.BottomEnd).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
                         Text(clip.name, color = if (index == selectedIndex) StudioAccent else StudioText, fontSize = TIMELINE_CLIP_LABEL_FONT_SP.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -5333,7 +5333,7 @@ private fun TimelineEditorStrip(
                             .border(
                                 width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
                                 color = VyroCutPalette.TimelineSelectionOutline,
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             ),
                     ) {
                         repeat(textLayerCount) { layerIndex ->
@@ -5341,7 +5341,7 @@ private fun TimelineEditorStrip(
                             Box(
                                 Modifier.fillMaxWidth()
                                     .height(timelineMetrics.textRowHeightDp.dp)
-                                    .background(VyroCutPalette.HeroGradientStart, RoundedCornerShape(4.dp))
+                                    .background(VyroCutPalette.HeroGradientStart, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
                                     .clickable {
                                         if (overlay != null || layerIndex == clip.allTextOverlays.size) {
                                             onSelectText(index, layerIndex)
@@ -5369,7 +5369,7 @@ private fun TimelineEditorStrip(
                                             Modifier.offset(x = segment.startOffsetPx.dp)
                                                 .width(segment.widthPx.dp)
                                                 .fillMaxHeight()
-                                                .background(VyroCutPalette.SurfaceSelected, RoundedCornerShape(4.dp))
+                                                .background(VyroCutPalette.SurfaceSelected, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
                                                 .padding(horizontal = 6.dp),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
@@ -5411,7 +5411,7 @@ private fun TimelineEditorStrip(
                             .border(
                                 width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
                                 color = VyroCutPalette.TimelineSelectionOutline,
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             ),
                     ) {
                         repeat(stickerLayerCount) { layerIndex ->
@@ -5419,7 +5419,7 @@ private fun TimelineEditorStrip(
                             Box(
                                 Modifier.fillMaxWidth()
                                     .height(timelineMetrics.stickerRowHeightDp.dp)
-                                    .background(VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp)),
+                                    .background(VyroCutPalette.SurfaceTimeline, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp)),
                             ) {
                                 if (overlay == null) {
                                     if (
@@ -5449,7 +5449,7 @@ private fun TimelineEditorStrip(
                                                 .fillMaxHeight()
                                                 .background(
                                                     VyroCutPalette.SurfaceSelectedTimeline,
-                                                    RoundedCornerShape(4.dp),
+                                                    RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                                 )
                                                 .clickable { onSelectSticker(index, layerIndex) }
                                                 .padding(horizontal = 4.dp),
@@ -5483,11 +5483,11 @@ private fun TimelineEditorStrip(
                 clips.forEachIndexed { index, clip ->
                     Box(
                         Modifier.width(clipWidths[index].dp).fillMaxHeight()
-                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(4.dp))
+                            .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelectedTimeline else VyroCutPalette.SurfaceTimeline, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
                             .border(
                                 width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
                                 color = VyroCutPalette.TimelineSelectionOutline,
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             )
                             .padding(horizontal = 5.dp),
                         contentAlignment = Alignment.Center
@@ -5534,14 +5534,14 @@ private fun TimelineEditorStrip(
                         Modifier.offset(x = startPx.dp)
                             .width((endPx - startPx).coerceAtLeast(6f).dp)
                             .fillMaxHeight()
-                            .background(laneColor, RoundedCornerShape(4.dp))
+                            .background(laneColor, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
                             .border(
                                 width = timelineAudioClipSelectionBorderWidthDp(
                                     clipId = trackClip.id,
                                     selectedAudioTrackId = selectedAudioTrackId,
                                 ).dp,
                                 color = VyroCutPalette.TimelineSelectionOutline,
-                                shape = RoundedCornerShape(4.dp),
+                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             )
                             .clickable { onSelectAudioTrack(trackClip) }
                             .padding(horizontal = 5.dp),
