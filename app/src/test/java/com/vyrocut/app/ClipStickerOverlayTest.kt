@@ -187,6 +187,48 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerTimingSliderBoundsKeepInAndOutSeparatedAndInsideTheClip() {
+        val bounds = calculateClipStickerTimingSliderBounds(
+            clipDurationMs = 5_000L,
+            requestedStartMs = 1_000L,
+            requestedEndMs = 4_000L,
+        )
+
+        assertEquals(1_000L, bounds?.startMs)
+        assertEquals(4_000L, bounds?.endMs)
+        assertEquals(3_999L, bounds?.startSliderMaxMs)
+        assertEquals(1_001L, bounds?.endSliderMinMs)
+    }
+
+    @Test
+    fun stickerTimingSliderBoundsClampRequestsAndHandleOneMillisecondIntervals() {
+        val clamped = calculateClipStickerTimingSliderBounds(
+            clipDurationMs = 5_000L,
+            requestedStartMs = -100L,
+            requestedEndMs = 9_000L,
+        )
+        assertEquals(0L, clamped?.startMs)
+        assertEquals(5_000L, clamped?.endMs)
+        assertEquals(4_999L, clamped?.startSliderMaxMs)
+        assertEquals(1L, clamped?.endSliderMinMs)
+
+        val oneMillisecond = calculateClipStickerTimingSliderBounds(
+            clipDurationMs = 1L,
+            requestedStartMs = 0L,
+            requestedEndMs = 1L,
+        )
+        assertEquals(0L, oneMillisecond?.startSliderMaxMs)
+        assertEquals(1L, oneMillisecond?.endSliderMinMs)
+        assertNull(
+            calculateClipStickerTimingSliderBounds(
+                clipDurationMs = 0L,
+                requestedStartMs = 0L,
+                requestedEndMs = 0L,
+            ),
+        )
+    }
+
+    @Test
     fun splitKeepsOnlyTheVisibleStickerIntervalOnEachVideoHalf() {
         val sticker = ClipStickerOverlay(
             "🚀",
