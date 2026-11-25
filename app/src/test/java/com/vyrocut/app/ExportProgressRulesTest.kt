@@ -1,10 +1,21 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExportProgressRulesTest {
+    @Test
+    fun onlyTheCurrentNonBlankSessionMayContinue() {
+        assertTrue(isExportSessionCurrent("session-1", "session-1"))
+        assertFalse(isExportSessionCurrent(null, "session-1"))
+        assertFalse(isExportSessionCurrent("session-2", "session-1"))
+        assertFalse(isExportSessionCurrent("", ""))
+        assertFalse(isExportSessionCurrent("session-1", ""))
+    }
+
     @Test
     fun acceptsAvailableProgressAtBothBoundaries() {
         assertEquals(0, nextExportProgressPercent(null, 0))

@@ -20,6 +20,13 @@ internal fun nextExportProgressPercent(current: Int?, reported: Int): Int? {
 }
 
 /**
+ * Returns false once the user cancels an export or a newer export supersedes it.
+ * Call after every suspending preparation step before continuing or mutating UI state.
+ */
+internal fun isExportSessionCurrent(activeSessionId: String?, expectedSessionId: String): Boolean =
+    expectedSessionId.isNotBlank() && activeSessionId == expectedSessionId
+
+/**
  * Describes what the export UI may truthfully show for the current stage.
  * Rendering is capped at 99% until verification and MediaStore publication
  * have completed; preparation and verification remain indeterminate.

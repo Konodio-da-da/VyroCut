@@ -3467,7 +3467,7 @@ private fun VyroCutApp() {
                                         sourceMetadata,
                                         requireVideoDimensions = requiresCustomLetterboxBackground,
                                     )
-                                    if (exportSessionId != exportSession) return@exportPreparation
+                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) return@exportPreparation
                                     if (preflightError != null) {
                                         exportUiStage = ExportUiStage.FAILED
 
@@ -3490,6 +3490,7 @@ private fun VyroCutApp() {
                                                 readAudioDurationMs(context, Uri.parse(rawUri))
                                             }
                                     }
+                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) return@exportPreparation
                                     val invalidAudioSource = exportAudioTracks.firstOrNull { clip ->
                                         val sourceDuration = audioSourceDurations[clip.uri]
                                         sourceDuration == null || clip.sourceStartMs < 0L ||
@@ -3573,6 +3574,7 @@ private fun VyroCutApp() {
                                     val storageAvailability = withContext(Dispatchers.IO) {
                                         inspectExportStorageAvailability(outputDirectory, context.cacheDir)
                                     }
+                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) return@exportPreparation
                                     val storageCheck = exportSizeEstimate?.let { estimate ->
                                         evaluateExportStoragePreflight(
                                             estimate,
@@ -3602,15 +3604,21 @@ private fun VyroCutApp() {
                                                 createSilentAudioWav(context.cacheDir, maximumExportSilenceMs)
                                             }
                                         }.getOrElse { error ->
-                                            exportUiStage = ExportUiStage.FAILED
-
-                                            isExporting = false
-                                            exportSessionId = null
-                                            exportMessage = "Could not prepare audio-track gaps: ${error.message}"
+                                            if (isExportSessionCurrent(exportSessionId, exportSession)) {
+                                                exportUiStage = ExportUiStage.FAILED
+                                                isExporting = false
+                                                exportSessionId = null
+                                                exportMessage = "Could not prepare audio-track gaps: ${error.message}"
+                                            }
+                                            outputFile.delete()
                                             return@exportPreparation
                                         }
                                     } else {
                                         null
+                                    }
+                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) {
+                                        outputFile.delete()
+                                        return@exportPreparation
                                     }
                                     val composition = try {
                                         val editedItems = exportClips.map { clip ->
@@ -3755,7 +3763,7 @@ private fun VyroCutApp() {
                                         transformerBuilder
                                             .addListener(object : Transformer.Listener {
                                                 override fun onCompleted(composition: Composition, result: ExportResult) {
-                                                    if (exportSessionId != exportSession) {
+                                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) {
                                                         outputFile.delete()
                                                         return
                                                     }
@@ -3783,7 +3791,7 @@ private fun VyroCutApp() {
                                                                 uri to verifiedMedia
                                                             }
                                                         }
-                                                        if (exportSessionId != exportSession) {
+                                                        if (!isExportSessionCurrent(exportSessionId, exportSession)) {
                                                             publishResult.getOrNull()?.first?.let { uri ->
                                                                 withContext(Dispatchers.IO) {
                                                                     runCatching { context.contentResolver.delete(uri, null, null) }
@@ -3831,7 +3839,7 @@ private fun VyroCutApp() {
                                                 }
                                                 override fun onError(composition: Composition, result: ExportResult, exception: ExportException) {
                                                     outputFile.delete()
-                                                    if (exportSessionId == exportSession) {
+                                                    if (isExportSessionCurrent(exportSessionId, exportSession)) {
                                                         exportUiStage = ExportUiStage.FAILED
                                                         isExporting = false
                                                         activeTransformer = null
@@ -3849,6 +3857,10 @@ private fun VyroCutApp() {
                                         exportMessage = "Export failed: ${diagnoseExportFailure(ExportFailureStage.PREPARATION, error).userMessage}"
                                         return@exportPreparation
                                     }
+                                    if (!isExportSessionCurrent(exportSessionId, exportSession)) {
+                                        outputFile.delete()
+                                        return@exportPreparation
+                                    }
                                     activeTransformer = transformer
                                     activeExportFile = outputFile
                                     exportUiStage = ExportUiStage.RENDERING
@@ -3858,7 +3870,7 @@ private fun VyroCutApp() {
                                             exportScope.launch exportProgress@ {
                                                 val progressHolder = ProgressHolder()
                                                 while (
-                                                    exportSessionId == exportSession &&
+                                                    isExportSessionCurrent(exportSessionId, exportSession) &&
                                                     isExporting &&
                                                     exportUiStage == ExportUiStage.RENDERING
                                                 ) {
@@ -3879,7 +3891,7 @@ private fun VyroCutApp() {
                                             }
                                         }
                                         .onFailure { error ->
-                                            if (exportSessionId == exportSession) {
+                                            if (isExportSessionCurrent(exportSessionId, exportSession)) {
                                                 exportUiStage = ExportUiStage.FAILED
                                                 isExporting = false
                                                 activeTransformer = null
