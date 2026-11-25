@@ -27,6 +27,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlin.math.abs
+import kotlin.math.pow
 
 internal const val AUDIO_WAVEFORM_BUCKET_COUNT = 96
 internal const val MAX_AUDIO_WAVEFORM_RANGE_MS = 15L * 60L * 1_000L
@@ -443,6 +444,17 @@ private fun writeWaveformCache(directory: File, destination: File, values: List<
 }
 
 /**
+ * Applies a display-only curve to normalized peaks. A sub-linear exponent makes
+ * quieter sections easier to distinguish without changing cached amplitudes,
+ * source audio, playback gain, or export audio.
+ */
+internal fun audioWaveformDisplayAmplitude(amplitude: Float): Float? {
+    if (!amplitude.isFinite() || amplitude < 0f) return null
+    return amplitude.coerceIn(0f, 1f)
+        .pow(VyroCutWaveformMetrics.StripAmplitudeExponent)
+}
+
+/**
  * Returns a visible waveform bar height, or null for silence/invalid samples.
  * Silence is represented by the center baseline rather than artificial spikes.
  */
@@ -451,14 +463,16 @@ internal fun audioWaveformBarHalfHeightPx(
     canvasHeightPx: Float,
     minimumHalfHeightPx: Float,
 ): Float? {
-    if (!amplitude.isFinite() || amplitude <= 0f ||
-        !canvasHeightPx.isFinite() || canvasHeightPx <= 0f ||
+    if (!canvasHeightPx.isFinite() || canvasHeightPx <= 0f ||
         !minimumHalfHeightPx.isFinite() || minimumHalfHeightPx < 0f
     ) return null
 
+    val displayAmplitude = audioWaveformDisplayAmplitude(amplitude) ?: return null
+    if (displayAmplitude <= 0f) return null
+
     val maximumHalfHeight = canvasHeightPx / 2f
     val minimumHalfHeight = minimumHalfHeightPx.coerceAtMost(maximumHalfHeight)
-    return (amplitude.coerceIn(0f, 1f) * canvasHeightPx * 0.46f)
+    return (displayAmplitude * canvasHeightPx * 0.46f)
         .coerceAtLeast(minimumHalfHeight)
         .coerceAtMost(maximumHalfHeight)
 }

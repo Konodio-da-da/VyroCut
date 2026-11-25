@@ -292,6 +292,7 @@ internal object VyroCutWaveformMetrics {
     const val StripMinimumStrokeWidthDp = 1f
     const val StripMaximumStrokeWidthDp = 3f
     const val StripMinimumBarHalfHeightDp = 1f
+    const val StripAmplitudeExponent = 0.8f
 
     const val ClipBaselineAlpha = 0.45f
     const val ClipBaselineStrokeWidthDp = 1f

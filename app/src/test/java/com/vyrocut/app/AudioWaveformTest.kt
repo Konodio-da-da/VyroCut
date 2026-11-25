@@ -245,8 +245,22 @@ class AudioWaveformTest {
     }
 
     @Test
+    fun waveformDisplayCurveLiftsQuietPeaksWithoutChangingSilenceOrPeak() {
+        assertEquals(0f, audioWaveformDisplayAmplitude(0f)!!, 0f)
+        assertNull(audioWaveformDisplayAmplitude(-0.1f))
+        assertNull(audioWaveformDisplayAmplitude(Float.NaN))
+        assertNull(audioWaveformDisplayAmplitude(Float.POSITIVE_INFINITY))
+        assertEquals(0.329877f, audioWaveformDisplayAmplitude(0.25f)!!, 0.0001f)
+        assertEquals(0.574349f, audioWaveformDisplayAmplitude(0.5f)!!, 0.0001f)
+        assertEquals(1f, audioWaveformDisplayAmplitude(1f)!!, 0f)
+        assertEquals(1f, audioWaveformDisplayAmplitude(2f)!!, 0f)
+        assertTrue(audioWaveformDisplayAmplitude(0.25f)!! > 0.25f)
+        assertTrue(audioWaveformDisplayAmplitude(0.25f)!! < audioWaveformDisplayAmplitude(0.5f)!!)
+    }
+
+    @Test
     fun waveformBarsScalePositivePeaksAndRespectCanvasBounds() {
-        assertEquals(23f, audioWaveformBarHalfHeightPx(0.5f, 100f, 1f)!!, 0.0001f)
+        assertEquals(26.42006f, audioWaveformBarHalfHeightPx(0.5f, 100f, 1f)!!, 0.0001f)
         assertEquals(46f, audioWaveformBarHalfHeightPx(2f, 100f, 1f)!!, 0.0001f)
         assertEquals(1f, audioWaveformBarHalfHeightPx(0.001f, 100f, 1f)!!, 0.0001f)
         assertEquals(5f, audioWaveformBarHalfHeightPx(1f, 10f, 8f)!!, 0.0001f)

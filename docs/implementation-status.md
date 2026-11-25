@@ -642,3 +642,10 @@ A control is only considered complete when its operation is connected to the pro
 - The existing 2,000-candidate safety cap, clip-boundary mapping, label-collision selection, and playhead mapping remain in place.
 - Added JVM regression coverage for compressed versus expanded clips, major-mark retention, project-end retention, invalid spacing inputs, and very long durations.
 - This is source/CI work only; visual fit and touch behavior still require Android-device validation.
+
+
+## 2026-11-25 — Audio waveform visual contrast
+- Added a mild 0.8-power display curve to normalized waveform peaks so quieter sections remain distinguishable in the compact timeline/audio strip.
+- The curve is applied only when converting cached normalized peak values into bar heights. Cached peak buckets, source media, playback volume, project timing, and export audio remain unchanged; zero-amplitude silence still draws only the center baseline.
+- Added pure JVM coverage for silence and invalid values, monotonic ordering, quiet-peak lift, full-scale clamping, and resulting bar geometry.
+- This is a deterministic rendering-math change. Actual contrast/readability across display densities and colors still requires Android-device validation.
