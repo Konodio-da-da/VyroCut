@@ -656,3 +656,8 @@ A control is only considered complete when its operation is connected to the pro
 - Tick positions, absolute project-time mapping, playhead mapping, and the 2,000-tick safety bound are unchanged.
 - Added pure JVM regression coverage for replacing a crowded intermediate label with the project-end label and for retaining the first label when the endpoints cannot fit.
 - This is source/CI work only; actual ruler appearance and scrolling still require Android-device validation.
+
+## Non-crossing sticker IN/OUT controls — 25 November 2026
+- Sticker timing controls now derive their legal ranges from the selected layer's normalized clip-local interval. IN cannot pass OUT, and OUT cannot move before IN; the handles always retain at least a one-millisecond interval.
+- The shared pure Kotlin bounds helper is also used by the sticker timing mutation path, so UI limits and persisted timing clamping share one rule. Controls are disabled when no representable adjustment remains.
+- JVM regression tests cover ordinary intervals, clip-edge clamping, one-millisecond clips, and empty-duration rejection. Compose interaction, touch precision, preview timing, and exported sticker visibility still require Android-device validation.
