@@ -31,6 +31,7 @@ internal fun StickerOverlaysPanel(
     onAddSticker: (String, String?) -> Unit,
     onRemoveSticker: (Int) -> Unit,
     onScaleChange: (Int, Float) -> Unit,
+    onRotationChange: (Int, Float) -> Unit,
     onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Column(
@@ -193,8 +194,9 @@ private fun StickerLayersEditor(
     clip: EditClip,
     selectedLayerIndex: Int,
     onRemoveSticker: (Int) -> Unit,
-    onScaleChange: (Int, Float) -> Unit,
-    onTimingChange: (Int, Long?, Long?) -> Unit,
+    onScaleChange: (Float) -> Unit,
+    onRotationChange: (Float) -> Unit,
+    onTimingChange: (Long?, Long?) -> Unit,
 ) {
     Text(
         "ADDED • ${clip.allStickerOverlays.size}/${MAX_CLIP_STICKER_OVERLAYS}",
@@ -217,6 +219,7 @@ private fun StickerLayersEditor(
                 selected = selectedLayerIndex == index,
                 onRemove = { onRemoveSticker(index) },
                 onScaleChange = { scale -> onScaleChange(index, scale) },
+                onRotationChange = { degrees -> onRotationChange(index, degrees) },
                 onTimingChange = { startMs, endMs ->
                     onTimingChange(index, startMs, endMs)
                 },
@@ -249,6 +252,9 @@ private fun StickerLayerEditor(
     }
     var scaleDraft by remember(clipId, sticker) {
         mutableFloatStateOf(sticker.scale)
+    }
+    var rotationDraft by remember(clipId, sticker) {
+        mutableFloatStateOf(sticker.rotationDegrees.toFloat())
     }
 
     Column(
@@ -321,6 +327,29 @@ private fun StickerLayerEditor(
             valueRange = MIN_CLIP_STICKER_SCALE..MAX_CLIP_STICKER_SCALE,
             steps = 14,
             onValueChangeFinished = { onScaleChange(scaleDraft) },
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "ROTATION ${rotationDraft.toInt()}°",
+                color = VyroCutPalette.TextMuted,
+                fontSize = VyroCutTypography.ToolLabelSp.sp,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "${MIN_CLIP_STICKER_ROTATION_DEGREES}° – ${MAX_CLIP_STICKER_ROTATION_DEGREES}°",
+                color = VyroCutPalette.TextMuted,
+                fontSize = VyroCutTypography.ToolLabelSp.sp,
+            )
+        }
+        Slider(
+            value = rotationDraft.coerceIn(
+                MIN_CLIP_STICKER_ROTATION_DEGREES.toFloat(),
+                MAX_CLIP_STICKER_ROTATION_DEGREES.toFloat(),
+            ),
+            onValueChange = { rotationDraft = it },
+            valueRange = MIN_CLIP_STICKER_ROTATION_DEGREES.toFloat()..MAX_CLIP_STICKER_ROTATION_DEGREES.toFloat(),
+            steps = 71,
+            onValueChangeFinished = { onRotationChange(rotationDraft) },
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(

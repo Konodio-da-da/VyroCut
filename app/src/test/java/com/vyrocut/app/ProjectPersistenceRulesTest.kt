@@ -396,6 +396,7 @@ class ProjectPersistenceRulesTest {
             startMs = 500L,
             endMs = 2_500L,
             assetId = ClipStickerAsset.STAR.id,
+            rotationDegrees = 45,
         )
         val legacyEmojiOverlay = ClipStickerOverlay(
             symbol = "🔥",
@@ -414,11 +415,13 @@ class ProjectPersistenceRulesTest {
 
         val encoded = encodeProject(listOf(clip))
         assertTrue(encoded.contains("\"assetId\":\"star\""))
+        assertTrue(encoded.contains("\"rotationDegrees\":45"))
         assertEquals(listOf(clip), decodeProjectStrict(encoded))
 
         val legacyClip = clip.copy(stickerOverlays = listOf(legacyEmojiOverlay))
         val legacyEncoded = encodeProject(listOf(legacyClip))
         assertFalse(legacyEncoded.contains("\"assetId\""))
+        assertFalse(legacyEncoded.contains("\"rotationDegrees\""))
         assertEquals(listOf(legacyClip), decodeProjectStrict(legacyEncoded))
     }
 

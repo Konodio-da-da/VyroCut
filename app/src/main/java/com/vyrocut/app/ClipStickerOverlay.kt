@@ -21,6 +21,8 @@ internal const val MAX_CLIP_STICKER_OVERLAYS = 5
 internal const val MAX_CLIP_STICKER_SYMBOL_CODE_POINTS = 8
 internal const val MIN_CLIP_STICKER_SCALE = 0.5f
 internal const val MAX_CLIP_STICKER_SCALE = 2f
+internal const val MIN_CLIP_STICKER_ROTATION_DEGREES = -180
+internal const val MAX_CLIP_STICKER_ROTATION_DEGREES = 180
 internal const val MAX_CLIP_STICKER_BITMAP_DIMENSION_PX = 1_920
 
 internal enum class ClipStickerPosition {
@@ -66,6 +68,8 @@ internal data class ClipStickerOverlay(
     val endMs: Long? = null,
     /** Stable optional ID for a bundled vector asset; null keeps legacy Unicode stickers. */
     val assetId: String? = null,
+    /** Clockwise rotation applied around the sticker's canvas position. */
+    val rotationDegrees: Int = 0,
 ) {
     init {
         require(isValidClipStickerOverlaySymbol(symbol)) {
@@ -80,6 +84,9 @@ internal data class ClipStickerOverlay(
         require(isValidClipStickerAssetId(assetId)) {
             "Sticker asset ID must be a lowercase stable identifier"
         }
+        require(isValidClipStickerOverlayRotation(rotationDegrees)) {
+            "Sticker rotation must be between -180 and 180 degrees"
+        }
     }
 }
 
@@ -93,6 +100,9 @@ internal fun isValidClipStickerOverlaySymbol(symbol: String): Boolean {
 internal fun isValidClipStickerOverlayScale(scale: Float): Boolean =
     scale.isFinite() && scale in MIN_CLIP_STICKER_SCALE..MAX_CLIP_STICKER_SCALE
 
+internal fun isValidClipStickerOverlayRotation(rotationDegrees: Int): Boolean =
+    rotationDegrees in MIN_CLIP_STICKER_ROTATION_DEGREES..MAX_CLIP_STICKER_ROTATION_DEGREES
+
 /**
  * Updates one sticker's size without changing its timing, position, or symbol.
  * Finite values are clamped to the supported editor range; non-finite values
@@ -105,6 +115,23 @@ internal fun updateClipStickerOverlayScale(
     if (!requestedScale.isFinite()) return null
     return overlay.copy(
         scale = requestedScale.coerceIn(MIN_CLIP_STICKER_SCALE, MAX_CLIP_STICKER_SCALE),
+    )
+}
+
+/**
+ * Updates one sticker's angle without changing its asset, size, position, or timing.
+ * Non-finite UI values are rejected; finite values are rounded and clamped to a half turn.
+ */
+internal fun updateClipStickerOverlayRotation(
+    overlay: ClipStickerOverlay,
+    requestedDegrees: Float,
+): ClipStickerOverlay? {
+    if (!requestedDegrees.isFinite()) return null
+    return overlay.copy(
+        rotationDegrees = requestedDegrees.roundToInt().coerceIn(
+            MIN_CLIP_STICKER_ROTATION_DEGREES,
+            MAX_CLIP_STICKER_ROTATION_DEGREES,
+        ),
     )
 }
 
@@ -233,13 +260,15 @@ internal fun decodeClipStickerOverlay(
     startMs: Long = 0L,
     endMs: Long? = null,
     assetId: String? = null,
+    rotationDegrees: Int = 0,
 ): ClipStickerOverlay? {
     val normalized = raw?.trim() ?: return null
     val normalizedAssetId = assetId?.trim()?.takeIf { it.isNotEmpty() }
     if (!isValidClipStickerOverlaySymbol(normalized) ||
         !isValidClipStickerOverlayScale(scale) ||
         !isValidClipStickerOverlayTiming(startMs, endMs) ||
-        !isValidClipStickerAssetId(normalizedAssetId)
+        !isValidClipStickerAssetId(normalizedAssetId) ||
+        !isValidClipStickerOverlayRotation(rotationDegrees)
     ) return null
     val decodedPosition = if (position == null) {
         ClipStickerPosition.BOTTOM_RIGHT
@@ -253,6 +282,7 @@ internal fun decodeClipStickerOverlay(
         startMs = startMs,
         endMs = endMs,
         assetId = normalizedAssetId,
+        rotationDegrees = rotationDegrees,
     )
 }
 
@@ -349,16 +379,16 @@ private class ClipStickerBitmapOverlay(
         )
         val stickerAsset = ClipStickerAsset.fromId(overlay.assetId)
         val drawable = stickerAsset?.let { context.getDrawable(it.drawableResId)?.mutate() }
+        canvas.save()
+        canvas.rotate(overlay.rotationDegrees.toFloat(), geometry.centerXPx, geometry.centerYPx)
         if (drawable != null) {
             val assetSizePx = geometry.textSizePx.roundToInt().coerceAtLeast(1)
             drawable.setBounds(0, 0, assetSizePx, assetSizePx)
-            canvas.save()
             canvas.translate(
                 geometry.centerXPx - assetSizePx / 2f,
                 geometry.centerYPx - assetSizePx / 2f,
             )
             drawable.draw(canvas)
-            canvas.restore()
         } else {
             // Unknown future asset IDs intentionally fall back to the persisted Unicode symbol.
             val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -378,14 +408,13 @@ private class ClipStickerBitmapOverlay(
                 .setIncludePad(false)
                 .setMaxLines(1)
                 .build()
-            canvas.save()
             canvas.translate(
                 geometry.centerXPx - textLayout.width / 2f,
                 geometry.centerYPx - textLayout.height / 2f,
             )
             textLayout.draw(canvas)
-            canvas.restore()
         }
+        canvas.restore()
 
         val nextTransparentBitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
         bitmap?.takeIf { !it.isRecycled }?.recycle()

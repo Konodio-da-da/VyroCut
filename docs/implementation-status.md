@@ -591,3 +591,9 @@ A control is only considered complete when its operation is connected to the pro
 - Corrected the video-track height calculation to keep its 42 dp thumbnail at a fixed size while scaling only the clip-label text and its surrounding padding.
 - Previously the font-scale multiplier was applied to the thumbnail height as well, over-allocating vertical space at larger accessibility text settings. The corrected calculation preserves the 72 dp baseline and uses 77 dp at 1.5x and 84 dp at 2x.
 - Added pure JVM regression coverage for baseline, 1.5x, and 2x values. Thumbnail geometry, clip timing, ruler mapping, playhead behavior, track selection, Media3 playback, project persistence, and export behavior are unchanged. CI verifies compilation and pure layout math; physical-device layout fit remains unverified.
+
+
+## Non-destructive sticker rotation — 25 November 2026
+- Added a per-sticker rotation angle from -180° to 180° with a dedicated layer slider. The same bitmap-overlay renderer rotates bundled vector assets and Unicode fallback stickers around their existing canvas position, so preview and Media3 export share the same effect implementation.
+- Rotation is part of the sticker value object and therefore follows existing clip split/trim rebasing, undo/redo snapshots, local autosave, and versioned project backups. The optional `rotationDegrees` JSON field is omitted at 0°; older projects and backups without the field decode as 0° without a format-version bump.
+- Added pure JVM coverage for default/invalid angles, finite clamping, split/trim preservation, and project JSON round-tripping. CI verifies source compilation and pure rules; visible rotation, canvas bounds, and export playback still require physical-device validation.

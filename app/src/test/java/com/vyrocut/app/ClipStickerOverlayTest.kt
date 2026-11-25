@@ -74,6 +74,55 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun rotationDefaultsToZeroAndRejectsValuesOutsideHalfTurn() {
+        assertEquals(0, decodeClipStickerOverlay("🔥")?.rotationDegrees)
+        assertTrue(isValidClipStickerOverlayRotation(-180))
+        assertTrue(isValidClipStickerOverlayRotation(180))
+        assertFalse(isValidClipStickerOverlayRotation(-181))
+        assertFalse(isValidClipStickerOverlayRotation(181))
+        assertNull(decodeClipStickerOverlay("🔥", rotationDegrees = 181))
+    }
+
+    @Test
+    fun rotationUpdatesClampFiniteValuesAndRejectNonFiniteValues() {
+        val sticker = ClipStickerOverlay("⭐", scale = 1.25f, rotationDegrees = 45)
+
+        assertEquals(sticker.copy(rotationDegrees = 90), updateClipStickerOverlayRotation(sticker, 90f))
+        assertEquals(sticker.copy(rotationDegrees = -180), updateClipStickerOverlayRotation(sticker, -240f))
+        assertEquals(sticker.copy(rotationDegrees = 180), updateClipStickerOverlayRotation(sticker, 240f))
+        assertNull(updateClipStickerOverlayRotation(sticker, Float.NaN))
+        assertNull(updateClipStickerOverlayRotation(sticker, Float.POSITIVE_INFINITY))
+        assertNull(updateClipStickerOverlayRotation(sticker, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
+    fun stickerRotationSurvivesSplitAndSourceTrimRebasing() {
+        val sticker = ClipStickerOverlay(
+            symbol = "⭐",
+            position = ClipStickerPosition.TOP_RIGHT,
+            startMs = 500L,
+            endMs = 2_500L,
+            assetId = "star",
+            rotationDegrees = -37,
+        )
+
+        val (left, right) = splitClipStickerOverlayAt(sticker, 1_500L, 3_000L)
+        assertEquals(-37, left?.rotationDegrees)
+        assertEquals(-37, right?.rotationDegrees)
+        assertEquals("star", right?.assetId)
+
+        val rebased = rebaseClipStickerOverlayForTrim(
+            sticker,
+            oldSourceStartMs = 0L,
+            oldSourceEndMs = 3_000L,
+            newSourceStartMs = 250L,
+            newSourceEndMs = 3_000L,
+        )
+        assertEquals(-37, rebased?.rotationDegrees)
+        assertEquals("star", rebased?.assetId)
+    }
+
+    @Test
     fun timedStickerUsesInclusiveStartAndExclusiveEnd() {
         val sticker = ClipStickerOverlay("🔥", startMs = 1_000L, endMs = 2_500L)
 
