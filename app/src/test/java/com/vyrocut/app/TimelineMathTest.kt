@@ -1324,7 +1324,7 @@ class TimelineMathTest {
     }
 
     @Test
-    fun rulerLabelSelectionAccountsForStartAndEndClampingBeforeCheckingCollisions() {
+    fun rulerLabelSelectionPrioritizesFinalEdgeAfterStartAndEndClamping() {
         val ticks = listOf(
             TimelineRulerTick(0L, 0f, true),
             TimelineRulerTick(5_000L, 39f, true),
@@ -1339,7 +1339,7 @@ class TimelineMathTest {
             contentWidthDp = 160f,
         )
 
-        assertEquals(listOf(0L, 10_000L, 15_000L), selected.map { it.timeMs })
+        assertEquals(listOf(0L, 10_000L, 20_000L), selected.map { it.timeMs })
         val renderedLefts = selected.map {
             timelineRulerLabelPlacement(it.offsetPx, 37, 160f).offsetDp
         }
