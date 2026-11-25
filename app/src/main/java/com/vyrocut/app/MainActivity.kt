@@ -2228,20 +2228,20 @@ private fun VyroCutApp() {
                         colors = SliderDefaults.colors(thumbColor = StudioAccent, activeTrackColor = StudioAccent)
                     )
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(formatTime(timelinePositionMs.toLong()), color = StudioMuted, fontSize = 10.sp)
-                        Text(formatTime(timelineDurationMs), color = StudioMuted, fontSize = 10.sp)
+                        Text(formatTime(timelinePositionMs.toLong()), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
+                        Text(formatTime(timelineDurationMs), color = StudioMuted, fontSize = TIMELINE_RULER_LABEL_FONT_SP.sp)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("TIMELINE", color = StudioMuted, fontSize = 10.sp, letterSpacing = 1.3.sp, fontWeight = FontWeight.Bold)
+                    Text("TIMELINE", color = StudioMuted, fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp, letterSpacing = VyroCutTypography.TimelineSectionLetterSpacingSp.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.weight(1f))
                     TextButton(onClick = { undoEdit() }, enabled = undoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Text("Undo", fontSize = 11.sp)
+                        Text("Undo", fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
                     }
                     TextButton(onClick = { redoEdit() }, enabled = redoStack.isNotEmpty(), contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)) {
-                        Text("Redo", fontSize = 11.sp)
+                        Text("Redo", fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
                     }
-                    Text("${clips.size} clips", color = StudioMuted, fontSize = 11.sp)
+                    Text("${clips.size} clips", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp)
                     Box {
                         IconButton(
                             onClick = { showClipActions = true },

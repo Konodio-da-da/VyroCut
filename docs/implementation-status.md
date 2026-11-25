@@ -567,3 +567,8 @@ A control is only considered complete when its operation is connected to the pro
 - Moved the existing text shadow, caption background, and Unicode sticker fallback shadow ARGB values into semantic media-overlay design tokens.
 - Updated the Media3 bitmap overlay renderers to consume those shared tokens through `toArgb()`. The exact ARGB values are preserved, so caption/sticker appearance and geometry are unchanged.
 - Added a JVM regression test that locks all three ARGB values. Android CI validates compilation and deterministic token conversion; actual overlay appearance and exported playback still require physical-device validation.
+
+## Timeline typography token consolidation — 25 November 2026
+- Routed timeline track labels, details, ruler timecodes, clip labels/metadata, and sticker glyph sizing through the shared `VyroCutTypography` scale.
+- Replaced the timeline header's remaining inline 10/11 sp sizes and 1.3 sp letter spacing with shared tokens. Existing rendered values are unchanged.
+- Added a pure JVM regression test tying the timeline metrics to the design-system tokens. Timeline row geometry, ruler spacing math, playhead positioning, project time mapping, and editor behavior are unchanged; device readability remains unverified.

@@ -93,6 +93,8 @@ internal object VyroCutTypography {
     const val SectionTitleSp = 20
     const val BrandSp = 22
     const val HeroTitleSp = 23
+    const val TimelineStickerSymbolSp = 14
+    const val TimelineSectionLetterSpacingSp = 1.3f
 }
 
 /** Control geometry tokens preserve the current dock's minimum hit dimensions. */

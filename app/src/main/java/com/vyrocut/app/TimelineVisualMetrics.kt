@@ -12,8 +12,9 @@ internal const val TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP = 22
 internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = 36
 internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 14
 
-internal const val TIMELINE_TRACK_LABEL_FONT_SP = 11
-internal const val TIMELINE_TRACK_DETAIL_FONT_SP = 10
+// Timeline text sizes derive from the shared design-system typography scale.
+internal const val TIMELINE_TRACK_LABEL_FONT_SP = VyroCutTypography.LabelSp
+internal const val TIMELINE_TRACK_DETAIL_FONT_SP = VyroCutTypography.CaptionSp
 
  // Compact header badges add horizontal identity without increasing track-row height.
 internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = 6
@@ -21,10 +22,10 @@ internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = 4
 internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = 5
 internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = 4
 internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = 8
-internal const val TIMELINE_RULER_LABEL_FONT_SP = 10
-internal const val TIMELINE_CLIP_LABEL_FONT_SP = 11
-internal const val TIMELINE_CLIP_META_FONT_SP = 10
-internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = 14
+internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTypography.CaptionSp
+internal const val TIMELINE_CLIP_LABEL_FONT_SP = VyroCutTypography.LabelSp
+internal const val TIMELINE_CLIP_META_FONT_SP = VyroCutTypography.CaptionSp
+internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = VyroCutTypography.TimelineStickerSymbolSp
 internal const val TIMELINE_PLAYHEAD_LINE_WIDTH_DP = 2
 internal const val TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP = 4
 internal const val TIMELINE_PLAYHEAD_CAP_WIDTH_DP = 14

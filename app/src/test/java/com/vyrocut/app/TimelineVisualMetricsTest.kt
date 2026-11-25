@@ -209,4 +209,15 @@ class TimelineVisualMetricsTest {
     fun customTrackRowHeightCannotOverflowIntegerBounds() {
         assertEquals(Int.MAX_VALUE, timelineTextTrackHeightDp(MAX_CLIP_TEXT_OVERLAYS, Int.MAX_VALUE))
     }
+    @Test
+    fun timelineTypographyUsesSharedDesignSystemTokens() {
+        assertEquals(VyroCutTypography.LabelSp, TIMELINE_TRACK_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_TRACK_DETAIL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_RULER_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.LabelSp, TIMELINE_CLIP_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_CLIP_META_FONT_SP)
+        assertEquals(VyroCutTypography.TimelineStickerSymbolSp, TIMELINE_STICKER_SYMBOL_FONT_SP)
+        assertEquals(1.3f, VyroCutTypography.TimelineSectionLetterSpacingSp, 0f)
+    }
+
 }
