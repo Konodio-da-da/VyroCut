@@ -107,8 +107,8 @@ class ExportProgressRulesTest {
     fun idleFailureAndCancellationDoNotShowAnActiveProgressIndicator() {
         val expected = mapOf(
             ExportUiStage.IDLE to ("Ready" to "Start an export to render a video on this device."),
-            ExportUiStage.FAILED to ("Failed" to "Review the export error above before retrying."),
-            ExportUiStage.CANCELLED to ("Cancelled" to "The temporary export was discarded."),
+            ExportUiStage.FAILED to ("Failed" to "The export stopped before a verified MP4 was saved. Review the export message below before retrying."),
+            ExportUiStage.CANCELLED to ("Cancelled" to "The active export was cancelled; its temporary file was discarded."),
         )
         expected.forEach { (stage, copy) ->
             assertEquals(
@@ -121,6 +121,17 @@ class ExportProgressRulesTest {
                 exportProgressPresentation(stage, 73),
             )
         }
+    }
+
+    @Test
+    fun terminalFailureAndCancellationKeepStatusVisibleAfterExportStops() {
+        assertTrue(shouldShowExportStatusCard(ExportUiStage.PREPARING, isExporting = true))
+        assertTrue(shouldShowExportStatusCard(ExportUiStage.RENDERING, isExporting = true))
+        assertTrue(shouldShowExportStatusCard(ExportUiStage.VERIFYING, isExporting = true))
+        assertTrue(shouldShowExportStatusCard(ExportUiStage.FAILED, isExporting = false))
+        assertTrue(shouldShowExportStatusCard(ExportUiStage.CANCELLED, isExporting = false))
+        assertFalse(shouldShowExportStatusCard(ExportUiStage.IDLE, isExporting = false))
+        assertFalse(shouldShowExportStatusCard(ExportUiStage.COMPLETE, isExporting = false))
     }
 
     @Test
