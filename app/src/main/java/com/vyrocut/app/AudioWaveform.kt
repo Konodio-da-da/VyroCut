@@ -468,26 +468,29 @@ internal fun AudioWaveformStrip(
     amplitudes: List<Float>,
     color: Color,
     modifier: Modifier = Modifier,
-    height: Dp = 24.dp,
+    height: Dp = VyroCutWaveformMetrics.StripDefaultHeightDp.dp,
 ) {
     Canvas(modifier.fillMaxWidth().height(height)) {
         if (size.width <= 0f || size.height <= 0f) return@Canvas
         val centerY = size.height / 2f
         drawLine(
-            color = color.copy(alpha = 0.28f),
+            color = color.copy(alpha = VyroCutWaveformMetrics.StripBaselineAlpha),
             start = Offset(0f, centerY),
             end = Offset(size.width, centerY),
-            strokeWidth = 1.dp.toPx(),
+            strokeWidth = VyroCutWaveformMetrics.StripBaselineStrokeWidthDp.dp.toPx(),
         )
         if (amplitudes.isEmpty()) return@Canvas
 
         val bucketWidth = size.width / amplitudes.size.toFloat()
-        val strokeWidth = (bucketWidth * 0.58f).coerceIn(1.dp.toPx(), 3.dp.toPx())
+        val strokeWidth = (bucketWidth * VyroCutWaveformMetrics.StripStrokeWidthRatio).coerceIn(
+            VyroCutWaveformMetrics.StripMinimumStrokeWidthDp.dp.toPx(),
+            VyroCutWaveformMetrics.StripMaximumStrokeWidthDp.dp.toPx(),
+        )
         amplitudes.forEachIndexed { index, amplitude ->
             val halfHeight = audioWaveformBarHalfHeightPx(
                 amplitude = amplitude,
                 canvasHeightPx = size.height,
-                minimumHalfHeightPx = 1.dp.toPx(),
+                minimumHalfHeightPx = VyroCutWaveformMetrics.StripMinimumBarHalfHeightDp.dp.toPx(),
             ) ?: return@forEachIndexed
             val x = (index + 0.5f) * bucketWidth
             drawLine(
