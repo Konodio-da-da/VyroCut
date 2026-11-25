@@ -3976,7 +3976,7 @@ private fun VyroCutApp() {
                         }) { Text("Share MP4") }
                     }
                 }
-                if (isExporting) {
+                if (shouldShowExportStatusCard(exportUiStage, isExporting)) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -4003,13 +4003,15 @@ private fun VyroCutApp() {
                                 fontWeight = FontWeight.Bold,
                             )
                         }
-                        if (progressPresentation.isIndeterminate) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                        } else {
-                            LinearProgressIndicator(
-                                progress = { (progressPresentation.percent ?: 0) / 100f },
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                        if (isExporting) {
+                            if (progressPresentation.isIndeterminate) {
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            } else {
+                                LinearProgressIndicator(
+                                    progress = { (progressPresentation.percent ?: 0) / 100f },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
                         }
                         Text(
                             progressPresentation.detailText,
