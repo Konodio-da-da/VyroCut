@@ -144,3 +144,23 @@ internal fun exportShareFailureMessage(reason: ExportShareFailureReason): String
     ExportShareFailureReason.URI_ACCESS_DENIED ->
         "Android denied access to the saved MP4. Export again, then retry sharing."
 }
+
+
+/**
+ * Formats monotonic elapsed export time without implying a completion estimate.
+ * Negative values are treated as zero; hours are shown only after one hour.
+ */
+internal fun formatExportElapsedTime(elapsedMs: Long): String {
+    val totalSeconds = elapsedMs.coerceAtLeast(0L) / 1_000L
+    val seconds = totalSeconds % 60L
+    val totalMinutes = totalSeconds / 60L
+    fun twoDigits(value: Long): String = value.toString().padStart(2, '0')
+
+    return if (totalMinutes >= 60L) {
+        val hours = totalMinutes / 60L
+        val minutes = totalMinutes % 60L
+        "$hours:${twoDigits(minutes)}:${twoDigits(seconds)}"
+    } else {
+        "${twoDigits(totalMinutes)}:${twoDigits(seconds)}"
+    }
+}

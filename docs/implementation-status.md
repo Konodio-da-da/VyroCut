@@ -668,3 +668,9 @@ A control is only considered complete when its operation is connected to the pro
 - Active preparation, rendering, and verification continue to show their existing determinate or indeterminate progress indicators; terminal failure/cancellation states show phase and recovery copy without a misleading progress bar.
 - Failure copy now points to the export message rendered below the status card. Cancellation copy explicitly describes the discarded temporary export.
 - Added pure JVM coverage for active, failed, cancelled, idle, and completed card visibility. Export preflight, session invalidation, cancellation token, Media3 Transformer, verification, and MediaStore publication are unchanged. CI validates the state-selection logic; actual UI appearance and cancellation behaviour still require Android-device validation.
+
+
+## Export elapsed-time feedback — 25 November 2026
+- Export status and completion cards now show monotonic elapsed time measured with Android's `SystemClock.elapsedRealtime()`. No ETA is shown because Media3's percentage callback does not provide a reliable completion estimate.
+- Timing includes preparation, rendering, verification, and publication, then freezes when the export completes, fails, or is cancelled.
+- Added pure JVM formatting coverage for sub-second, minute, hour, multi-hour, and negative values. Transformer progress, cancellation, validation, and MediaStore publication are unchanged; on-device timing/display still requires device verification.

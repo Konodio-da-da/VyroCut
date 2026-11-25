@@ -193,4 +193,15 @@ class ExportProgressRulesTest {
             exportShareFailureMessage(ExportShareFailureReason.URI_ACCESS_DENIED),
         )
     }
+    @Test
+    fun elapsedTimeFormatsMinutesHoursAndClampsNegativeValues() {
+        assertEquals("00:00", formatExportElapsedTime(-1L))
+        assertEquals("00:00", formatExportElapsedTime(999L))
+        assertEquals("00:01", formatExportElapsedTime(1_000L))
+        assertEquals("01:01", formatExportElapsedTime(61_000L))
+        assertEquals("59:59", formatExportElapsedTime(3_599_999L))
+        assertEquals("1:00:00", formatExportElapsedTime(3_600_000L))
+        assertEquals("27:03:04", formatExportElapsedTime(97_384_000L))
+    }
+
 }

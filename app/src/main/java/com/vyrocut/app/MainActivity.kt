@@ -427,6 +427,24 @@ private fun VyroCutApp() {
     var exportUiStage by remember { mutableStateOf(ExportUiStage.IDLE) }
     var exportProgressPercent by remember { mutableStateOf<Int?>(null) }
     var completedExportSummary by remember { mutableStateOf<ExportCompletionSummary?>(null) }
+    var exportStartedAtElapsedRealtimeMs by remember { mutableStateOf(0L) }
+    var exportElapsedMs by remember { mutableStateOf(0L) }
+    LaunchedEffect(isExporting, exportStartedAtElapsedRealtimeMs) {
+        if (exportStartedAtElapsedRealtimeMs <= 0L) {
+            exportElapsedMs = 0L
+            return@LaunchedEffect
+        }
+        if (isExporting) {
+            while (true) {
+                exportElapsedMs = (SystemClock.elapsedRealtime() - exportStartedAtElapsedRealtimeMs)
+                    .coerceAtLeast(0L)
+                delay(1_000L)
+            }
+        } else {
+            exportElapsedMs = (SystemClock.elapsedRealtime() - exportStartedAtElapsedRealtimeMs)
+                .coerceAtLeast(0L)
+        }
+    }
     var relinkTargetClipId by remember { mutableStateOf<String?>(null) }
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
@@ -3453,6 +3471,8 @@ private fun VyroCutApp() {
                                 }
                                 exportSessionId = exportSession
                                 activeExportCancellationToken = exportCancellationToken
+                                exportStartedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
+                                exportElapsedMs = 0L
                                 isExporting = true
                                 exportUiStage = ExportUiStage.PREPARING
                                 exportProgressPercent = null
@@ -4018,6 +4038,13 @@ private fun VyroCutApp() {
                             color = StudioMuted,
                             fontSize = VyroCutTypography.ToolLabelSp.sp,
                         )
+                        if (exportStartedAtElapsedRealtimeMs > 0L) {
+                            Text(
+                                "Elapsed ${formatExportElapsedTime(exportElapsedMs)}",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
+                            )
+                        }
                     }
                 }
                 completedExportSummary?.let { summary ->
@@ -4067,6 +4094,13 @@ private fun VyroCutApp() {
                             color = StudioMuted,
                             fontSize = VyroCutTypography.CaptionSp.sp,
                         )
+                        if (exportStartedAtElapsedRealtimeMs > 0L) {
+                            Text(
+                                "Elapsed ${formatExportElapsedTime(exportElapsedMs)}",
+                                color = StudioMuted,
+                                fontSize = VyroCutTypography.CaptionSp.sp,
+                            )
+                        }
                     }
                 }
                 exportMessage?.let { Text(it, color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp) }
