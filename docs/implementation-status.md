@@ -585,3 +585,9 @@ A control is only considered complete when its operation is connected to the pro
 - Moved the compact clip-waveform baseline, bar gap/minimum width/minimum height, amplitude floor and opacity ramp into the same design-system object while keeping its renderer-specific proportions separate.
 - Both Compose renderers now consume the tokens; all numeric values are preserved, so this is styling consolidation rather than a waveform redesign. Decoder bucket counts, source-time mapping, cache identity/eviction, audio lane data, Media3 playback and export composition are unchanged.
 - Added a JVM regression test locking the existing waveform metrics. GitHub Actions verifies compilation and pure token values; actual waveform appearance and playback still require device validation.
+
+
+## Timeline fixed-thumbnail font-scale sizing — 25 November 2026
+- Corrected the video-track height calculation to keep its 42 dp thumbnail at a fixed size while scaling only the clip-label text and its surrounding padding.
+- Previously the font-scale multiplier was applied to the thumbnail height as well, over-allocating vertical space at larger accessibility text settings. The corrected calculation preserves the 72 dp baseline and uses 77 dp at 1.5x and 84 dp at 2x.
+- Added pure JVM regression coverage for baseline, 1.5x, and 2x values. Thumbnail geometry, clip timing, ruler mapping, playhead behavior, track selection, Media3 playback, project persistence, and export behavior are unchanged. CI verifies compilation and pure layout math; physical-device layout fit remains unverified.

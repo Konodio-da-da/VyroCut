@@ -204,16 +204,28 @@ internal fun timelineReadabilityMetrics(fontScale: Float): TimelineReadabilityMe
     fun scaledHeight(baseHeightDp: Int, contentHeightDp: Float, extraPaddingDp: Int): Int =
         maxOf(baseHeightDp, ceil(contentHeightDp * safeScale).toInt() + extraPaddingDp)
 
+    fun scaledHeightWithFixedContent(
+        baseHeightDp: Int,
+        fixedContentHeightDp: Int,
+        scalableContentHeightDp: Float,
+        extraPaddingDp: Int,
+    ): Int = maxOf(
+        baseHeightDp,
+        fixedContentHeightDp + ceil(scalableContentHeightDp * safeScale).toInt() + extraPaddingDp,
+    )
+
     return TimelineReadabilityMetrics(
         rulerHeightDp = scaledHeight(
             TIMELINE_RULER_HEIGHT_DP,
             TIMELINE_RULER_LABEL_FONT_SP * 1.4f,
             12,
         ),
-        videoTrackHeightDp = scaledHeight(
-            TIMELINE_VIDEO_TRACK_HEIGHT_DP,
-            TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP + TIMELINE_CLIP_LABEL_FONT_SP * 1.35f,
-            12,
+        // The thumbnail stays at its fixed dp height; only the sp label grows.
+        videoTrackHeightDp = scaledHeightWithFixedContent(
+            baseHeightDp = TIMELINE_VIDEO_TRACK_HEIGHT_DP,
+            fixedContentHeightDp = TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP,
+            scalableContentHeightDp = TIMELINE_CLIP_LABEL_FONT_SP * 1.35f,
+            extraPaddingDp = 12,
         ),
         textRowHeightDp = scaledHeight(
             TIMELINE_TEXT_ROW_HEIGHT_DP,

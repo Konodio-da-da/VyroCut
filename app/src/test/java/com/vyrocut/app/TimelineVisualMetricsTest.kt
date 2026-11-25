@@ -157,6 +157,13 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun videoTrackKeepsThumbnailFixedWhileScalingOnlyItsLabel() {
+        assertEquals(TIMELINE_VIDEO_TRACK_HEIGHT_DP, timelineReadabilityMetrics(1f).videoTrackHeightDp)
+        assertEquals(77, timelineReadabilityMetrics(1.5f).videoTrackHeightDp)
+        assertEquals(84, timelineReadabilityMetrics(2f).videoTrackHeightDp)
+    }
+
+    @Test
     fun invalidOrSmallerThanDefaultFontScaleUsesReadableBaseline() {
         val baseline = timelineReadabilityMetrics(1f)
 
