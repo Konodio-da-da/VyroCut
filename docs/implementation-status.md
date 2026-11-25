@@ -621,3 +621,9 @@ A control is only considered complete when its operation is connected to the pro
 - Routed the Import, Split at playhead, and Trim buttons through the shared metrics; numeric dimensions are unchanged.
 - Added a pure JVM regression test that locks the gap and ties the corner token to the shared compact-panel shape.
 - Clip import, split timing, overlay rebasing, trim validation, selection, and delete behavior are unchanged. GitHub Actions validates compilation and token rules; touch behavior and compact-window fit still require Android-device/window validation.
+
+## Timeline shape-token consolidation — 25 November 2026
+- Centralized the existing 1, 2, 3, 4, and 5 dp timeline corner radii as semantic ruler-tick, playhead-cap, media-badge, track-segment, and video-clip metrics.
+- Reused the track-segment radius for track headers, preserving their existing 4 dp geometry.
+- Replaced matching literal Compose shapes in the timeline renderer without changing clip timing, selection borders, hit targets, thumbnail sizing, waveform rendering, or overlay interactions.
+- Added pure JVM regression coverage for every radius and the shared header/segment relationship. CI validates source compilation and the metrics; visual rendering and touch behavior still require Android-device verification.
