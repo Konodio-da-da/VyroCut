@@ -47,16 +47,63 @@ internal enum class ClipCreativeEffectPreset(
     val id: String,
     val label: String,
     val category: ClipCreativeEffectCategory,
+    /** Short, user-facing explanation shown for the selected effect in the browser. */
+    val description: String,
 ) {
-    ORIGINAL("original", "Original", ClipCreativeEffectCategory.MONOCHROME),
-    WARM("warm", "Warm", ClipCreativeEffectCategory.COLOR),
-    COOL("cool", "Cool", ClipCreativeEffectCategory.COLOR),
-    CINEMATIC("cinematic", "Cinematic", ClipCreativeEffectCategory.CINEMATIC),
-    SOFT_FOCUS("soft-focus", "Soft Focus", ClipCreativeEffectCategory.LENS),
-    NEGATIVE("negative", "Negative", ClipCreativeEffectCategory.MONOCHROME),
-    GRAYSCALE("grayscale", "Grayscale", ClipCreativeEffectCategory.MONOCHROME),
-    SEPIA("sepia", "Sepia", ClipCreativeEffectCategory.VINTAGE),
-    FILM_FADE("film-fade", "Film Fade", ClipCreativeEffectCategory.VINTAGE),
+    ORIGINAL(
+        "original",
+        "Original",
+        ClipCreativeEffectCategory.MONOCHROME,
+        "Removes the creative look while keeping manual brightness, contrast, saturation and hue adjustments.",
+    ),
+    WARM(
+        "warm",
+        "Warm",
+        ClipCreativeEffectCategory.COLOR,
+        "Adds a subtle warm tint by increasing red and reducing blue.",
+    ),
+    COOL(
+        "cool",
+        "Cool",
+        ClipCreativeEffectCategory.COLOR,
+        "Adds a cool tint by reducing red and lifting blue.",
+    ),
+    CINEMATIC(
+        "cinematic",
+        "Cinematic",
+        ClipCreativeEffectCategory.CINEMATIC,
+        "Applies a restrained cool-matte grade with softened channel contrast and lifted shadows.",
+    ),
+    SOFT_FOCUS(
+        "soft-focus",
+        "Soft Focus",
+        ClipCreativeEffectCategory.LENS,
+        "Applies a Gaussian lens blur; higher strength increases the blur.",
+    ),
+    NEGATIVE(
+        "negative",
+        "Negative",
+        ClipCreativeEffectCategory.MONOCHROME,
+        "Inverts the frame colors.",
+    ),
+    GRAYSCALE(
+        "grayscale",
+        "Grayscale",
+        ClipCreativeEffectCategory.MONOCHROME,
+        "Removes color using luminance-based grayscale conversion.",
+    ),
+    SEPIA(
+        "sepia",
+        "Sepia",
+        ClipCreativeEffectCategory.VINTAGE,
+        "Adds a warm, vintage sepia tone.",
+    ),
+    FILM_FADE(
+        "film-fade",
+        "Film Fade",
+        ClipCreativeEffectCategory.VINTAGE,
+        "Lifts shadows and softens contrast for a faded-film look.",
+    ),
 }
 
 internal fun clipCreativeEffectPresetsForCategory(

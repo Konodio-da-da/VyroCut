@@ -2568,7 +2568,7 @@ private fun VyroCutApp() {
                                 }
                             }
                             Text(
-                                "Cinematic adds a cool matte RGB grade. Soft Focus applies a Gaussian lens blur. Warm and Cool tint RGB channels; Grayscale uses Media3 luminance filtering; Sepia adds a vintage tone; Film Fade lifts shadows and softens contrast; Negative inverts the frame.",
+                                selectedClip.visualAdjustments.creativeEffectPreset.description,
                                 color = StudioMuted,
                                 fontSize = VyroCutTypography.CaptionSp.sp,
                             )

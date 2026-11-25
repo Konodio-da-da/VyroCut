@@ -328,6 +328,21 @@ class ClipVisualAdjustmentsTest {
     }
 
     @Test
+    fun everyCreativeEffectPresetHasAConciseDescriptionForTheEffectsBrowser() {
+        val presets = ClipCreativeEffectPreset.values().toList()
+
+        assertEquals(presets.size, presets.map { it.id }.toSet().size)
+        presets.forEach { preset ->
+            assertEquals(true, preset.description.isNotBlank())
+            assertEquals(true, preset.description.length <= 120)
+        }
+        assertEquals(
+            true,
+            ClipCreativeEffectPreset.ORIGINAL.description.contains("manual", ignoreCase = true),
+        )
+    }
+
+    @Test
     fun sepiaMatrixUsesColumnMajorRgbTransformAndPreservesAlpha() {
         assertArrayEquals(
             floatArrayOf(
