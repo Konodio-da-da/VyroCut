@@ -1,5 +1,7 @@
 package com.vyrocut.app
 
+import kotlin.math.roundToInt
+
 internal const val MIN_EDITOR_PREVIEW_HEIGHT_DP = 112
 internal const val MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP = 88
 internal const val MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP = 100
@@ -11,6 +13,8 @@ internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = 520
 internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = 600
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 400
 internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = 1.15f
+internal const val EDITOR_PREVIEW_REDUCTION_PER_FONT_SCALE = 0.30f
+internal const val MAX_EDITOR_FONT_SCALE_PREVIEW_REDUCTION = 0.12f
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP = 560
 internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP = EDITOR_COMPACT_WINDOW_WIDTH_DP - 1
 
@@ -51,23 +55,31 @@ internal fun editorLayoutMetrics(
     val tight = safeHeight < EDITOR_TIGHT_WINDOW_HEIGHT_DP
     val compact = safeHeight < EDITOR_COMPACT_WINDOW_HEIGHT_DP
 
-    val previewHeight = when {
-        safeHeight < EDITOR_TIGHT_WINDOW_HEIGHT_DP ->
-            (safeHeight / 5).coerceIn(
-                MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
-                MAX_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
-            )
-        compact ->
-            (safeHeight / 5).coerceIn(
-                MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP,
-                MAX_TIGHT_EDITOR_PREVIEW_HEIGHT_DP,
-            )
-        else ->
-            (safeHeight / 5).coerceIn(
-                MIN_EDITOR_PREVIEW_HEIGHT_DP,
-                MAX_EDITOR_PREVIEW_HEIGHT_DP,
-            )
+    val (basePreviewHeight, minimumPreviewHeight) = when {
+        tight -> (safeHeight / 5).coerceIn(
+            MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
+            MAX_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
+        ) to MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP
+        compact -> (safeHeight / 5).coerceIn(
+            MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP,
+            MAX_TIGHT_EDITOR_PREVIEW_HEIGHT_DP,
+        ) to MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP
+        else -> (safeHeight / 5).coerceIn(
+            MIN_EDITOR_PREVIEW_HEIGHT_DP,
+            MAX_EDITOR_PREVIEW_HEIGHT_DP,
+        ) to MIN_EDITOR_PREVIEW_HEIGHT_DP
     }
+
+    // Larger text already stacks preview metadata above transport controls.
+    // Reclaim a small amount of preview height as font scale grows, but never
+    // cross the existing minimum for the current window-height class.
+    val fontScalePreviewReduction = (
+        (safeFontScale - EDITOR_LARGE_FONT_SCALE_THRESHOLD).coerceAtLeast(0f) *
+            EDITOR_PREVIEW_REDUCTION_PER_FONT_SCALE
+        ).coerceAtMost(MAX_EDITOR_FONT_SCALE_PREVIEW_REDUCTION)
+    val previewHeight = (basePreviewHeight * (1f - fontScalePreviewReduction))
+        .roundToInt()
+        .coerceAtLeast(minimumPreviewHeight)
 
     val sectionSpacing = when {
         tight -> TIGHT_EDITOR_SECTION_SPACING_DP

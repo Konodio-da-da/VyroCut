@@ -627,3 +627,10 @@ A control is only considered complete when its operation is connected to the pro
 - Reused the track-segment radius for track headers, preserving their existing 4 dp geometry.
 - Replaced matching literal Compose shapes in the timeline renderer without changing clip timing, selection borders, hit targets, thumbnail sizing, waveform rendering, or overlay interactions.
 - Added pure JVM regression coverage for every radius and the shared header/segment relationship. CI validates source compilation and the metrics; visual rendering and touch behavior still require Android-device verification.
+
+
+## Accessibility font-scale preview sizing — 25 November 2026
+- The editor preview now yields a small, progressive amount of vertical space as accessibility font scale rises above the existing 1.15 threshold. The reduction is capped at 12% and is applied only after the existing window-height preview size is calculated.
+- The existing tight/compact/regular preview minimums remain enforced. Font scales at or below the threshold retain the exact previous preview heights; invalid font-scale values still fall back to 1.0.
+- The existing compact-width breakpoint, metadata stacking rule, section spacing, scroll behavior, preview content, timeline geometry, and playback controls are unchanged. The Compose caller already supplies the current window bounds and LocalDensity font scale.
+- Added pure JVM tests for gradual reduction, cap behavior, all three minimum-height classes, below-threshold compatibility, and invalid font-scale fallback. GitHub Actions validates compilation and deterministic layout math; actual text fit and accessibility layout still require Android window/device validation.

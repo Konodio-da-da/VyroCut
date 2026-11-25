@@ -130,6 +130,36 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun largeFontScaleReducesPreviewGraduallyAndCapsTheReduction() {
+        assertEquals(128, editorLayoutMetrics(640, 600, fontScale = 1.15f).previewHeightDp)
+        assertEquals(122, editorLayoutMetrics(640, 600, fontScale = 1.3f).previewHeightDp)
+        assertEquals(115, editorLayoutMetrics(640, 600, fontScale = 1.5f).previewHeightDp)
+        assertEquals(113, editorLayoutMetrics(640, 600, fontScale = 1.8f).previewHeightDp)
+        assertEquals(113, editorLayoutMetrics(640, 600, fontScale = 2.5f).previewHeightDp)
+    }
+
+    @Test
+    fun fontScalePreviewReductionNeverCrossesWindowClassMinimums() {
+        assertEquals(
+            MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
+            editorLayoutMetrics(480, 600, fontScale = 2f).previewHeightDp,
+        )
+        assertEquals(
+            MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP,
+            editorLayoutMetrics(560, 600, fontScale = 2f).previewHeightDp,
+        )
+        assertEquals(
+            MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP,
+            editorLayoutMetrics(320, 600, fontScale = 2f).previewHeightDp,
+        )
+    }
+
+    @Test
+    fun fontScaleBelowThresholdKeepsExistingPreviewHeight() {
+        assertEquals(128, editorLayoutMetrics(640, 600, fontScale = 1.149f).previewHeightDp)
+    }
+
+    @Test
     fun invalidFontScaleFallsBackWithoutChangingWidthRules() {
         val expected = editorLayoutMetrics(640, 600, fontScale = 1f)
 
