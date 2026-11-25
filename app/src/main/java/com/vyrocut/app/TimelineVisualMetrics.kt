@@ -18,7 +18,13 @@ internal const val TIMELINE_TRACK_DETAIL_FONT_SP = VyroCutTypography.CaptionSp
 
  // Compact header badges add horizontal identity without increasing track-row height.
 internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = 6
-internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = 4
+internal const val TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP = 4
+internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP
+internal const val TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP = 5
+internal const val TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP = 3
+internal const val TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP = 2
+internal const val TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP = 2
+internal const val TIMELINE_RULER_TICK_CORNER_RADIUS_DP = 1
 internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = 5
 internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = 4
 internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = 8
