@@ -4325,19 +4325,19 @@ private fun AudioWaveform(clip: EditClip, modifier: Modifier = Modifier) {
     Canvas(modifier = modifier) {
         if (bars.isEmpty()) {
             drawLine(
-                color = StudioMuted.copy(alpha = 0.45f),
+                color = StudioMuted.copy(alpha = VyroCutWaveformMetrics.ClipBaselineAlpha),
                 start = androidx.compose.ui.geometry.Offset(0f, size.height / 2f),
                 end = androidx.compose.ui.geometry.Offset(size.width, size.height / 2f),
-                strokeWidth = 1.dp.toPx()
+                strokeWidth = VyroCutWaveformMetrics.ClipBaselineStrokeWidthDp.dp.toPx()
             )
         } else {
-            val gap = 1.5.dp.toPx()
-            val barWidth = ((size.width - gap * (bars.size - 1)) / bars.size).coerceAtLeast(1f)
+            val gap = VyroCutWaveformMetrics.ClipBarGapDp.dp.toPx()
+            val barWidth = ((size.width - gap * (bars.size - 1)) / bars.size).coerceAtLeast(VyroCutWaveformMetrics.ClipBarMinimumWidthDp.dp.toPx())
             bars.forEachIndexed { index, amplitude ->
-                val barHeight = (amplitude.coerceIn(0.06f, 1f) * size.height).coerceAtLeast(2.dp.toPx())
+                val barHeight = (amplitude.coerceIn(VyroCutWaveformMetrics.ClipAmplitudeFloor, 1f) * size.height).coerceAtLeast(VyroCutWaveformMetrics.ClipBarMinimumHeightDp.dp.toPx())
                 val x = index * (barWidth + gap)
                 drawRoundRect(
-                    color = StudioAccent.copy(alpha = 0.45f + amplitude.coerceIn(0f, 1f) * 0.55f),
+                    color = StudioAccent.copy(alpha = VyroCutWaveformMetrics.ClipBarBaseAlpha + amplitude.coerceIn(0f, 1f) * VyroCutWaveformMetrics.ClipBarPeakAlpha),
                     topLeft = androidx.compose.ui.geometry.Offset(x, (size.height - barHeight) / 2f),
                     size = androidx.compose.ui.geometry.Size(barWidth, barHeight),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(barWidth / 2f)
