@@ -661,3 +661,10 @@ A control is only considered complete when its operation is connected to the pro
 - Sticker timing controls now derive their legal ranges from the selected layer's normalized clip-local interval. IN cannot pass OUT, and OUT cannot move before IN; the handles always retain at least a one-millisecond interval.
 - The shared pure Kotlin bounds helper is also used by the sticker timing mutation path, so UI limits and persisted timing clamping share one rule. Controls are disabled when no representable adjustment remains.
 - JVM regression tests cover ordinary intervals, clip-edge clamping, one-millisecond clips, and empty-duration rejection. Compose interaction, touch precision, preview timing, and exported sticker visibility still require Android-device validation.
+
+
+## Export terminal-status visibility — 25 November 2026
+- The export status card now remains visible after a failed or cancelled export, rather than disappearing as soon as the active job stops.
+- Active preparation, rendering, and verification continue to show their existing determinate or indeterminate progress indicators; terminal failure/cancellation states show phase and recovery copy without a misleading progress bar.
+- Failure copy now points to the export message rendered below the status card. Cancellation copy explicitly describes the discarded temporary export.
+- Added pure JVM coverage for active, failed, cancelled, idle, and completed card visibility. Export preflight, session invalidation, cancellation token, Media3 Transformer, verification, and MediaStore publication are unchanged. CI validates the state-selection logic; actual UI appearance and cancellation behaviour still require Android-device validation.
