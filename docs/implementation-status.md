@@ -578,3 +578,10 @@ A control is only considered complete when its operation is connected to the pro
 - Replaced remaining inline 10/11/12/22 sp values in the editor header, preview speed, project actions, empty timeline state, and media relink feedback with shared typography tokens. Their numeric values are unchanged.
 - Added JVM assertions for the shared scale and the home-metric token reference. No layout geometry, text content, project behavior, playback, timeline timing, or export behavior changed.
 - CI verifies compilation and pure token rules; actual text fit and accessibility scaling still require Android-device/window validation.
+
+
+## Shared waveform renderer metrics — 25 November 2026
+- Centralized the audio-lane waveform strip's default height, baseline alpha/stroke, peak-stroke ratio and bounds, and minimum visible peak height in `VyroCutWaveformMetrics`.
+- Moved the compact clip-waveform baseline, bar gap/minimum width/minimum height, amplitude floor and opacity ramp into the same design-system object while keeping its renderer-specific proportions separate.
+- Both Compose renderers now consume the tokens; all numeric values are preserved, so this is styling consolidation rather than a waveform redesign. Decoder bucket counts, source-time mapping, cache identity/eviction, audio lane data, Media3 playback and export composition are unchanged.
+- Added a JVM regression test locking the existing waveform metrics. GitHub Actions verifies compilation and pure token values; actual waveform appearance and playback still require device validation.
