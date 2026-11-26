@@ -5821,62 +5821,104 @@ private fun TimelineTrackHeader(
     trailingDetail: String? = null,
 ) {
     BoxWithConstraints(modifier = modifier) {
+        val fontScale = LocalDensity.current.fontScale
+        val stackDetail = timelineTrackHeaderStacksDetail(
+            availableWidthDp = maxWidth.value,
+            fontScale = fontScale,
+        )
         val visibleTrailingDetail = trailingDetail?.takeIf {
-            timelineTrackHeaderShowsTrailingDetail(
+            !stackDetail && timelineTrackHeaderShowsTrailingDetail(
                 availableWidthDp = maxWidth.value,
-                fontScale = LocalDensity.current.fontScale,
+                fontScale = fontScale,
             )
         }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Row(
-                modifier = Modifier
-                    .background(
-                        color = badgeColor,
-                        shape = RoundedCornerShape(TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP.dp),
-                    )
-                    .padding(horizontal = TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP.dp),
-                verticalAlignment = Alignment.CenterVertically,
+
+        if (stackDetail) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(TIMELINE_TRACK_HEADER_DETAIL_GAP_DP.dp),
             ) {
-                Box(
-                    Modifier
-                        .width(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
-                        .height(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
-                        .background(accentColor, RoundedCornerShape(50)),
+                TimelineTrackHeaderBadge(
+                    label = label,
+                    accentColor = accentColor,
+                    badgeColor = badgeColor,
                 )
-                Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DOT_GAP_DP.dp))
                 Text(
-                    text = label,
-                    color = accentColor,
-                    fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            }
-            Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DETAIL_GAP_DP.dp))
-            Text(
-                text = detail,
-                modifier = Modifier.weight(1f),
-                color = StudioMuted,
-                fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (visibleTrailingDetail != null) {
-                Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DETAIL_GAP_DP.dp))
-                Text(
-                    text = visibleTrailingDetail,
+                    text = detail,
+                    modifier = Modifier.fillMaxWidth(),
                     color = StudioMuted,
                     fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TimelineTrackHeaderBadge(
+                    label = label,
+                    accentColor = accentColor,
+                    badgeColor = badgeColor,
+                )
+                Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DETAIL_GAP_DP.dp))
+                Text(
+                    text = detail,
+                    modifier = Modifier.weight(1f),
+                    color = StudioMuted,
+                    fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (visibleTrailingDetail != null) {
+                    Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DETAIL_GAP_DP.dp))
+                    Text(
+                        text = visibleTrailingDetail,
+                        color = StudioMuted,
+                        fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }
+
+@Composable
+private fun TimelineTrackHeaderBadge(
+    label: String,
+    accentColor: Color,
+    badgeColor: Color,
+) {
+    Row(
+        modifier = Modifier
+            .background(
+                color = badgeColor,
+                shape = RoundedCornerShape(TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP.dp),
+            )
+            .padding(horizontal = TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .width(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
+                .height(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
+                .background(accentColor, RoundedCornerShape(50)),
+        )
+        Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DOT_GAP_DP.dp))
+        Text(
+            text = label,
+            color = accentColor,
+            fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 @Composable
 private fun EditorPreviewMetadata(
     title: String,

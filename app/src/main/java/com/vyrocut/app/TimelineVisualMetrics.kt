@@ -29,6 +29,7 @@ internal const val TIMELINE_RULER_TICK_CORNER_RADIUS_DP = VyroCutTimelineVisualM
 internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = VyroCutTimelineVisualMetrics.TrackHeaderDotSizeDp
 internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = VyroCutTimelineVisualMetrics.TrackHeaderDotGapDp
 internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = VyroCutTimelineVisualMetrics.TrackHeaderDetailGapDp
+internal const val TIMELINE_TRACK_HEADER_INLINE_MINIMUM_WIDTH_DP = VyroCutTimelineVisualMetrics.TrackHeaderInlineMinimumWidthDp
 internal const val TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP = VyroCutTimelineVisualMetrics.TrackHeaderTrailingDetailMinWidthDp
 
 internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.RulerLabelFontSp
@@ -202,6 +203,29 @@ internal fun timelineRulerLabelPlacement(
  * consume the width needed by the track's descriptive label. The budget grows
  * with system font scale because Compose scales the hint text in sp.
  */
+/**
+ * Narrow timeline headers give the track name and its description separate
+ * lines instead of squeezing the description into an unusably small inline
+ * slot. The threshold scales with accessibility text and is bounded by the
+ * same font-scale policy used by the other timeline metrics.
+ */
+internal fun timelineTrackHeaderStacksDetail(
+    availableWidthDp: Float,
+    fontScale: Float,
+): Boolean {
+    val safeWidth = availableWidthDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: 0f
+    val safeFontScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+    val requiredInlineWidth = ceil(
+        TIMELINE_TRACK_HEADER_INLINE_MINIMUM_WIDTH_DP * safeFontScale,
+    )
+    return safeWidth < requiredInlineWidth
+}
+
 internal fun timelineTrackHeaderShowsTrailingDetail(
     availableWidthDp: Float,
     fontScale: Float,

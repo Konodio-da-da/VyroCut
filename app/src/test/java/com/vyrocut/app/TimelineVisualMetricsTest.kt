@@ -249,4 +249,16 @@ class TimelineVisualMetricsTest {
         assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 0.8f))
     }
 
+    @Test
+    fun narrowTrackHeadersStackDescriptionsAndScaleTheInlineThreshold() {
+        assertEquals(168, TIMELINE_TRACK_HEADER_INLINE_MINIMUM_WIDTH_DP)
+        assertEquals(true, timelineTrackHeaderStacksDetail(167.9f, 1f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, 1f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(335.9f, 2f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(336f, 2f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(Float.NaN, 1f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, Float.NaN))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, 0.8f))
+    }
+
 }
