@@ -46,6 +46,27 @@ class ClipTimedEffectSegmentsTest {
     }
 
     @Test
+    fun timedVignetteIntensityUsesClipLocalFrameTimestampAndLastActiveSegmentWins() {
+        val segments = listOf(
+            ClipTimedEffectSegment("base", ClipCreativeEffectPreset.VIGNETTE, 25, 0L, 5_000L),
+            ClipTimedEffectSegment("later", ClipCreativeEffectPreset.VIGNETTE, 70, 1_250L, 2_500L),
+            ClipTimedEffectSegment("warm", ClipCreativeEffectPreset.WARM, 90, 1_500L, 4_000L),
+            ClipTimedEffectSegment("disabled", ClipCreativeEffectPreset.VIGNETTE, 0, 3_000L, 3_500L),
+        )
+
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, -1L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 999_999L, 6_000L), 0.0001f)
+        assertEquals(0.70f, activeClipTimedVignetteIntensityAtUs(segments, 1_250_000L, 6_000L), 0.0001f)
+        assertEquals(0.70f, activeClipTimedVignetteIntensityAtUs(segments, 2_499_999L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 2_500_000L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 3_000_000L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 3_500_000L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 4_999_999L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 5_000_000L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 6_000_000L, 6_000L), 0.0001f)
+    }
+
+    @Test
     fun splitPreservesIntervalsAcrossBothVideoHalvesAndKeepsClipEndSentinel() {
         val segments = listOf(
             ClipTimedEffectSegment("before", ClipCreativeEffectPreset.VIGNETTE, 40, 0L, 2_000L),

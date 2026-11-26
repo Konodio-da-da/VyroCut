@@ -233,6 +233,28 @@ internal fun activeClipTimedEffectSegmentsAtMs(
         .sortedWith(compareBy<ClipTimedEffectSegment>({ it.startMs }, { it.id }))
 }
 
+/**
+ * Resolves the Vignette strength for a clip-local Media3 frame timestamp.
+ * Overlapping Vignette segments use the last active segment in the stable
+ * start-time/ID ordering; a zero-intensity segment therefore disables an
+ * earlier overlapping Vignette without mutating either segment.
+ */
+internal fun activeClipTimedVignetteIntensityAtUs(
+    segments: List<ClipTimedEffectSegment>,
+    presentationTimeUs: Long,
+    clipDurationMs: Long,
+): Float {
+    if (presentationTimeUs < 0L) return 0f
+    return activeClipTimedEffectSegmentsAtMs(
+        segments = segments,
+        positionMs = presentationTimeUs / 1_000L,
+        clipDurationMs = clipDurationMs,
+    ).lastOrNull { it.preset == ClipCreativeEffectPreset.VIGNETTE }
+        ?.intensity
+        ?.div(100f)
+        ?: 0f
+}
+
 /** Pure effect descriptions for the active intervals; Android/Media3 objects are built elsewhere. */
 internal fun createClipTimedEffectSpecsAtMs(
     segments: List<ClipTimedEffectSegment>,

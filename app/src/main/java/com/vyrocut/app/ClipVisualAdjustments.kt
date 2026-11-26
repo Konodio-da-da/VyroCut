@@ -15,6 +15,7 @@ import androidx.media3.effect.Contrast
 import androidx.media3.effect.GaussianBlur
 import androidx.media3.effect.HslAdjustment
 import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.OverlaySettings
 import androidx.media3.effect.RgbAdjustment
 import androidx.media3.effect.RgbFilter
 import androidx.media3.effect.RgbMatrix
@@ -280,6 +281,7 @@ internal fun vignetteOverlayEdgeAlpha(intensity: Float): Int {
 @OptIn(UnstableApi::class)
 private class VignetteBitmapOverlay(
     private val intensity: Float,
+    private val alphaScaleAtPresentationTimeUs: ((Long) -> Float)? = null,
 ) : BitmapOverlay() {
     private var bitmap: Bitmap? = null
 
@@ -326,6 +328,18 @@ private class VignetteBitmapOverlay(
 
     override fun getBitmap(presentationTimeUs: Long): Bitmap =
         checkNotNull(bitmap) { "Vignette overlay must be configured with a video frame size before rendering" }
+
+    override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
+        val alphaScale = if (alphaScaleAtPresentationTimeUs == null) {
+            1f
+        } else {
+            alphaScaleAtPresentationTimeUs.invoke(presentationTimeUs)
+                .takeIf { it.isFinite() }
+                ?.coerceIn(0f, 1f)
+                ?: 0f
+        }
+        return OverlaySettings.Builder().setAlphaScale(alphaScale).build()
+    }
 
     override fun release() {
         super.release()
@@ -443,6 +457,35 @@ internal fun createClipVisualEffects(
         ClipVisualEffectType.SOFT_FOCUS -> GaussianBlur(softFocusSigmaPx(spec.amount))
         ClipVisualEffectType.VIGNETTE -> OverlayEffect(listOf(VignetteBitmapOverlay(spec.amount)))
     }
+}
+
+/**
+ * Creates the first time-ranged creative effect renderer. The bitmap is
+ * generated once at maximum Vignette opacity; Media3 applies a per-frame alpha
+ * scale, avoiding per-frame bitmap allocation and preserving clip-local timing.
+ */
+@OptIn(UnstableApi::class)
+internal fun createClipTimedVignetteEffects(
+    segments: List<ClipTimedEffectSegment>,
+    clipDurationMs: Long,
+): List<Effect> {
+    if (segments.none { it.preset == ClipCreativeEffectPreset.VIGNETTE }) return emptyList()
+    require(validateClipTimedEffectSegments(segments, clipDurationMs)) {
+        "Timed Vignette segments must be valid for their owning clip"
+    }
+    return listOf(
+        OverlayEffect(
+            listOf(
+                VignetteBitmapOverlay(intensity = 1f) { presentationTimeUs ->
+                    activeClipTimedVignetteIntensityAtUs(
+                        segments = segments,
+                        presentationTimeUs = presentationTimeUs,
+                        clipDurationMs = clipDurationMs,
+                    )
+                },
+            ),
+        ),
+    )
 }
 
 /**
