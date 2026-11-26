@@ -262,7 +262,7 @@ internal fun editClipTimedEffectSegment(
         }
         ClipTimedEffectSegmentEditMode.TRIM_END -> {
             if (clipDurationMs - selected.startMs < MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS) return null
-            val minimumEndMs = selected.startMs + MIN_CLIP_TIMED_EFFECT_EDIT_DURATION_MS
+            val minimumEndMs = selected.startMs + MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS
             val nextEndMs = addClipTimedEffectEditDelta(
                 value = effectiveEndMs,
                 deltaMs = deltaMs,
