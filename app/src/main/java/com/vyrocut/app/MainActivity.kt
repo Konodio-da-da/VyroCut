@@ -2480,6 +2480,8 @@ private fun VyroCutApp() {
                     audioTracks = audioTrackClips,
                     audioWaveforms = audioWaveforms,
                     selectedIndex = selectedIndex,
+                    selectedTextLayerIndex = selectedTextLayerIndex,
+                    selectedStickerLayerIndex = selectedStickerLayerIndex,
                     selectedAudioTrackId = selectedAudioTrackId,
                     selectedTimedEffectSelection = selectedTimedEffectSelection,
                     playheadPositionMs = timelinePositionMs.toLong(),
@@ -5528,6 +5530,8 @@ private fun TimelineEditorStrip(
     audioTracks: List<AudioTrackClip>,
     audioWaveforms: Map<String, List<Float>>,
     selectedIndex: Int,
+    selectedTextLayerIndex: Int,
+    selectedStickerLayerIndex: Int,
     selectedAudioTrackId: String?,
     selectedTimedEffectSelection: Pair<String, String>?,
     playheadPositionMs: Long,
@@ -5826,6 +5830,18 @@ private fun TimelineEditorStrip(
                                 Modifier.fillMaxWidth()
                                     .height(timelineMetrics.textRowHeightDp.dp)
                                     .background(VyroCutPalette.HeroGradientStart, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
+                                    .border(
+                                        width = if (overlay == null && layerIndex == clip.allTextOverlays.size) {
+                                            timelineOverlaySelectionBorderWidthDp(
+                                                clipIndex = index,
+                                                layerIndex = layerIndex,
+                                                selectedClipIndex = selectedIndex,
+                                                selectedLayerIndex = selectedTextLayerIndex,
+                                            ).dp
+                                        } else 0.dp,
+                                        color = VyroCutPalette.TimelineSelectionOutline,
+                                        shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                                    )
                                     .clickable {
                                         if (overlay != null || layerIndex == clip.allTextOverlays.size) {
                                             onSelectText(index, layerIndex)
@@ -5854,6 +5870,16 @@ private fun TimelineEditorStrip(
                                                 .width(segment.widthPx.dp)
                                                 .fillMaxHeight()
                                                 .background(VyroCutPalette.SurfaceSelected, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
+                                                .border(
+                                                    width = timelineOverlaySelectionBorderWidthDp(
+                                                        clipIndex = index,
+                                                        layerIndex = layerIndex,
+                                                        selectedClipIndex = selectedIndex,
+                                                        selectedLayerIndex = selectedTextLayerIndex,
+                                                    ).dp,
+                                                    color = VyroCutPalette.TimelineSelectionOutline,
+                                                    shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                                                )
                                                 .padding(horizontal = VyroCutTimelinePanelMetrics.TextOverlaySegmentHorizontalPaddingDp.dp),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
@@ -5937,6 +5963,16 @@ private fun TimelineEditorStrip(
                                                 .background(
                                                     VyroCutPalette.SurfaceSelectedTimeline,
                                                     RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                                                )
+                                                .border(
+                                                    width = timelineOverlaySelectionBorderWidthDp(
+                                                        clipIndex = index,
+                                                        layerIndex = layerIndex,
+                                                        selectedClipIndex = selectedIndex,
+                                                        selectedLayerIndex = selectedStickerLayerIndex,
+                                                    ).dp,
+                                                    color = VyroCutPalette.TimelineSelectionOutline,
+                                                    shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                                 )
                                                 .clickable { onSelectSticker(index, layerIndex) }
                                                 .padding(horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp),

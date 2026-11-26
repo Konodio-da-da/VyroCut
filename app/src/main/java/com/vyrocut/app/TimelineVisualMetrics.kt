@@ -129,6 +129,24 @@ internal fun timelineAudioClipSelectionBorderWidthDp(
 )
 
 /**
+ * Returns a selection outline only for the active text/sticker layer on the
+ * selected video clip. Negative indices represent no active layer.
+ */
+internal fun timelineOverlaySelectionBorderWidthDp(
+    clipIndex: Int,
+    layerIndex: Int,
+    selectedClipIndex: Int,
+    selectedLayerIndex: Int,
+): Int = timelineClipSelectionBorderWidthDp(
+    isSelected = clipIndex >= 0 &&
+        layerIndex >= 0 &&
+        selectedClipIndex >= 0 &&
+        selectedLayerIndex >= 0 &&
+        clipIndex == selectedClipIndex &&
+        layerIndex == selectedLayerIndex,
+)
+
+/**
  * Estimates the horizontal room needed by a ruler timecode, including a small
  * gap before the next label. Compose scales the label's sp size automatically,
  * so the same bounded font scale is applied to this dp estimate.

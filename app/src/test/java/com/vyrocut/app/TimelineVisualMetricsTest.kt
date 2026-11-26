@@ -142,6 +142,18 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun overlaySelectionOutlineRequiresMatchingClipAndLayer() {
+        assertEquals(
+            TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP,
+            timelineOverlaySelectionBorderWidthDp(1, 0, 1, 0),
+        )
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(0, 0, 1, 0))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(1, 1, 1, 0))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(1, 0, 1, -1))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(-1, 0, -1, 0))
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)
