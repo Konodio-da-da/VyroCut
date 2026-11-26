@@ -124,6 +124,15 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun clipActionLabelsCompactBeforeTheSplitControlLosesReadableWidth() {
+        assertEquals(true, editorLayoutMetrics(640, EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP - 1).useCompactClipActionLabels)
+        assertEquals(false, editorLayoutMetrics(640, EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP).useCompactClipActionLabels)
+        assertEquals(true, editorLayoutMetrics(640, 900, fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD).useCompactClipActionLabels)
+        assertEquals(false, editorLayoutMetrics(640, 900, fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD - 0.001f).useCompactClipActionLabels)
+        assertEquals(true, editorLayoutMetrics(640, 0).useCompactClipActionLabels)
+    }
+
+    @Test
     fun invalidWindowWidthUsesSafeCompactFallback() {
         val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
 
