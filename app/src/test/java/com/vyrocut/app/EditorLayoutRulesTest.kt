@@ -1,6 +1,8 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EditorLayoutRulesTest {
@@ -130,6 +132,44 @@ class EditorLayoutRulesTest {
         assertEquals(true, editorLayoutMetrics(640, 900, fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD).useCompactClipActionLabels)
         assertEquals(false, editorLayoutMetrics(640, 900, fontScale = EDITOR_LARGE_FONT_SCALE_THRESHOLD - 0.001f).useCompactClipActionLabels)
         assertEquals(true, editorLayoutMetrics(640, 0).useCompactClipActionLabels)
+    }
+
+    @Test
+    fun clipActionRowScrollsBelowTheMinimumContentWidth() {
+        val minimumWindowWidth =
+            VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp +
+                2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp
+
+        val atMinimum = editorLayoutMetrics(640, minimumWindowWidth)
+        val belowMinimum = editorLayoutMetrics(640, minimumWindowWidth - 1)
+
+        assertEquals(
+            VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp,
+            atMinimum.clipActionControlsMinimumContentWidthDp,
+        )
+        assertFalse(atMinimum.scrollClipActionControlsHorizontally)
+        assertTrue(belowMinimum.scrollClipActionControlsHorizontally)
+    }
+
+    @Test
+    fun clipActionMinimumWidthGrowsWithFontScaleAndCapsAtTwoTimes() {
+        val base = VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp
+        val insets = 2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp
+
+        assertEquals(base, editorLayoutMetrics(640, 640, fontScale = 1f).clipActionControlsMinimumContentWidthDp)
+        assertEquals(base + 24, editorLayoutMetrics(640, 640, fontScale = 1.5f).clipActionControlsMinimumContentWidthDp)
+        assertEquals(base + 48, editorLayoutMetrics(640, 640, fontScale = 2f).clipActionControlsMinimumContentWidthDp)
+        assertEquals(
+            editorLayoutMetrics(640, 2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp + base + 48, fontScale = 2f)
+                .clipActionControlsMinimumContentWidthDp,
+            editorLayoutMetrics(640, 640, fontScale = 2.5f).clipActionControlsMinimumContentWidthDp,
+        )
+        assertTrue(editorLayoutMetrics(640, base + insets + 23, fontScale = 1.5f).scrollClipActionControlsHorizontally)
+        assertFalse(editorLayoutMetrics(640, base + insets + 24, fontScale = 1.5f).scrollClipActionControlsHorizontally)
+        assertEquals(
+            editorLayoutMetrics(640, 640, fontScale = 1f).clipActionControlsMinimumContentWidthDp,
+            editorLayoutMetrics(640, 640, fontScale = Float.NaN).clipActionControlsMinimumContentWidthDp,
+        )
     }
 
     @Test

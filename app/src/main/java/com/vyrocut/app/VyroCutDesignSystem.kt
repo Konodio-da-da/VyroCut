@@ -168,6 +168,8 @@ internal object VyroCutEditorLayoutMetrics {
     const val TransportControlsFontScaleWidthGrowthDp = 40
     const val RelinkActionExtraWidthDp = 64
     const val ClipActionStandardLabelMinWidthDp = 680
+    const val ClipActionControlsMinimumContentWidthDp = 336
+    const val ClipActionControlsFontScaleWidthGrowthDp = 48
     const val PreviewInlineSubtitleMaxLines = 1
     const val PreviewStackedSubtitleMaxLines = 2
     const val LargeFontScaleThreshold = 1.15f

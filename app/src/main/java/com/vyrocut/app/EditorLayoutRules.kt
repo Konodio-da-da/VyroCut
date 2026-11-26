@@ -45,6 +45,8 @@ internal data class EditorLayoutMetrics(
     val stackPreviewMetadataAboveTransportControls: Boolean,
     val previewMetadataSubtitleMaxLines: Int,
     val useCompactClipActionLabels: Boolean,
+    val clipActionControlsMinimumContentWidthDp: Int,
+    val scrollClipActionControlsHorizontally: Boolean,
     val scrollTransportControlsHorizontally: Boolean,
 )
 
@@ -117,6 +119,21 @@ internal fun editorLayoutMetrics(
     val transportControlsMinimumWindowWidthDp =
         EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP + transportControlsFontScaleGrowthDp
 
+    // Keep the three weighted clip actions and the fixed delete target usable.
+    // The window threshold includes the editor's horizontal content insets.
+    val clipActionFontScaleGrowthDp = (
+        (safeFontScale - 1f).coerceAtLeast(0f) *
+            VyroCutEditorLayoutMetrics.ClipActionControlsFontScaleWidthGrowthDp
+        ).roundToInt().coerceIn(
+            0,
+            VyroCutEditorLayoutMetrics.ClipActionControlsFontScaleWidthGrowthDp,
+        )
+    val clipActionMinimumContentWidthDp =
+        VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp +
+            clipActionFontScaleGrowthDp
+    val clipActionMinimumWindowWidthDp =
+        clipActionMinimumContentWidthDp + 2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp
+
     return EditorLayoutMetrics(
         previewHeightDp = previewHeight,
         sectionSpacingDp = sectionSpacing,
@@ -129,6 +146,8 @@ internal fun editorLayoutMetrics(
         },
         useCompactClipActionLabels = safeWidth < EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP ||
             safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD,
+        clipActionControlsMinimumContentWidthDp = clipActionMinimumContentWidthDp,
+        scrollClipActionControlsHorizontally = safeWidth < clipActionMinimumWindowWidthDp,
         scrollTransportControlsHorizontally = safeWidth < transportControlsMinimumWindowWidthDp,
     )
 }

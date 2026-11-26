@@ -564,13 +564,15 @@ class VyroCutDesignSystemTest {
             ),
         )
         assertEquals(
-            listOf(520, 600, 440, 64, 680, 560, 439),
+            listOf(520, 600, 440, 64, 680, 336, 48, 560, 439),
             listOf(
                 VyroCutEditorLayoutMetrics.TightWindowHeightDp,
                 VyroCutEditorLayoutMetrics.CompactWindowHeightDp,
                 VyroCutEditorLayoutMetrics.CompactWindowWidthDp,
                 VyroCutEditorLayoutMetrics.RelinkActionExtraWidthDp,
                 VyroCutEditorLayoutMetrics.ClipActionStandardLabelMinWidthDp,
+                VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp,
+                VyroCutEditorLayoutMetrics.ClipActionControlsFontScaleWidthGrowthDp,
                 VyroCutEditorLayoutMetrics.LayoutFallbackWindowHeightDp,
                 VyroCutEditorLayoutMetrics.LayoutFallbackWindowWidthDp,
             ),

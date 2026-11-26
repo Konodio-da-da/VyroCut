@@ -2173,6 +2173,7 @@ private fun VyroCutApp() {
                         hasPreviewRelinkAction = selectedClip?.uri?.let { it in missingMediaUris } == true,
                     )
                     val compactClipActionLabels = editorMetrics.useCompactClipActionLabels
+                    val clipActionScrollState = rememberScrollState()
                     val clipActionContentPadding = PaddingValues(
                         horizontal = (
                             if (compactClipActionLabels) {
@@ -2564,114 +2565,133 @@ private fun VyroCutApp() {
                     }
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(VyroCutClipActionMetrics.ButtonGapDp.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(
-                        onClick = { mediaPicker.launch(arrayOf("video/*")) },
-                        enabled = !isReadingMedia,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = clipActionContentPadding,
-                        shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth().then(
+                        if (editorMetrics.scrollClipActionControlsHorizontally) {
+                            Modifier.horizontalScroll(clipActionScrollState)
+                        } else {
+                            Modifier
+                        },
+                    ),
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(VyroCutClipActionMetrics.ButtonGapDp.dp),
+                        modifier = if (editorMetrics.scrollClipActionControlsHorizontally) {
+                            Modifier.width(editorMetrics.clipActionControlsMinimumContentWidthDp.dp)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Default.Add, null, modifier = Modifier.size(clipActionIconSize))
-                        Text(
-                            if (compactClipActionLabels) "Add" else "Import",
-                            fontSize = clipActionLabelFontSize,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    OutlinedButton(onClick = {
-                        val clip = selectedClip ?: return@OutlinedButton
-                        if (player.currentMediaItemIndex != selectedIndex) return@OutlinedButton
-                        val halves = splitClipRangeAtPlaybackPosition(
-                            clip.sourceStartMs,
-                            clip.sourceEndMs,
-                            player.currentPosition,
-                        ) ?: return@OutlinedButton
-                        val splitIndex = selectedIndex
-                        // Keep the left segment's stable identity; the new right
-                        // segment becomes selected at the exact split boundary.
-                        val splitOffsetMs = (halves.first.endMs - clip.sourceStartMs)
-                            .coerceIn(0L, clip.durationMs)
-                        val (leftTextOverlays, rightTextOverlays) = splitClipTextOverlaysAt(
-                            clip.allTextOverlays,
-                            splitOffsetMs,
-                            clip.durationMs,
-                        )
-                        val (leftStickerOverlays, rightStickerOverlays) = splitClipStickerOverlaysAt(
-                            clip.allStickerOverlays,
-                            splitOffsetMs,
-                            clip.durationMs,
-                        )
-                        val (leftTimedEffectSegments, rightTimedEffectSegments) =
-                            splitClipTimedEffectSegmentsAt(
-                                clip.timedEffectSegments,
-                                splitOffsetMs,
-                                clip.durationMs,
+                        OutlinedButton(
+                            onClick = { mediaPicker.launch(arrayOf("video/*")) },
+                            enabled = !isReadingMedia,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = clipActionContentPadding,
+                            shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
+                        ) {
+                            Icon(Icons.Default.Add, null, modifier = Modifier.size(clipActionIconSize))
+                            Text(
+                                if (compactClipActionLabels) "Add" else "Import",
+                                fontSize = clipActionLabelFontSize,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        val left = clip.copy(
-                            sourceEndMs = halves.first.endMs,
-                            fadeOutMs = 0L,
-                            textOverlay = leftTextOverlays.firstOrNull(),
-                            additionalTextOverlays = leftTextOverlays.drop(1),
-                            stickerOverlays = leftStickerOverlays,
-                            timedEffectSegments = leftTimedEffectSegments,
-                        )
-                        val right = clip.copy(
-                            id = java.util.UUID.randomUUID().toString(),
-                            sourceStartMs = halves.second.startMs,
-                            sourceEndMs = halves.second.endMs,
-                            fadeInMs = 0L,
-                            textOverlay = rightTextOverlays.firstOrNull(),
-                            additionalTextOverlays = rightTextOverlays.drop(1),
-                            stickerOverlays = rightStickerOverlays,
-                            timedEffectSegments = rightTimedEffectSegments,
-                        )
-                        val updated = clips.toMutableList().apply {
-                            removeAt(splitIndex)
-                            add(splitIndex, left)
-                            add(splitIndex + 1, right)
                         }
-                        selectedIndex = splitIndex + 1
-                        changed(updated)
-                    }, enabled = selectedClip?.let { clip ->
-                        player.currentMediaItemIndex == selectedIndex &&
-                            splitClipRangeAtPlaybackPosition(
+                        OutlinedButton(onClick = {
+                            val clip = selectedClip ?: return@OutlinedButton
+                            if (player.currentMediaItemIndex != selectedIndex) return@OutlinedButton
+                            val halves = splitClipRangeAtPlaybackPosition(
                                 clip.sourceStartMs,
                                 clip.sourceEndMs,
                                 player.currentPosition,
-                            ) != null
-                    } == true, modifier = Modifier.weight(1f), contentPadding = clipActionContentPadding, shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)) {
-                        Icon(Icons.Default.ContentCut, null, modifier = Modifier.size(clipActionIconSize))
-                        Text(
-                            if (compactClipActionLabels) "Split" else "Split at playhead",
-                            fontSize = clipActionLabelFontSize,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { selectedClip?.let { openTrimDialog(it) } },
-                        enabled = selectedClip != null &&
-                            selectedClip.durationMs >= MIN_CLIP_DURATION_MS &&
-                            selectedClip.uri !in missingMediaUris &&
-                            !isReadingMedia,
-                        modifier = Modifier.weight(1f),
-                        contentPadding = clipActionContentPadding,
-                        shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
-                    ) {
-                        Text(
-                            "Trim",
-                            fontSize = clipActionLabelFontSize,
-                            maxLines = 1,
-                            softWrap = false,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
-                        Icon(Icons.Default.Delete, "Delete selected clip", tint = VyroCutPalette.Danger)
+                            ) ?: return@OutlinedButton
+                            val splitIndex = selectedIndex
+                            // Keep the left segment's stable identity; the new right
+                            // segment becomes selected at the exact split boundary.
+                            val splitOffsetMs = (halves.first.endMs - clip.sourceStartMs)
+                                .coerceIn(0L, clip.durationMs)
+                            val (leftTextOverlays, rightTextOverlays) = splitClipTextOverlaysAt(
+                                clip.allTextOverlays,
+                                splitOffsetMs,
+                                clip.durationMs,
+                            )
+                            val (leftStickerOverlays, rightStickerOverlays) = splitClipStickerOverlaysAt(
+                                clip.allStickerOverlays,
+                                splitOffsetMs,
+                                clip.durationMs,
+                            )
+                            val (leftTimedEffectSegments, rightTimedEffectSegments) =
+                                splitClipTimedEffectSegmentsAt(
+                                    clip.timedEffectSegments,
+                                    splitOffsetMs,
+                                    clip.durationMs,
+                                )
+                            val left = clip.copy(
+                                sourceEndMs = halves.first.endMs,
+                                fadeOutMs = 0L,
+                                textOverlay = leftTextOverlays.firstOrNull(),
+                                additionalTextOverlays = leftTextOverlays.drop(1),
+                                stickerOverlays = leftStickerOverlays,
+                                timedEffectSegments = leftTimedEffectSegments,
+                            )
+                            val right = clip.copy(
+                                id = java.util.UUID.randomUUID().toString(),
+                                sourceStartMs = halves.second.startMs,
+                                sourceEndMs = halves.second.endMs,
+                                fadeInMs = 0L,
+                                textOverlay = rightTextOverlays.firstOrNull(),
+                                additionalTextOverlays = rightTextOverlays.drop(1),
+                                stickerOverlays = rightStickerOverlays,
+                                timedEffectSegments = rightTimedEffectSegments,
+                            )
+                            val updated = clips.toMutableList().apply {
+                                removeAt(splitIndex)
+                                add(splitIndex, left)
+                                add(splitIndex + 1, right)
+                            }
+                            selectedIndex = splitIndex + 1
+                            changed(updated)
+                        }, enabled = selectedClip?.let { clip ->
+                            player.currentMediaItemIndex == selectedIndex &&
+                                splitClipRangeAtPlaybackPosition(
+                                    clip.sourceStartMs,
+                                    clip.sourceEndMs,
+                                    player.currentPosition,
+                                ) != null
+                        } == true, modifier = Modifier.weight(1f), contentPadding = clipActionContentPadding, shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)) {
+                            Icon(Icons.Default.ContentCut, null, modifier = Modifier.size(clipActionIconSize))
+                            Text(
+                                if (compactClipActionLabels) "Split" else "Split at playhead",
+                                fontSize = clipActionLabelFontSize,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { selectedClip?.let { openTrimDialog(it) } },
+                            enabled = selectedClip != null &&
+                                selectedClip.durationMs >= MIN_CLIP_DURATION_MS &&
+                                selectedClip.uri !in missingMediaUris &&
+                                !isReadingMedia,
+                            modifier = Modifier.weight(1f),
+                            contentPadding = clipActionContentPadding,
+                            shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
+                        ) {
+                            Text(
+                                "Trim",
+                                fontSize = clipActionLabelFontSize,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
+                            Icon(Icons.Default.Delete, "Delete selected clip", tint = VyroCutPalette.Danger)
+    
+                        }
                     }
                 }
                 VyroCutToolDock(
