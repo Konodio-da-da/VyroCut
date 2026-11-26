@@ -133,6 +133,25 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun narrowWindowsScrollTransportControlsInsteadOfClippingThem() {
+        assertEquals(true, editorLayoutMetrics(640, 339).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 340).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 360).scrollTransportControlsHorizontally)
+    }
+
+    @Test
+    fun transportControlScrollThresholdGrowsWithAccessibilityFontScale() {
+        assertEquals(true, editorLayoutMetrics(640, 359, fontScale = 1.5f).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 360, fontScale = 1.5f).scrollTransportControlsHorizontally)
+        assertEquals(true, editorLayoutMetrics(640, 379, fontScale = 2f).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 380, fontScale = 2f).scrollTransportControlsHorizontally)
+        assertEquals(
+            editorLayoutMetrics(640, 380, fontScale = 2f),
+            editorLayoutMetrics(640, 380, fontScale = 2.5f),
+        )
+    }
+
+    @Test
     fun invalidWindowWidthUsesSafeCompactFallback() {
         val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
 

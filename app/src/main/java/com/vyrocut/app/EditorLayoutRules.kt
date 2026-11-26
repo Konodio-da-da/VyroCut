@@ -14,6 +14,8 @@ internal const val MAX_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.Max
 internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.TightWindowHeightDp
 internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.CompactWindowHeightDp
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.CompactWindowWidthDp
+internal const val EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.TransportControlsMinimumWindowWidthDp
+internal const val EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP = VyroCutEditorLayoutMetrics.TransportControlsFontScaleWidthGrowthDp
 internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = VyroCutEditorLayoutMetrics.RelinkActionExtraWidthDp
 internal const val EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP = VyroCutEditorLayoutMetrics.ClipActionStandardLabelMinWidthDp
 internal const val EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES = VyroCutEditorLayoutMetrics.PreviewInlineSubtitleMaxLines
@@ -43,6 +45,7 @@ internal data class EditorLayoutMetrics(
     val stackPreviewMetadataAboveTransportControls: Boolean,
     val previewMetadataSubtitleMaxLines: Int,
     val useCompactClipActionLabels: Boolean,
+    val scrollTransportControlsHorizontally: Boolean,
 )
 
 /**
@@ -107,6 +110,13 @@ internal fun editorLayoutMetrics(
     val stackPreviewMetadata = safeWidth < inlineMetadataMinimumWidth ||
         safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD
 
+    val transportControlsFontScaleGrowthDp = (
+        (safeFontScale - 1f).coerceAtLeast(0f) *
+            EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP
+        ).roundToInt().coerceIn(0, EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP)
+    val transportControlsMinimumWindowWidthDp =
+        EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP + transportControlsFontScaleGrowthDp
+
     return EditorLayoutMetrics(
         previewHeightDp = previewHeight,
         sectionSpacingDp = sectionSpacing,
@@ -119,6 +129,7 @@ internal fun editorLayoutMetrics(
         },
         useCompactClipActionLabels = safeWidth < EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP ||
             safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD,
+        scrollTransportControlsHorizontally = safeWidth < transportControlsMinimumWindowWidthDp,
     )
 }
 

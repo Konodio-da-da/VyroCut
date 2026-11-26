@@ -2199,7 +2199,15 @@ private fun VyroCutApp() {
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                val transportControlsModifier = if (editorMetrics.scrollTransportControlsHorizontally) {
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                } else {
+                    Modifier
+                }
+                Row(
+                    modifier = transportControlsModifier,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     if (!editorMetrics.stackPreviewMetadataAboveTransportControls) {
                         EditorPreviewMetadata(
                             title = selectedClip?.name ?: "No media selected",
