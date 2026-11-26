@@ -545,6 +545,8 @@ class VyroCutDesignSystemTest {
             VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp,
             VyroCutTimelineVisualMetrics.TrackHeaderCornerRadiusDp,
         )
+        assertTrue(VyroCutTimelineVisualMetrics.TimedEffectTrackHeightDp >= VyroCutControlMetrics.MinimumTouchTargetDp)
+        assertTrue(VyroCutTimelineVisualMetrics.TimedEffectTrimHandleHitWidthDp >= VyroCutControlMetrics.MinimumTouchTargetDp)
     }
 
 

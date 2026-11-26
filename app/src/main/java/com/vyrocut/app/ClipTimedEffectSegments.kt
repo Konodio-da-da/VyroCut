@@ -2,6 +2,7 @@ package com.vyrocut.app
 
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToLong
 
 internal const val MAX_CLIP_TIMED_EFFECT_SEGMENTS = 16
 
@@ -183,6 +184,114 @@ internal fun appendClipTimedEffectSegment(
  * Keeps effect timing anchored to source time when a clip's source IN/OUT
  * points change. Intervals outside the retained source range are discarded.
  */
+
+internal enum class ClipTimedEffectSegmentEditMode {
+    MOVE,
+    TRIM_START,
+    TRIM_END,
+}
+
+internal const val MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS = 100L
+
+private fun addClipTimedEffectEditDelta(
+    value: Long,
+    deltaMs: Long,
+    minimum: Long,
+    maximum: Long,
+): Long {
+    val candidate = when {
+        deltaMs > 0L && value > Long.MAX_VALUE - deltaMs -> Long.MAX_VALUE
+        deltaMs < 0L && value < Long.MIN_VALUE - deltaMs -> Long.MIN_VALUE
+        else -> value + deltaMs
+    }
+    return candidate.coerceIn(minimum, maximum)
+}
+
+/**
+ * Applies one clip-local move or edge trim to a timed effect segment.
+ * Bounded intervals keep their duration when moved; a null end remains attached
+ * to the owning clip's OUT point. Trims enforce a 100 ms minimum interval.
+ */
+internal fun editClipTimedEffectSegment(
+    segments: List<ClipTimedEffectSegment>,
+    segmentId: String,
+    clipDurationMs: Long,
+    mode: ClipTimedEffectSegmentEditMode,
+    deltaMs: Long,
+): List<ClipTimedEffectSegment>? {
+    if (!validateClipTimedEffectSegments(segments, clipDurationMs)) return null
+    val index = segments.indexOfFirst { it.id == segmentId }
+    if (index < 0) return null
+    if (deltaMs == 0L) return segments
+
+    val selected = segments[index]
+    val effectiveEndMs = selected.endMs ?: clipDurationMs
+    val currentDurationMs = effectiveEndMs - selected.startMs
+    val updated = when (mode) {
+        ClipTimedEffectSegmentEditMode.MOVE -> {
+            val maximumStartMs = if (selected.endMs == null) {
+                clipDurationMs - 1L
+            } else {
+                clipDurationMs - currentDurationMs
+            }
+            val nextStartMs = addClipTimedEffectEditDelta(
+                value = selected.startMs,
+                deltaMs = deltaMs,
+                minimum = 0L,
+                maximum = maximumStartMs,
+            )
+            if (selected.endMs == null) {
+                selected.copy(startMs = nextStartMs)
+            } else {
+                selected.copy(
+                    startMs = nextStartMs,
+                    endMs = nextStartMs + currentDurationMs,
+                )
+            }
+        }
+        ClipTimedEffectSegmentEditMode.TRIM_START -> {
+            if (currentDurationMs < MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS) return null
+            val maximumStartMs = effectiveEndMs - MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS
+            val nextStartMs = addClipTimedEffectEditDelta(
+                value = selected.startMs,
+                deltaMs = deltaMs,
+                minimum = 0L,
+                maximum = maximumStartMs,
+            )
+            selected.copy(startMs = nextStartMs)
+        }
+        ClipTimedEffectSegmentEditMode.TRIM_END -> {
+            if (clipDurationMs - selected.startMs < MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS) return null
+            val minimumEndMs = selected.startMs + MIN_CLIP_TIMED_EFFECT_EDIT_DURATION_MS
+            val nextEndMs = addClipTimedEffectEditDelta(
+                value = effectiveEndMs,
+                deltaMs = deltaMs,
+                minimum = minimumEndMs,
+                maximum = clipDurationMs,
+            )
+            selected.copy(
+                endMs = if (selected.endMs == null && nextEndMs == clipDurationMs) null else nextEndMs,
+            )
+        }
+    }
+
+    return segments.toMutableList().apply { this[index] = updated }
+        .takeIf { validateClipTimedEffectSegments(it, clipDurationMs) }
+}
+
+/** Converts horizontal pointer movement into a bounded clip-local time delta. */
+internal fun calculateClipTimedEffectDragDeltaMs(
+    deltaPx: Float,
+    trackWidthPx: Float,
+    clipDurationMs: Long,
+): Long? {
+    if (!deltaPx.isFinite() || !trackWidthPx.isFinite() ||
+        trackWidthPx <= 0f || clipDurationMs <= 0L
+    ) return null
+    val fraction = (deltaPx.toDouble() / trackWidthPx.toDouble()).coerceIn(-1.0, 1.0)
+    return (fraction * clipDurationMs.toDouble()).roundToLong()
+}
+
 internal fun rebaseClipTimedEffectSegmentForTrim(
     segment: ClipTimedEffectSegment?,
     oldSourceStartMs: Long,

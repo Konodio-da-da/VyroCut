@@ -26,6 +26,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
@@ -2529,6 +2530,30 @@ private fun VyroCutApp() {
                                 seekPreviewToTimelinePosition(
                                     calculateTimelinePositionMs(clipDurationsMs, index, segment.startMs),
                                 )
+                            }
+                        }
+                    },
+                    onEditTimedEffectSegment = { index, segmentId, mode, deltaMs ->
+                        clips.getOrNull(index)?.let { clip ->
+                            val nextSegments = editClipTimedEffectSegment(
+                                segments = clip.timedEffectSegments,
+                                segmentId = segmentId,
+                                clipDurationMs = clip.durationMs,
+                                mode = mode,
+                                deltaMs = deltaMs,
+                            )
+                            if (nextSegments != null && nextSegments != clip.timedEffectSegments) {
+                                changed(clips.toMutableList().apply {
+                                    this[index] = clip.copy(timedEffectSegments = nextSegments)
+                                })
+                                selectedIndex = index
+                                selectedTimedEffectSelection = clip.id to segmentId
+                                activeTool = "Effects"
+                                exportMessage = when (mode) {
+                                    ClipTimedEffectSegmentEditMode.MOVE -> "Timed effect moved"
+                                    ClipTimedEffectSegmentEditMode.TRIM_START -> "Timed effect start trimmed"
+                                    ClipTimedEffectSegmentEditMode.TRIM_END -> "Timed effect end trimmed"
+                                }
                             }
                         }
                     }
@@ -5420,6 +5445,35 @@ private fun TimelinePlayheadMarker(
     }
 }
 
+
+private fun Modifier.timedEffectSegmentDrag(
+    clipIndex: Int,
+    segmentId: String,
+    clipDurationMs: Long,
+    trackWidthPx: Float,
+    mode: ClipTimedEffectSegmentEditMode,
+    onEdit: (Int, String, ClipTimedEffectSegmentEditMode, Long) -> Unit,
+): Modifier = pointerInput(clipIndex, segmentId, clipDurationMs, trackWidthPx, mode) {
+    var accumulatedDragPx = 0f
+    detectDragGestures(
+        onDragEnd = {
+            val deltaMs = calculateClipTimedEffectDragDeltaMs(
+                deltaPx = accumulatedDragPx,
+                trackWidthPx = trackWidthPx,
+                clipDurationMs = clipDurationMs,
+            )
+            if (deltaMs != null && deltaMs != 0L) {
+                onEdit(clipIndex, segmentId, mode, deltaMs)
+            }
+        },
+        onDragCancel = { accumulatedDragPx = 0f },
+        onDrag = { change, dragAmount ->
+            accumulatedDragPx += dragAmount.x
+            change.consume()
+        },
+    )
+}
+
 @Composable
 private fun TimelineEditorStrip(
     clips: List<EditClip>,
@@ -5435,6 +5489,7 @@ private fun TimelineEditorStrip(
     onSelectText: (Int, Int) -> Unit,
     onSelectSticker: (Int, Int) -> Unit,
     onSelectTimedEffect: (Int, String) -> Unit,
+    onEditTimedEffectSegment: (Int, String, ClipTimedEffectSegmentEditMode, Long) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
@@ -5859,10 +5914,10 @@ private fun TimelineEditorStrip(
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
             label = "EFFECTS",
-            detail = "Timed Vignette • tap a segment to select",
+            detail = "Drag to move • selected edges trim",
             accentColor = VyroCutPalette.AccentSecondary,
         )
-        val effectTrackHeight = timelineMetrics.stickerRowHeightDp.dp
+        val effectTrackHeight = VyroCutTimelineVisualMetrics.TimedEffectTrackHeightDp.dp
         Box(Modifier.width(totalWidth).height(effectTrackHeight)) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
                 clips.forEachIndexed { index, clip ->
@@ -5889,6 +5944,10 @@ private fun TimelineEditorStrip(
                                 )
                                 bounds?.let { effectBounds ->
                                     val isSelected = selectedTimedEffectSelection == (clip.id to segment.id)
+                                    val handleHitWidthDp = minOf(
+                                        VyroCutTimelineVisualMetrics.TimedEffectTrimHandleHitWidthDp.toFloat(),
+                                        effectBounds.widthPx / 2f,
+                                    ).coerceAtLeast(1f)
                                     Box(
                                         Modifier.offset(x = effectBounds.startOffsetPx.dp)
                                             .width(effectBounds.widthPx.dp)
@@ -5902,18 +5961,75 @@ private fun TimelineEditorStrip(
                                                 color = VyroCutPalette.TimelineSelectionOutline,
                                                 shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                             )
-                                            .clickable { onSelectTimedEffect(index, segment.id) }
-                                            .padding(horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp),
+                                            .timedEffectSegmentDrag(
+                                                clipIndex = index,
+                                                segmentId = segment.id,
+                                                clipDurationMs = clip.durationMs,
+                                                trackWidthPx = clipWidthsPx[index],
+                                                mode = ClipTimedEffectSegmentEditMode.MOVE,
+                                                onEdit = onEditTimedEffectSegment,
+                                            )
+                                            .clickable { onSelectTimedEffect(index, segment.id) },
                                         contentAlignment = Alignment.CenterStart,
                                     ) {
                                         Text(
                                             "${segment.intensity}%",
+                                            modifier = Modifier.fillMaxWidth()
+                                                .padding(horizontal = handleHitWidthDp.dp),
                                             color = VyroCutPalette.AccentSecondary,
                                             fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
                                             maxLines = 1,
                                             softWrap = false,
                                             overflow = TextOverflow.Clip,
                                         )
+                                        if (isSelected) {
+                                            Box(
+                                                Modifier.align(Alignment.CenterStart)
+                                                    .width(handleHitWidthDp.dp)
+                                                    .fillMaxHeight()
+                                                    .timedEffectSegmentDrag(
+                                                        clipIndex = index,
+                                                        segmentId = segment.id,
+                                                        clipDurationMs = clip.durationMs,
+                                                        trackWidthPx = clipWidthsPx[index],
+                                                        mode = ClipTimedEffectSegmentEditMode.TRIM_START,
+                                                        onEdit = onEditTimedEffectSegment,
+                                                    ),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Box(
+                                                    Modifier.width(4.dp)
+                                                        .fillMaxHeight(0.72f)
+                                                        .background(
+                                                            VyroCutPalette.AccentSecondary,
+                                                            RoundedCornerShape(2.dp),
+                                                        ),
+                                                )
+                                            }
+                                            Box(
+                                                Modifier.align(Alignment.CenterEnd)
+                                                    .width(handleHitWidthDp.dp)
+                                                    .fillMaxHeight()
+                                                    .timedEffectSegmentDrag(
+                                                        clipIndex = index,
+                                                        segmentId = segment.id,
+                                                        clipDurationMs = clip.durationMs,
+                                                        trackWidthPx = clipWidthsPx[index],
+                                                        mode = ClipTimedEffectSegmentEditMode.TRIM_END,
+                                                        onEdit = onEditTimedEffectSegment,
+                                                    ),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Box(
+                                                    Modifier.width(4.dp)
+                                                        .fillMaxHeight(0.72f)
+                                                        .background(
+                                                            VyroCutPalette.AccentSecondary,
+                                                            RoundedCornerShape(2.dp),
+                                                        ),
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }

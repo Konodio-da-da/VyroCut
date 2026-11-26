@@ -290,4 +290,127 @@ class ClipTimedEffectSegmentsTest {
         )
         assertNull(appendClipTimedEffectSegment(existing, 0L, added))
     }
+
+    @Test
+    fun movingTimedEffectSegmentsPreservesBoundedDurationAndClipEndSentinel() {
+        val bounded = ClipTimedEffectSegment(
+            "bounded",
+            ClipCreativeEffectPreset.VIGNETTE,
+            65,
+            1_000L,
+            3_000L,
+        )
+        val openEnded = ClipTimedEffectSegment(
+            "open-ended",
+            ClipCreativeEffectPreset.WARM,
+            40,
+            1_000L,
+            null,
+        )
+        val segments = listOf(bounded, openEnded)
+
+        assertEquals(
+            bounded.copy(startMs = 2_000L, endMs = 4_000L),
+            editClipTimedEffectSegment(
+                segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 1_000L,
+            )?.first(),
+        )
+        assertEquals(
+            bounded.copy(startMs = 0L, endMs = 2_000L),
+            editClipTimedEffectSegment(
+                segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, -5_000L,
+            )?.first(),
+        )
+        assertEquals(
+            openEnded.copy(startMs = 1_500L),
+            editClipTimedEffectSegment(
+                segments, openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 500L,
+            )?.last(),
+        )
+        assertEquals(segments, editClipTimedEffectSegment(
+            segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 0L,
+        ))
+    }
+
+    @Test
+    fun trimmingTimedEffectEdgesClampsToClipAndKeepsOpenEndWhenAtClipOut() {
+        val bounded = ClipTimedEffectSegment(
+            "bounded",
+            ClipCreativeEffectPreset.VIGNETTE,
+            65,
+            1_000L,
+            3_000L,
+        )
+        val openEnded = ClipTimedEffectSegment(
+            "open-ended",
+            ClipCreativeEffectPreset.WARM,
+            40,
+            1_000L,
+            null,
+        )
+
+        assertEquals(
+            bounded.copy(startMs = 1_500L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, 500L,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(startMs = 2_900L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, Long.MAX_VALUE,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 2_500L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -500L,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 5_000L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, Long.MAX_VALUE,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 1_100L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -5_000L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded.copy(startMs = 1_200L),
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, 200L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded.copy(endMs = 4_000L),
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -1_000L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded,
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, 1_000L,
+            )?.single(),
+        )
+        assertNull(editClipTimedEffectSegment(
+            listOf(bounded), "missing", 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 1_000L,
+        ))
+        assertEquals(100L, MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS)
+    }
+
+    @Test
+    fun timelineDragPixelsConvertToBoundedClipLocalMilliseconds() {
+        assertEquals(2_500L, calculateClipTimedEffectDragDeltaMs(25f, 100f, 10_000L))
+        assertEquals(-2_500L, calculateClipTimedEffectDragDeltaMs(-25f, 100f, 10_000L))
+        assertEquals(10_000L, calculateClipTimedEffectDragDeltaMs(200f, 100f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(Float.NaN, 100f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(1f, 0f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(1f, 100f, 0L))
+    }
+
 }
