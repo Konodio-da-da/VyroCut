@@ -57,6 +57,73 @@ private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = VyroCutTimelineVisua
 private const val TIMELINE_RULER_LABEL_GAP_DP = VyroCutTimelineVisualMetrics.RulerLabelGapDp
 private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = VyroCutTimelineVisualMetrics.MaximumRulerLabelCharacters
 
+
+internal data class TimelineRulerTickVisualMetrics(
+    val widthDp: Int,
+    val heightDp: Int,
+)
+
+internal fun timelineRulerTickVisualMetrics(isMajor: Boolean) = TimelineRulerTickVisualMetrics(
+    widthDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_WIDTH_DP else TIMELINE_RULER_MINOR_TICK_WIDTH_DP,
+    heightDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP else TIMELINE_RULER_MINOR_TICK_HEIGHT_DP,
+)
+
+internal enum class TimelineRulerLabelAlignment {
+    START,
+    CENTER,
+    END,
+}
+
+internal data class TimelineRulerLabelPlacement(
+    val offsetDp: Float,
+    val alignment: TimelineRulerLabelAlignment,
+)
+
+internal data class TimelinePlayheadVisualMetrics(
+    val lineWidthDp: Int,
+    val outlineWidthDp: Int,
+    val capWidthDp: Int,
+    val capHeightDp: Int,
+)
+
+internal fun timelinePlayheadVisualMetrics() = TimelinePlayheadVisualMetrics(
+    lineWidthDp = TIMELINE_PLAYHEAD_LINE_WIDTH_DP,
+    outlineWidthDp = TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP,
+    capWidthDp = TIMELINE_PLAYHEAD_CAP_WIDTH_DP,
+    capHeightDp = TIMELINE_PLAYHEAD_CAP_HEIGHT_DP,
+)
+
+internal data class TimelinePlayheadGeometry(
+    val lineLeftDp: Float,
+    val outlineLeftDp: Float,
+    val capLeftDp: Float,
+)
+
+/** Keeps the dark outline and top cap centered on the accent playhead line. */
+internal fun timelinePlayheadGeometry(lineLeftDp: Float): TimelinePlayheadGeometry {
+    val safeLineLeft = lineLeftDp.takeIf { it.isFinite() } ?: 0f
+    val metrics = timelinePlayheadVisualMetrics()
+    return TimelinePlayheadGeometry(
+        lineLeftDp = safeLineLeft,
+        outlineLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.outlineWidthDp) / 2f,
+        capLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.capWidthDp) / 2f,
+    )
+}
+
+internal fun timelineClipSelectionBorderWidthDp(isSelected: Boolean): Int =
+    if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else 0
+
+/**
+ * Returns the shared selection outline width for an audio clip only when its
+ * stable ID matches the currently selected audio clip.
+ */
+internal fun timelineAudioClipSelectionBorderWidthDp(
+    clipId: String,
+    selectedAudioTrackId: String?,
+): Int = timelineClipSelectionBorderWidthDp(
+    isSelected = clipId.isNotBlank() && selectedAudioTrackId == clipId,
+)
+
 /**
  * Estimates the horizontal room needed by a ruler timecode, including a small
  * gap before the next label. Compose scales the label's sp size automatically,
