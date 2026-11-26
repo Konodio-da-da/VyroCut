@@ -1,14 +1,24 @@
 package com.vyrocut.app
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import androidx.media3.common.Effect
+import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
 import androidx.media3.effect.GaussianBlur
 import androidx.media3.effect.HslAdjustment
+import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.RgbAdjustment
 import androidx.media3.effect.RgbFilter
 import androidx.media3.effect.RgbMatrix
+import kotlin.math.roundToInt
 
 internal const val DEFAULT_CREATIVE_EFFECT_INTENSITY = 100
 internal const val MIN_CREATIVE_EFFECT_INTENSITY = 0
@@ -79,6 +89,12 @@ internal enum class ClipCreativeEffectPreset(
         "Soft Focus",
         ClipCreativeEffectCategory.LENS,
         "Applies a Gaussian lens blur; higher strength increases the blur.",
+    ),
+    VIGNETTE(
+        "vignette",
+        "Vignette",
+        ClipCreativeEffectCategory.LENS,
+        "Darkens the frame edges with a soft, even falloff toward the corners.",
     ),
     NEGATIVE(
         "negative",
@@ -170,6 +186,7 @@ internal enum class ClipVisualEffectType {
     COOL_TINT,
     CINEMATIC,
     SOFT_FOCUS,
+    VIGNETTE,
     INVERTED,
     GRAYSCALE,
     SEPIA,
@@ -209,6 +226,7 @@ internal fun createClipVisualEffectSpecs(
             ClipCreativeEffectPreset.COOL -> add(ClipVisualEffectSpec(ClipVisualEffectType.COOL_TINT, intensity))
             ClipCreativeEffectPreset.CINEMATIC -> add(ClipVisualEffectSpec(ClipVisualEffectType.CINEMATIC, intensity))
             ClipCreativeEffectPreset.SOFT_FOCUS -> add(ClipVisualEffectSpec(ClipVisualEffectType.SOFT_FOCUS, intensity))
+            ClipCreativeEffectPreset.VIGNETTE -> add(ClipVisualEffectSpec(ClipVisualEffectType.VIGNETTE, intensity))
             ClipCreativeEffectPreset.NEGATIVE -> add(ClipVisualEffectSpec(ClipVisualEffectType.INVERTED, intensity))
             ClipCreativeEffectPreset.GRAYSCALE -> add(ClipVisualEffectSpec(ClipVisualEffectType.GRAYSCALE, intensity))
             ClipCreativeEffectPreset.SEPIA -> add(ClipVisualEffectSpec(ClipVisualEffectType.SEPIA, intensity))
@@ -223,6 +241,97 @@ internal const val MAX_SOFT_FOCUS_SIGMA_PX = 5f
 internal fun softFocusSigmaPx(intensity: Float): Float {
     require(intensity.isFinite() && intensity in 0f..1f) { "Effect intensity must be between 0 and 1" }
     return MAX_SOFT_FOCUS_SIGMA_PX * intensity
+}
+
+internal const val MAX_VIGNETTE_OVERLAY_BITMAP_DIMENSION_PX = 1_920
+internal const val MAX_VIGNETTE_EDGE_ALPHA = 160
+private const val VIGNETTE_GRADIENT_RADIUS = 1.4142135f
+
+internal data class VignetteOverlayBitmapSize(
+    val widthPx: Int,
+    val heightPx: Int,
+)
+
+/** Keeps a full-frame effect overlay bounded while preserving the output aspect ratio. */
+internal fun calculateVignetteOverlayBitmapSize(
+    frameWidthPx: Int,
+    frameHeightPx: Int,
+): VignetteOverlayBitmapSize? {
+    if (frameWidthPx <= 0 || frameHeightPx <= 0) return null
+    val longestEdge = maxOf(frameWidthPx, frameHeightPx)
+    val scale = minOf(
+        1.0,
+        MAX_VIGNETTE_OVERLAY_BITMAP_DIMENSION_PX.toDouble() / longestEdge.toDouble(),
+    )
+    return VignetteOverlayBitmapSize(
+        widthPx = (frameWidthPx * scale).roundToInt().coerceAtLeast(1),
+        heightPx = (frameHeightPx * scale).roundToInt().coerceAtLeast(1),
+    )
+}
+
+/** Maps normalized effect strength to the vignette's maximum corner opacity. */
+internal fun vignetteOverlayEdgeAlpha(intensity: Float): Int {
+    require(intensity.isFinite() && intensity in 0f..1f) {
+        "Effect intensity must be between 0 and 1"
+    }
+    return (MAX_VIGNETTE_EDGE_ALPHA * intensity).roundToInt()
+}
+
+@OptIn(UnstableApi::class)
+private class VignetteBitmapOverlay(
+    private val intensity: Float,
+) : BitmapOverlay() {
+    private var bitmap: Bitmap? = null
+
+    override fun configure(videoSize: Size) {
+        val bitmapSize = checkNotNull(
+            calculateVignetteOverlayBitmapSize(videoSize.width, videoSize.height),
+        )
+        val nextBitmap = Bitmap.createBitmap(
+            bitmapSize.widthPx,
+            bitmapSize.heightPx,
+            Bitmap.Config.ARGB_8888,
+        )
+        val canvas = Canvas(nextBitmap)
+        val edgeAlpha = vignetteOverlayEdgeAlpha(intensity)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            shader = RadialGradient(
+                0f,
+                0f,
+                VIGNETTE_GRADIENT_RADIUS,
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    Color.TRANSPARENT,
+                    Color.argb(edgeAlpha, 0, 0, 0),
+                ),
+                floatArrayOf(0f, 0.35f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        }
+
+        canvas.save()
+        try {
+            // Normalize both axes so the vignette falloff reaches every frame edge evenly.
+            canvas.translate(bitmapSize.widthPx / 2f, bitmapSize.heightPx / 2f)
+            canvas.scale(bitmapSize.widthPx / 2f, bitmapSize.heightPx / 2f)
+            canvas.drawCircle(0f, 0f, VIGNETTE_GRADIENT_RADIUS, paint)
+        } finally {
+            canvas.restore()
+        }
+
+        bitmap?.takeIf { !it.isRecycled }?.recycle()
+        bitmap = nextBitmap
+    }
+
+    override fun getBitmap(presentationTimeUs: Long): Bitmap =
+        checkNotNull(bitmap) { "Vignette overlay must be configured with a video frame size before rendering" }
+
+    override fun release() {
+        super.release()
+        bitmap?.takeIf { !it.isRecycled }?.recycle()
+        bitmap = null
+    }
 }
 
 internal fun blendRgbMatrixWithIdentity(matrix: FloatArray, intensity: Float): FloatArray {
@@ -332,6 +441,7 @@ internal fun createClipVisualEffects(
         ClipVisualEffectType.CINEMATIC ->
             if (spec.amount >= 1f) CinematicRgbMatrix else IntensityRgbMatrix(CinematicRgbMatrix, spec.amount)
         ClipVisualEffectType.SOFT_FOCUS -> GaussianBlur(softFocusSigmaPx(spec.amount))
+        ClipVisualEffectType.VIGNETTE -> OverlayEffect(listOf(VignetteBitmapOverlay(spec.amount)))
     }
 }
 
