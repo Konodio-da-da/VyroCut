@@ -2177,8 +2177,14 @@ private fun VyroCutApp() {
                             }
                         },
                         enabled = clips.isNotEmpty(),
+                        modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekButtonSizeDp.dp),
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back 5 seconds", tint = StudioAccent)
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back 5 seconds",
+                            tint = StudioAccent,
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekIconSizeDp.dp),
+                        )
                     }
                     IconButton(
                         onClick = {
@@ -2193,8 +2199,14 @@ private fun VyroCutApp() {
                             }
                         },
                         enabled = clips.isNotEmpty(),
+                        modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekButtonSizeDp.dp),
                     ) {
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Forward 5 seconds", tint = StudioAccent)
+                        Icon(
+                            Icons.Default.ArrowForward,
+                            contentDescription = "Forward 5 seconds",
+                            tint = StudioAccent,
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekIconSizeDp.dp),
+                        )
                     }
                     IconButton(
                         onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
@@ -2241,7 +2253,11 @@ private fun VyroCutApp() {
                         }
                     }, enabled = selectedClip != null,
                         colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk)) {
-                        Icon(if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow, if (isPlaying) "Pause" else "Play")
+                        Icon(
+                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            if (isPlaying) "Pause" else "Play",
+                            modifier = Modifier.size(VyroCutEditorChromeMetrics.PlaybackButtonIconSizeDp.dp),
+                        )
                     }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(VyroCutEditorChromeMetrics.ScrubberSectionGapDp.dp)) {

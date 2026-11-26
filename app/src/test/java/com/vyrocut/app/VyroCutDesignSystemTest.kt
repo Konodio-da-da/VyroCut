@@ -122,7 +122,7 @@ class VyroCutDesignSystemTest {
     @Test
     fun editorChromeMetricsPreserveExistingLayoutDimensions() {
         assertEquals(
-            listOf(10, 4, 28, 9, 8, 38, 6, 36, 18, 5, 2, 8),
+            listOf(10, 4, 28, 9, 8, 38, 6, 36, 18, 48, 24, 24, 5, 2, 8),
             listOf(
                 VyroCutEditorChromeMetrics.HorizontalContentPaddingDp,
                 VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp,
@@ -133,6 +133,9 @@ class VyroCutDesignSystemTest {
                 VyroCutEditorChromeMetrics.EmptyPreviewIconGapDp,
                 VyroCutEditorChromeMetrics.CompactIconButtonSizeDp,
                 VyroCutEditorChromeMetrics.TransportIconSizeDp,
+                VyroCutEditorChromeMetrics.TransportSeekButtonSizeDp,
+                VyroCutEditorChromeMetrics.TransportSeekIconSizeDp,
+                VyroCutEditorChromeMetrics.PlaybackButtonIconSizeDp,
                 VyroCutEditorChromeMetrics.PlaybackSpeedButtonHorizontalPaddingDp,
                 VyroCutEditorChromeMetrics.ScrubberSectionGapDp,
                 VyroCutEditorChromeMetrics.TimelineActionButtonHorizontalPaddingDp,

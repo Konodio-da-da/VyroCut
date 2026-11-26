@@ -128,6 +128,9 @@ internal object VyroCutEditorChromeMetrics {
     const val EmptyPreviewIconGapDp = 6
     const val CompactIconButtonSizeDp = 36
     const val TransportIconSizeDp = 18
+    const val TransportSeekButtonSizeDp = 48
+    const val TransportSeekIconSizeDp = 24
+    const val PlaybackButtonIconSizeDp = 24
     const val PlaybackSpeedButtonHorizontalPaddingDp = 5
     const val ScrubberSectionGapDp = 2
     const val TimelineActionButtonHorizontalPaddingDp = 8
