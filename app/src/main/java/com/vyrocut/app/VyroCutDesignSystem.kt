@@ -396,6 +396,9 @@ internal object VyroCutTimelineVisualMetrics {
     const val TrackHeaderTrailingDetailMinWidthDp = 320
     const val TimedEffectTrackHeightDp = 48
     const val TimedEffectTrimHandleHitWidthDp = 48
+    const val TimedEffectTrimHandleWidthDp = 4
+    const val TimedEffectTrimHandleHeightFraction = 0.72f
+    const val TimedEffectTrimHandleCornerRadiusDp = 2
 
     const val RulerLabelFontSp = VyroCutTypography.CaptionSp
     const val ClipLabelFontSp = VyroCutTypography.LabelSp

@@ -551,6 +551,16 @@ class VyroCutDesignSystemTest {
 
 
     @Test
+    fun timedEffectTrimHandleGeometryUsesCentralDesignTokens() {
+        assertEquals(4, VyroCutTimelineVisualMetrics.TimedEffectTrimHandleWidthDp)
+        assertEquals(0.72f, VyroCutTimelineVisualMetrics.TimedEffectTrimHandleHeightFraction, 0f)
+        assertEquals(2, VyroCutTimelineVisualMetrics.TimedEffectTrimHandleCornerRadiusDp)
+        assertTrue(VyroCutTimelineVisualMetrics.TimedEffectTrimHandleWidthDp > 0)
+        assertTrue(VyroCutTimelineVisualMetrics.TimedEffectTrimHandleHeightFraction in 0f..1f)
+        assertTrue(VyroCutTimelineVisualMetrics.TimedEffectTrimHandleCornerRadiusDp >= 0)
+    }
+
+    @Test
     fun responsiveEditorLayoutTokensPreserveCurrentWindowAndAccessibilityBreakpoints() {
         assertEquals(
             listOf(112, 88, 100, 112, 144, 168),

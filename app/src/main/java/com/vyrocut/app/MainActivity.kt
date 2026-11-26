@@ -6046,11 +6046,11 @@ private fun TimelineEditorStrip(
                                                 contentAlignment = Alignment.Center,
                                             ) {
                                                 Box(
-                                                    Modifier.width(4.dp)
-                                                        .fillMaxHeight(0.72f)
+                                                    Modifier.width(TIMED_EFFECT_TRIM_HANDLE_WIDTH_DP.dp)
+                                                        .fillMaxHeight(TIMED_EFFECT_TRIM_HANDLE_HEIGHT_FRACTION)
                                                         .background(
                                                             VyroCutPalette.AccentSecondary,
-                                                            RoundedCornerShape(2.dp),
+                                                            RoundedCornerShape(TIMED_EFFECT_TRIM_HANDLE_CORNER_RADIUS_DP.dp),
                                                         ),
                                                 )
                                             }
@@ -6069,11 +6069,11 @@ private fun TimelineEditorStrip(
                                                 contentAlignment = Alignment.Center,
                                             ) {
                                                 Box(
-                                                    Modifier.width(4.dp)
-                                                        .fillMaxHeight(0.72f)
+                                                    Modifier.width(TIMED_EFFECT_TRIM_HANDLE_WIDTH_DP.dp)
+                                                        .fillMaxHeight(TIMED_EFFECT_TRIM_HANDLE_HEIGHT_FRACTION)
                                                         .background(
                                                             VyroCutPalette.AccentSecondary,
-                                                            RoundedCornerShape(2.dp),
+                                                            RoundedCornerShape(TIMED_EFFECT_TRIM_HANDLE_CORNER_RADIUS_DP.dp),
                                                         ),
                                                 )
                                             }
