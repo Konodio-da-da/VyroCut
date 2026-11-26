@@ -16,6 +16,8 @@ internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = 600
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 440
 // Reserve extra width when a missing-source Relink/Reading action is present.
 internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = 64
+internal const val EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES = 1
+internal const val EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES = 2
 internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = 1.15f
 internal const val EDITOR_PREVIEW_REDUCTION_PER_FONT_SCALE = 0.30f
 internal const val MAX_EDITOR_FONT_SCALE_PREVIEW_REDUCTION = 0.12f
@@ -39,6 +41,7 @@ internal data class EditorLayoutMetrics(
     val sectionSpacingDp: Int,
     val contentPaddingVerticalDp: Int,
     val stackPreviewMetadataAboveTransportControls: Boolean,
+    val previewMetadataSubtitleMaxLines: Int,
 )
 
 /**
@@ -100,13 +103,19 @@ internal fun editorLayoutMetrics(
     val inlineMetadataMinimumWidth = EDITOR_COMPACT_WINDOW_WIDTH_DP +
         if (hasPreviewRelinkAction) EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP else 0
 
+    val stackPreviewMetadata = safeWidth < inlineMetadataMinimumWidth ||
+        safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD
+
     return EditorLayoutMetrics(
         previewHeightDp = previewHeight,
         sectionSpacingDp = sectionSpacing,
         contentPaddingVerticalDp = contentPadding,
-        stackPreviewMetadataAboveTransportControls =
-            safeWidth < inlineMetadataMinimumWidth ||
-                safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD,
+        stackPreviewMetadataAboveTransportControls = stackPreviewMetadata,
+        previewMetadataSubtitleMaxLines = if (stackPreviewMetadata) {
+            EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES
+        } else {
+            EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES
+        },
     )
 }
 

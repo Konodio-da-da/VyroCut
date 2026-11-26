@@ -2135,6 +2135,7 @@ private fun VyroCutApp() {
                         title = selectedClip?.name ?: "No media selected",
                         subtitle = previewSubtitle,
                         subtitleColor = if (previewSourceMissing) VyroCutPalette.Danger else StudioMuted,
+                        subtitleMaxLines = editorMetrics.previewMetadataSubtitleMaxLines,
                         relinkLabel = previewRelinkLabel,
                         relinkEnabled = !isReadingMedia,
                         onRelink = previewRelinkAction,
@@ -2147,6 +2148,7 @@ private fun VyroCutApp() {
                             title = selectedClip?.name ?: "No media selected",
                             subtitle = previewSubtitle,
                             subtitleColor = if (previewSourceMissing) VyroCutPalette.Danger else StudioMuted,
+                            subtitleMaxLines = editorMetrics.previewMetadataSubtitleMaxLines,
                             relinkLabel = previewRelinkLabel,
                             relinkEnabled = !isReadingMedia,
                             onRelink = previewRelinkAction,
@@ -5707,6 +5709,7 @@ private fun EditorPreviewMetadata(
     title: String,
     subtitle: String,
     subtitleColor: Color,
+    subtitleMaxLines: Int,
     modifier: Modifier = Modifier,
     relinkLabel: String? = null,
     relinkEnabled: Boolean = true,
@@ -5728,6 +5731,8 @@ private fun EditorPreviewMetadata(
                 subtitle,
                 color = subtitleColor,
                 fontSize = VyroCutTypography.LabelSp.sp,
+                maxLines = subtitleMaxLines,
+                overflow = TextOverflow.Ellipsis,
             )
         }
         if (relinkLabel != null && onRelink != null) {

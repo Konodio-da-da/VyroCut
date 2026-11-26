@@ -93,6 +93,37 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun previewSubtitleLineBudgetMatchesStackedMetadataLayout() {
+        val inline = editorLayoutMetrics(640, 600)
+        assertEquals(false, inline.stackPreviewMetadataAboveTransportControls)
+        assertEquals(EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES, inline.previewMetadataSubtitleMaxLines)
+
+        val compact = editorLayoutMetrics(640, EDITOR_COMPACT_WINDOW_WIDTH_DP - 1)
+        assertEquals(true, compact.stackPreviewMetadataAboveTransportControls)
+        assertEquals(EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES, compact.previewMetadataSubtitleMaxLines)
+
+        val relinkCompact = editorLayoutMetrics(
+            640,
+            EDITOR_COMPACT_WINDOW_WIDTH_DP + EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP - 1,
+            hasPreviewRelinkAction = true,
+        )
+        assertEquals(true, relinkCompact.stackPreviewMetadataAboveTransportControls)
+        assertEquals(EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES, relinkCompact.previewMetadataSubtitleMaxLines)
+
+        val relinkInline = editorLayoutMetrics(
+            640,
+            EDITOR_COMPACT_WINDOW_WIDTH_DP + EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP,
+            hasPreviewRelinkAction = true,
+        )
+        assertEquals(false, relinkInline.stackPreviewMetadataAboveTransportControls)
+        assertEquals(EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES, relinkInline.previewMetadataSubtitleMaxLines)
+
+        val accessible = editorLayoutMetrics(640, 600, fontScale = 1.3f)
+        assertEquals(true, accessible.stackPreviewMetadataAboveTransportControls)
+        assertEquals(EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES, accessible.previewMetadataSubtitleMaxLines)
+    }
+
+    @Test
     fun invalidWindowWidthUsesSafeCompactFallback() {
         val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
 
