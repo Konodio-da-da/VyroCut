@@ -144,6 +144,7 @@ class ClipVisualAdjustmentsTest {
         assertEquals(ClipCreativeEffectPreset.GRAYSCALE, clipCreativeEffectPresetFromId("grayscale"))
         assertEquals(ClipCreativeEffectPreset.SEPIA, clipCreativeEffectPresetFromId("sepia"))
         assertEquals(ClipCreativeEffectPreset.FILM_FADE, clipCreativeEffectPresetFromId("film-fade"))
+        assertEquals(ClipCreativeEffectPreset.VIGNETTE, clipCreativeEffectPresetFromId("vignette"))
         assertNull(clipCreativeEffectPresetFromId("future-effect"))
         assertNull(decodeClipVisualAdjustments(0, 0, 0, creativeEffectPresetId = "future-effect"))
     }
@@ -211,6 +212,35 @@ class ClipVisualAdjustmentsTest {
     }
 
     @Test
+    fun vignetteOverlayBitmapSizePreservesAspectRatioAndCapsTheLongestEdge() {
+        assertEquals(
+            VignetteOverlayBitmapSize(1_920, 1_080),
+            calculateVignetteOverlayBitmapSize(3_840, 2_160),
+        )
+        assertEquals(
+            VignetteOverlayBitmapSize(1_080, 1_920),
+            calculateVignetteOverlayBitmapSize(1_080, 1_920),
+        )
+        assertEquals(
+            VignetteOverlayBitmapSize(640, 640),
+            calculateVignetteOverlayBitmapSize(640, 640),
+        )
+        assertNull(calculateVignetteOverlayBitmapSize(0, 1_080))
+        assertNull(calculateVignetteOverlayBitmapSize(1_920, -1))
+    }
+
+    @Test
+    fun vignetteOverlayEdgeAlphaScalesWithIntensityAndRejectsInvalidValues() {
+        assertEquals(0, vignetteOverlayEdgeAlpha(0f))
+        assertEquals(MAX_VIGNETTE_EDGE_ALPHA / 2, vignetteOverlayEdgeAlpha(0.5f))
+        assertEquals(MAX_VIGNETTE_EDGE_ALPHA, vignetteOverlayEdgeAlpha(1f))
+        assertEquals(false, runCatching { vignetteOverlayEdgeAlpha(-0.01f) }.isSuccess)
+        assertEquals(false, runCatching { vignetteOverlayEdgeAlpha(1.01f) }.isSuccess)
+        assertEquals(false, runCatching { vignetteOverlayEdgeAlpha(Float.NaN) }.isSuccess)
+        assertEquals(false, runCatching { vignetteOverlayEdgeAlpha(Float.POSITIVE_INFINITY) }.isSuccess)
+    }
+
+    @Test
     fun creativeLookIsComposedAfterExistingPerClipAdjustments() {
         assertEquals(
             listOf(
@@ -254,6 +284,7 @@ class ClipVisualAdjustmentsTest {
             ClipCreativeEffectPreset.GRAYSCALE to ClipVisualEffectType.GRAYSCALE,
             ClipCreativeEffectPreset.SEPIA to ClipVisualEffectType.SEPIA,
             ClipCreativeEffectPreset.FILM_FADE to ClipVisualEffectType.FILM_FADE,
+            ClipCreativeEffectPreset.VIGNETTE to ClipVisualEffectType.VIGNETTE,
         )
         cases.forEach { (preset, type) ->
             assertEquals(
@@ -288,7 +319,7 @@ class ClipVisualAdjustmentsTest {
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.CINEMATIC),
         )
         assertEquals(
-            listOf(ClipCreativeEffectPreset.SOFT_FOCUS),
+            listOf(ClipCreativeEffectPreset.SOFT_FOCUS, ClipCreativeEffectPreset.VIGNETTE),
             clipCreativeEffectPresetsForCategory(ClipCreativeEffectCategory.LENS),
         )
         assertEquals(
@@ -315,6 +346,7 @@ class ClipVisualAdjustmentsTest {
                 ClipCreativeEffectPreset.COOL,
                 ClipCreativeEffectPreset.CINEMATIC,
                 ClipCreativeEffectPreset.SOFT_FOCUS,
+                ClipCreativeEffectPreset.VIGNETTE,
                 ClipCreativeEffectPreset.ORIGINAL,
                 ClipCreativeEffectPreset.NEGATIVE,
                 ClipCreativeEffectPreset.GRAYSCALE,
