@@ -2072,6 +2072,28 @@ private fun VyroCutApp() {
                         fontScale = LocalDensity.current.fontScale,
                         hasPreviewRelinkAction = selectedClip?.uri?.let { it in missingMediaUris } == true,
                     )
+                    val compactClipActionLabels = editorMetrics.useCompactClipActionLabels
+                    val clipActionContentPadding = PaddingValues(
+                        horizontal = (
+                            if (compactClipActionLabels) {
+                                VyroCutClipActionMetrics.CompactButtonHorizontalPaddingDp
+                            } else {
+                                VyroCutClipActionMetrics.StandardButtonHorizontalPaddingDp
+                            }
+                        ).dp,
+                        vertical = VyroCutClipActionMetrics.ButtonVerticalPaddingDp.dp,
+                    )
+                    val clipActionIconSize = (
+                        if (compactClipActionLabels) {
+                            VyroCutClipActionMetrics.CompactIconSizeDp
+                        } else {
+                            VyroCutClipActionMetrics.StandardIconSizeDp
+                        }
+                    ).dp
+                    val clipActionLabelFontSize = (
+                        if (compactClipActionLabels) VyroCutTypography.SmallBodySp
+                        else VyroCutTypography.BodySp
+                    ).sp
             Column(
                 Modifier.fillMaxSize()
                     .verticalScroll(rememberScrollState())
@@ -2399,9 +2421,17 @@ private fun VyroCutApp() {
                         onClick = { mediaPicker.launch(arrayOf("video/*")) },
                         enabled = !isReadingMedia,
                         modifier = Modifier.weight(1f),
+                        contentPadding = clipActionContentPadding,
                         shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
                     ) {
-                        Icon(Icons.Default.Add, null); Text("Import", maxLines = 1)
+                        Icon(Icons.Default.Add, null, modifier = Modifier.size(clipActionIconSize))
+                        Text(
+                            if (compactClipActionLabels) "Add" else "Import",
+                            fontSize = clipActionLabelFontSize,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     OutlinedButton(onClick = {
                         val clip = selectedClip ?: return@OutlinedButton
@@ -2456,8 +2486,15 @@ private fun VyroCutApp() {
                                 clip.sourceEndMs,
                                 player.currentPosition,
                             ) != null
-                    } == true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)) {
-                        Icon(Icons.Default.ContentCut, null); Text("Split at playhead", maxLines = 1)
+                    } == true, modifier = Modifier.weight(1f), contentPadding = clipActionContentPadding, shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)) {
+                        Icon(Icons.Default.ContentCut, null, modifier = Modifier.size(clipActionIconSize))
+                        Text(
+                            if (compactClipActionLabels) "Split" else "Split at playhead",
+                            fontSize = clipActionLabelFontSize,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     OutlinedButton(
                         onClick = { selectedClip?.let { openTrimDialog(it) } },
@@ -2466,8 +2503,17 @@ private fun VyroCutApp() {
                             selectedClip.uri !in missingMediaUris &&
                             !isReadingMedia,
                         modifier = Modifier.weight(1f),
+                        contentPadding = clipActionContentPadding,
                         shape = RoundedCornerShape(VyroCutClipActionMetrics.ButtonCornerDp.dp)
-                    ) { Text("Trim", maxLines = 1) }
+                    ) {
+                        Text(
+                            "Trim",
+                            fontSize = clipActionLabelFontSize,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                     IconButton(onClick = { if (selectedClip != null) changed(clips.toMutableList().apply { removeAt(selectedIndex) }) }, enabled = selectedClip != null) {
                         Icon(Icons.Default.Delete, "Delete selected clip", tint = VyroCutPalette.Danger)
                     }
