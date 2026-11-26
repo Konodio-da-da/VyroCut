@@ -4278,11 +4278,17 @@ private fun VyroCutApp() {
                             exportProgressPercent = null
                             activeTransformer?.cancel()
                             activeTransformer = null
-                            activeExportFile?.delete()
+                            val cancelledOutputFile = activeExportFile
+                            val temporaryCleanupStatus = when {
+                                cancelledOutputFile == null -> ExportTemporaryCleanupStatus.NOT_CREATED
+                                !cancelledOutputFile.exists() -> ExportTemporaryCleanupStatus.DELETED
+                                cancelledOutputFile.delete() -> ExportTemporaryCleanupStatus.DELETED
+                                else -> ExportTemporaryCleanupStatus.DELETION_FAILED
+                            }
                             activeExportFile = null
                             isExporting = false
                             completedExportSummary = null
-                            exportMessage = "Export cancelled"
+                            exportMessage = exportCancellationMessage(temporaryCleanupStatus)
                         }) {
                             Text("Cancel")
                         }

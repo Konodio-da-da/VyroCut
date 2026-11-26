@@ -87,7 +87,7 @@ internal fun exportProgressPresentation(
         percent = null,
         isIndeterminate = false,
         progressLabel = "Cancelled",
-        detailText = "The active export was cancelled; its temporary file was discarded.",
+        detailText = "The export was cancelled. Temporary-file cleanup status is shown below.",
     )
 }
 
@@ -106,6 +106,29 @@ internal fun exportActionButtonLabel(stage: ExportUiStage, isExporting: Boolean)
     isExporting -> "Exporting…"
     stage == ExportUiStage.FAILED -> "Retry export"
     else -> "Export MP4"
+}
+
+/** The result of removing the app-private temporary output when an export is cancelled. */
+internal enum class ExportTemporaryCleanupStatus {
+    NOT_CREATED,
+    DELETED,
+    DELETION_FAILED,
+}
+
+/**
+ * Reports cancellation without claiming cleanup succeeded when File.delete() failed.
+ * A failed immediate delete remains in app-private storage and is eligible for the
+ * existing stale-export cleanup after its retention window.
+ */
+internal fun exportCancellationMessage(status: ExportTemporaryCleanupStatus): String = when (status) {
+    ExportTemporaryCleanupStatus.NOT_CREATED ->
+        "Export cancelled before a temporary file was created."
+    ExportTemporaryCleanupStatus.DELETED ->
+        "Export cancelled. Temporary file removed."
+    ExportTemporaryCleanupStatus.DELETION_FAILED -> {
+        val retentionHours = DEFAULT_STALE_EXPORT_RETENTION_MS / (60L * 60L * 1_000L)
+        "Export cancelled. The temporary file remains in app-private storage and may be removed by automatic cleanup after $retentionHours hours."
+    }
 }
 
 /**

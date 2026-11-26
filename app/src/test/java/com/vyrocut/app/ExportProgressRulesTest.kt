@@ -108,7 +108,7 @@ class ExportProgressRulesTest {
         val expected = mapOf(
             ExportUiStage.IDLE to ("Ready" to "Start an export to render a video on this device."),
             ExportUiStage.FAILED to ("Failed" to "The export stopped before a verified MP4 was saved. Review the export message below before retrying."),
-            ExportUiStage.CANCELLED to ("Cancelled" to "The active export was cancelled; its temporary file was discarded."),
+            ExportUiStage.CANCELLED to ("Cancelled" to "The export was cancelled. Temporary-file cleanup status is shown below."),
         )
         expected.forEach { (stage, copy) ->
             assertEquals(
@@ -193,6 +193,23 @@ class ExportProgressRulesTest {
             exportShareFailureMessage(ExportShareFailureReason.URI_ACCESS_DENIED),
         )
     }
+    @Test
+    fun cancellationMessageDistinguishesMissingDeletedAndUndeletableTemporaryFiles() {
+        assertEquals(
+            "Export cancelled before a temporary file was created.",
+            exportCancellationMessage(ExportTemporaryCleanupStatus.NOT_CREATED),
+        )
+        assertEquals(
+            "Export cancelled. Temporary file removed.",
+            exportCancellationMessage(ExportTemporaryCleanupStatus.DELETED),
+        )
+        val retentionHours = DEFAULT_STALE_EXPORT_RETENTION_MS / (60L * 60L * 1_000L)
+        assertEquals(
+            "Export cancelled. The temporary file remains in app-private storage and may be removed by automatic cleanup after $retentionHours hours.",
+            exportCancellationMessage(ExportTemporaryCleanupStatus.DELETION_FAILED),
+        )
+    }
+
     @Test
     fun elapsedTimeFormatsMinutesHoursAndClampsNegativeValues() {
         assertEquals("00:00", formatExportElapsedTime(-1L))
