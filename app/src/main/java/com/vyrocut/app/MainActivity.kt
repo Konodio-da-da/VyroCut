@@ -180,6 +180,7 @@ internal data class EditClip(
     val textOverlay: ClipTextOverlay? = null,
     val additionalTextOverlays: List<ClipTextOverlay> = emptyList(),
     val stickerOverlays: List<ClipStickerOverlay> = emptyList(),
+    val timedEffectSegments: List<ClipTimedEffectSegment> = emptyList(),
 ) {
     init {
         require(isValidClipAudioVolume(audioVolume)) { "Clip volume must be between 0 and 1" }
@@ -190,6 +191,12 @@ internal data class EditClip(
         require(stickerOverlays.size <= MAX_CLIP_STICKER_OVERLAYS) {
             "A clip cannot contain more than $MAX_CLIP_STICKER_OVERLAYS sticker overlays"
         }
+        require(
+            validateClipTimedEffectSegments(
+                timedEffectSegments,
+                (sourceEndMs - sourceStartMs).coerceAtLeast(0L),
+            ),
+        ) { "A clip has invalid timed effect segments" }
     }
     val allTextOverlays: List<ClipTextOverlay>
         get() = listOfNotNull(textOverlay) + additionalTextOverlays
@@ -2456,12 +2463,19 @@ private fun VyroCutApp() {
                             splitOffsetMs,
                             clip.durationMs,
                         )
+                        val (leftTimedEffectSegments, rightTimedEffectSegments) =
+                            splitClipTimedEffectSegmentsAt(
+                                clip.timedEffectSegments,
+                                splitOffsetMs,
+                                clip.durationMs,
+                            )
                         val left = clip.copy(
                             sourceEndMs = halves.first.endMs,
                             fadeOutMs = 0L,
                             textOverlay = leftTextOverlays.firstOrNull(),
                             additionalTextOverlays = leftTextOverlays.drop(1),
                             stickerOverlays = leftStickerOverlays,
+                            timedEffectSegments = leftTimedEffectSegments,
                         )
                         val right = clip.copy(
                             id = java.util.UUID.randomUUID().toString(),
@@ -2471,6 +2485,7 @@ private fun VyroCutApp() {
                             textOverlay = rightTextOverlays.firstOrNull(),
                             additionalTextOverlays = rightTextOverlays.drop(1),
                             stickerOverlays = rightStickerOverlays,
+                            timedEffectSegments = rightTimedEffectSegments,
                         )
                         val updated = clips.toMutableList().apply {
                             removeAt(splitIndex)
@@ -4363,6 +4378,13 @@ private fun VyroCutApp() {
                                     newSourceStartMs = range.startMs,
                                     newSourceEndMs = range.endMs,
                                 )
+                                val rebasedTimedEffectSegments = rebaseClipTimedEffectSegmentsForTrim(
+                                    segments = trimTargetClip.timedEffectSegments,
+                                    oldSourceStartMs = trimTargetClip.sourceStartMs,
+                                    oldSourceEndMs = trimTargetClip.sourceEndMs,
+                                    newSourceStartMs = range.startMs,
+                                    newSourceEndMs = range.endMs,
+                                )
                                 changed(clips.toMutableList().apply {
                                     this[index] = trimTargetClip.copy(
                                         sourceStartMs = range.startMs,
@@ -4370,6 +4392,7 @@ private fun VyroCutApp() {
                                         textOverlay = rebasedTextOverlays.firstOrNull(),
                                         additionalTextOverlays = rebasedTextOverlays.drop(1),
                                         stickerOverlays = rebasedStickerOverlays,
+                                        timedEffectSegments = rebasedTimedEffectSegments,
                                     )
                                 })
                                 selectedIndex = index
@@ -4562,6 +4585,17 @@ internal fun encodeProject(clips: List<EditClip>): String {
                     put("position", overlay.position.name)
                     put("startMs", overlay.startMs)
                     overlay.endMs?.let { put("endMs", it) }
+                })
+            }
+        })
+        put("timedEffectSegments", JSONArray().apply {
+            clip.timedEffectSegments.forEach { segment ->
+                put(JSONObject().apply {
+                    put("id", segment.id)
+                    put("presetId", segment.preset.id)
+                    put("intensity", segment.intensity)
+                    put("startMs", segment.startMs)
+                    segment.endMs?.let { put("endMs", it) }
                 })
             }
         })
@@ -4850,6 +4884,41 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
             } else {
                 emptyList()
             }
+            val timedEffectSegments = if (item.has("timedEffectSegments")) {
+                val segmentsJson = item.optJSONArray("timedEffectSegments")
+                    ?: error("A clip has an invalid timed effect segment list")
+                require(segmentsJson.length() <= MAX_CLIP_TIMED_EFFECT_SEGMENTS) {
+                    "A clip contains too many timed effect segments"
+                }
+                buildList {
+                    for (segmentIndex in 0 until segmentsJson.length()) {
+                        val segmentJson = segmentsJson.optJSONObject(segmentIndex)
+                            ?: error("A clip has an invalid timed effect segment")
+                        val segment = decodeClipTimedEffectSegment(
+                            id = segmentJson.optString("id").takeIf { segmentJson.has("id") },
+                            presetId = segmentJson.optString("presetId").takeIf { segmentJson.has("presetId") },
+                            intensity = if (segmentJson.has("intensity")) {
+                                segmentJson.optInt("intensity", Int.MIN_VALUE)
+                            } else {
+                                Int.MIN_VALUE
+                            },
+                            startMs = if (segmentJson.has("startMs")) {
+                                segmentJson.optLong("startMs", Long.MIN_VALUE)
+                            } else {
+                                Long.MIN_VALUE
+                            },
+                            endMs = if (segmentJson.has("endMs") && !segmentJson.isNull("endMs")) {
+                                segmentJson.optLong("endMs", Long.MIN_VALUE)
+                            } else {
+                                null
+                            },
+                        ) ?: error("A clip has an invalid timed effect segment")
+                        add(segment)
+                    }
+                }
+            } else {
+                emptyList()
+            }
             add(
                 EditClip(
                     id = id,
@@ -4864,6 +4933,7 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                     textOverlay = textOverlays.firstOrNull(),
                     additionalTextOverlays = textOverlays.drop(1),
                     stickerOverlays = stickerOverlays,
+                    timedEffectSegments = timedEffectSegments,
                 ),
             )
         }
