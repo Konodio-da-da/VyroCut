@@ -143,6 +143,11 @@ internal object VyroCutEditorChromeMetrics {
 internal object VyroCutClipActionMetrics {
     const val ButtonGapDp = 6
     const val ButtonCornerDp = VyroCutShapes.CompactPanelCornerDp
+    const val CompactButtonHorizontalPaddingDp = 6
+    const val StandardButtonHorizontalPaddingDp = 24
+    const val ButtonVerticalPaddingDp = 10
+    const val CompactIconSizeDp = 16
+    const val StandardIconSizeDp = 24
 }
 
 /**
