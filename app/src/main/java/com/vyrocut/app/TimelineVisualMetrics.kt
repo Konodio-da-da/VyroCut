@@ -28,6 +28,7 @@ internal const val TIMELINE_RULER_TICK_CORNER_RADIUS_DP = 1
 internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = 5
 internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = 4
 internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = 8
+internal const val TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP = 320
 internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTypography.CaptionSp
 internal const val TIMELINE_CLIP_LABEL_FONT_SP = VyroCutTypography.LabelSp
 internal const val TIMELINE_CLIP_META_FONT_SP = VyroCutTypography.CaptionSp
@@ -189,6 +190,28 @@ internal fun timelineRulerLabelPlacement(
         else ->
             TimelineRulerLabelPlacement(centeredLeft, TimelineRulerLabelAlignment.CENTER)
     }
+}
+
+/**
+ * The optional trailing track hint is hidden on short timelines so it cannot
+ * consume the width needed by the track's descriptive label. The budget grows
+ * with system font scale because Compose scales the hint text in sp.
+ */
+internal fun timelineTrackHeaderShowsTrailingDetail(
+    availableWidthDp: Float,
+    fontScale: Float,
+): Boolean {
+    val safeWidth = availableWidthDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: 0f
+    val safeFontScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+    val requiredWidth = ceil(
+        TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP * safeFontScale,
+    )
+    return safeWidth >= requiredWidth
 }
 
 internal data class TimelineReadabilityMetrics(

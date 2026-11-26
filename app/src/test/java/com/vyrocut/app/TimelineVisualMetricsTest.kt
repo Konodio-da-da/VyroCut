@@ -238,4 +238,15 @@ class TimelineVisualMetricsTest {
         assertEquals(1.3f, VyroCutTypography.TimelineSectionLetterSpacingSp, 0f)
     }
 
+    @Test
+    fun trailingTrackHintYieldsSpaceToTrackDetailOnCompactTimelines() {
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(319.9f, 1f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 1f))
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(639.9f, 2f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(640f, 2f))
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(Float.NaN, 1f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, Float.NaN))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 0.8f))
+    }
+
 }
