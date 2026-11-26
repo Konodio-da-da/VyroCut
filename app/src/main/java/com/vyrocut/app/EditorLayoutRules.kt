@@ -2,33 +2,32 @@ package com.vyrocut.app
 
 import kotlin.math.roundToInt
 
-internal const val MIN_EDITOR_PREVIEW_HEIGHT_DP = 112
-internal const val MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP = 88
-internal const val MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP = 100
-internal const val MAX_COMPACT_EDITOR_PREVIEW_HEIGHT_DP = 112
-internal const val MAX_TIGHT_EDITOR_PREVIEW_HEIGHT_DP = 144
-internal const val MAX_EDITOR_PREVIEW_HEIGHT_DP = 168
+// Compatibility aliases keep the pure layout API stable while the shared
+// design system owns the source values and responsive breakpoints.
+internal const val MIN_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MinPreviewHeightDp
+internal const val MIN_COMPACT_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MinCompactPreviewHeightDp
+internal const val MIN_TIGHT_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MinTightPreviewHeightDp
+internal const val MAX_COMPACT_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MaxCompactPreviewHeightDp
+internal const val MAX_TIGHT_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MaxTightPreviewHeightDp
+internal const val MAX_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.MaxPreviewHeightDp
 
-internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = 520
-internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = 600
-// Keep preview metadata beside transport only when the row has room for the
-// transport controls and a readable title/subtitle column.
-internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 440
-// Reserve extra width when a missing-source Relink/Reading action is present.
-internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = 64
-internal const val EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP = 680
-internal const val EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES = 1
-internal const val EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES = 2
-internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = 1.15f
-internal const val EDITOR_PREVIEW_REDUCTION_PER_FONT_SCALE = 0.30f
-internal const val MAX_EDITOR_FONT_SCALE_PREVIEW_REDUCTION = 0.12f
-internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP = 560
-internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP = EDITOR_COMPACT_WINDOW_WIDTH_DP - 1
+internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.TightWindowHeightDp
+internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.CompactWindowHeightDp
+internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.CompactWindowWidthDp
+internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = VyroCutEditorLayoutMetrics.RelinkActionExtraWidthDp
+internal const val EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP = VyroCutEditorLayoutMetrics.ClipActionStandardLabelMinWidthDp
+internal const val EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES = VyroCutEditorLayoutMetrics.PreviewInlineSubtitleMaxLines
+internal const val EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES = VyroCutEditorLayoutMetrics.PreviewStackedSubtitleMaxLines
+internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = VyroCutEditorLayoutMetrics.LargeFontScaleThreshold
+internal const val EDITOR_PREVIEW_REDUCTION_PER_FONT_SCALE = VyroCutEditorLayoutMetrics.PreviewReductionPerFontScale
+internal const val MAX_EDITOR_FONT_SCALE_PREVIEW_REDUCTION = VyroCutEditorLayoutMetrics.MaxFontScalePreviewReduction
+internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.LayoutFallbackWindowHeightDp
+internal const val EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.LayoutFallbackWindowWidthDp
 
-internal const val TIGHT_EDITOR_SECTION_SPACING_DP = 3
-internal const val TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP = 2
-internal const val COMPACT_EDITOR_SECTION_SPACING_DP = 4
-internal const val DEFAULT_EDITOR_SECTION_SPACING_DP = 6
+internal const val TIGHT_EDITOR_SECTION_SPACING_DP = VyroCutEditorLayoutMetrics.TightSectionSpacingDp
+internal const val TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP = VyroCutEditorLayoutMetrics.TightContentPaddingVerticalDp
+internal const val COMPACT_EDITOR_SECTION_SPACING_DP = VyroCutEditorLayoutMetrics.CompactSectionSpacingDp
+internal const val DEFAULT_EDITOR_SECTION_SPACING_DP = VyroCutEditorLayoutMetrics.DefaultSectionSpacingDp
 
 /**
  * Small, pure layout values shared by the editor screen.

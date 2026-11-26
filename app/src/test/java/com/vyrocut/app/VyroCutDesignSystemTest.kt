@@ -547,4 +547,46 @@ class VyroCutDesignSystemTest {
         )
     }
 
+
+    @Test
+    fun responsiveEditorLayoutTokensPreserveCurrentWindowAndAccessibilityBreakpoints() {
+        assertEquals(
+            listOf(112, 88, 100, 112, 144, 168),
+            listOf(
+                VyroCutEditorLayoutMetrics.MinPreviewHeightDp,
+                VyroCutEditorLayoutMetrics.MinCompactPreviewHeightDp,
+                VyroCutEditorLayoutMetrics.MinTightPreviewHeightDp,
+                VyroCutEditorLayoutMetrics.MaxCompactPreviewHeightDp,
+                VyroCutEditorLayoutMetrics.MaxTightPreviewHeightDp,
+                VyroCutEditorLayoutMetrics.MaxPreviewHeightDp,
+            ),
+        )
+        assertEquals(
+            listOf(520, 600, 440, 64, 680, 560, 439),
+            listOf(
+                VyroCutEditorLayoutMetrics.TightWindowHeightDp,
+                VyroCutEditorLayoutMetrics.CompactWindowHeightDp,
+                VyroCutEditorLayoutMetrics.CompactWindowWidthDp,
+                VyroCutEditorLayoutMetrics.RelinkActionExtraWidthDp,
+                VyroCutEditorLayoutMetrics.ClipActionStandardLabelMinWidthDp,
+                VyroCutEditorLayoutMetrics.LayoutFallbackWindowHeightDp,
+                VyroCutEditorLayoutMetrics.LayoutFallbackWindowWidthDp,
+            ),
+        )
+        assertEquals(1, VyroCutEditorLayoutMetrics.PreviewInlineSubtitleMaxLines)
+        assertEquals(2, VyroCutEditorLayoutMetrics.PreviewStackedSubtitleMaxLines)
+        assertEquals(1.15f, VyroCutEditorLayoutMetrics.LargeFontScaleThreshold, 0f)
+        assertEquals(0.30f, VyroCutEditorLayoutMetrics.PreviewReductionPerFontScale, 0f)
+        assertEquals(0.12f, VyroCutEditorLayoutMetrics.MaxFontScalePreviewReduction, 0f)
+        assertEquals(
+            listOf(3, 2, 4, 6),
+            listOf(
+                VyroCutEditorLayoutMetrics.TightSectionSpacingDp,
+                VyroCutEditorLayoutMetrics.TightContentPaddingVerticalDp,
+                VyroCutEditorLayoutMetrics.CompactSectionSpacingDp,
+                VyroCutEditorLayoutMetrics.DefaultSectionSpacingDp,
+            ),
+        )
+    }
+
 }

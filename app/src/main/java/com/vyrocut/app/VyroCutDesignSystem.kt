@@ -146,6 +146,38 @@ internal object VyroCutEditorChromeMetrics {
 }
 
 /**
+ * Responsive editor layout thresholds and sizing rules. Keep these values in
+ * the shared design system so compact-window and accessibility behaviour can
+ * be tuned without scattering breakpoints across screen logic.
+ */
+internal object VyroCutEditorLayoutMetrics {
+    const val MinPreviewHeightDp = 112
+    const val MinCompactPreviewHeightDp = 88
+    const val MinTightPreviewHeightDp = 100
+    const val MaxCompactPreviewHeightDp = 112
+    const val MaxTightPreviewHeightDp = 144
+    const val MaxPreviewHeightDp = 168
+
+    const val TightWindowHeightDp = 520
+    const val CompactWindowHeightDp = 600
+    const val CompactWindowWidthDp = 440
+    const val RelinkActionExtraWidthDp = 64
+    const val ClipActionStandardLabelMinWidthDp = 680
+    const val PreviewInlineSubtitleMaxLines = 1
+    const val PreviewStackedSubtitleMaxLines = 2
+    const val LargeFontScaleThreshold = 1.15f
+    const val PreviewReductionPerFontScale = 0.30f
+    const val MaxFontScalePreviewReduction = 0.12f
+    const val LayoutFallbackWindowHeightDp = 560
+    const val LayoutFallbackWindowWidthDp = CompactWindowWidthDp - 1
+
+    const val TightSectionSpacingDp = 3
+    const val TightContentPaddingVerticalDp = 2
+    const val CompactSectionSpacingDp = 4
+    const val DefaultSectionSpacingDp = 6
+}
+
+/**
  * Geometry for the video import/split/trim action row.
  * Values preserve the current button spacing and corner shape.
  */
