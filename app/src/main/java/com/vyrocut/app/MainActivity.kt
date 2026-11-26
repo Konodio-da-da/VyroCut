@@ -266,6 +266,7 @@ private fun VyroCutApp() {
     var selectedAdjustment by remember { mutableStateOf("Brightness") }
     var selectedStickerPosition by remember { mutableStateOf(ClipStickerPosition.BOTTOM_RIGHT) }
     var selectedStickerLayerIndex by remember(activeProjectId) { mutableIntStateOf(-1) }
+    var selectedTimedEffectSelection by remember(activeProjectId) { mutableStateOf<Pair<String, String>?>(null) }
         val initialCanvasSettings = remember {
         decodeProjectCanvasSettings(
             preferences.getString("project_" + activeProjectId + "_canvas_settings", null)
@@ -456,6 +457,14 @@ private fun VyroCutApp() {
     var missingMediaUris by remember { mutableStateOf<Set<String>>(emptySet()) }
     var isReadingMedia by remember { mutableStateOf(false) }
     val selectedClip = clips.getOrNull(selectedIndex)
+    val selectedTimedEffectSegment = selectedClip?.let { clip ->
+        selectedTimedEffectSelection?.takeIf { it.first == clip.id }?.let { selection ->
+            clip.timedEffectSegments.firstOrNull { it.id == selection.second }
+        }
+    }
+    var timedVignetteIntensityDraft by remember(selectedClip?.id) {
+        mutableFloatStateOf(70f)
+    }
     val selectedAudioTrack = audioTrackClips.firstOrNull { it.id == selectedAudioTrackId }
     var audioTrackVolumeDraft by remember(selectedAudioTrackId, selectedAudioTrack?.volume) {
         mutableFloatStateOf(selectedAudioTrack?.volume ?: 1f)
@@ -1611,6 +1620,58 @@ private fun VyroCutApp() {
         }
         exportMessage = "Clip visual effects updated"
     }
+    fun addSelectedClipTimedVignetteSegment() {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        if (clip.durationMs <= 0L) {
+            exportMessage = "Select a clip with a valid duration before adding an effect."
+            return
+        }
+        val clipStartMs = calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L)
+        val localStartMs = (timelinePositionMs.toLong() - clipStartMs)
+            .coerceIn(0L, clip.durationMs - 1L)
+        val segment = ClipTimedEffectSegment(
+            id = java.util.UUID.randomUUID().toString(),
+            preset = ClipCreativeEffectPreset.VIGNETTE,
+            intensity = timedVignetteIntensityDraft.toInt().coerceIn(1, 100),
+            startMs = localStartMs,
+            endMs = null,
+        )
+        val nextSegments = appendClipTimedEffectSegment(
+            segments = clip.timedEffectSegments,
+            clipDurationMs = clip.durationMs,
+            segment = segment,
+        )
+        if (nextSegments == null) {
+            exportMessage = "This clip cannot accept another timed effect segment."
+            return
+        }
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(timedEffectSegments = nextSegments)
+        })
+        selectedTimedEffectSelection = clip.id to segment.id
+        activeTool = "Effects"
+        seekPreviewToTimelinePosition(
+            calculateTimelinePositionMs(clipDurationsMs, selectedIndex, localStartMs),
+        )
+        exportMessage = "Timed Vignette added from the playhead to the clip end"
+    }
+
+    fun removeSelectedClipTimedEffectSegment() {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val selection = selectedTimedEffectSelection?.takeIf { it.first == clip.id } ?: return
+        val nextSegments = clip.timedEffectSegments.filterNot { it.id == selection.second }
+        if (nextSegments.size == clip.timedEffectSegments.size) {
+            selectedTimedEffectSelection = null
+            return
+        }
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(timedEffectSegments = nextSegments)
+        })
+        selectedTimedEffectSelection = null
+        seekPreviewToTimelinePosition(timelinePositionMs.toLong())
+        exportMessage = "Timed effect segment removed"
+    }
+
     fun commitSelectedClipTextOverlay(
         layerIndex: Int,
         rawText: String,
@@ -2415,6 +2476,7 @@ private fun VyroCutApp() {
                     audioWaveforms = audioWaveforms,
                     selectedIndex = selectedIndex,
                     selectedAudioTrackId = selectedAudioTrackId,
+                    selectedTimedEffectSelection = selectedTimedEffectSelection,
                     playheadPositionMs = timelinePositionMs.toLong(),
                     isPlaying = isPlaying,
                     onSelectAudioTrack = { trackClip ->
@@ -2455,6 +2517,19 @@ private fun VyroCutApp() {
                             seekPreviewToTimelinePosition(
                                 calculateTimelinePositionMs(clipDurationsMs, index, localPositionMs),
                             )
+                        }
+                    },
+                    onSelectTimedEffect = { index, segmentId ->
+                        clips.getOrNull(index)?.let { clip ->
+                            val segment = clip.timedEffectSegments.firstOrNull { it.id == segmentId }
+                            if (segment != null) {
+                                selectedIndex = index
+                                selectedTimedEffectSelection = clip.id to segment.id
+                                activeTool = "Effects"
+                                seekPreviewToTimelinePosition(
+                                    calculateTimelinePositionMs(clipDurationsMs, index, segment.startMs),
+                                )
+                            }
                         }
                     }
                 )
@@ -2779,6 +2854,78 @@ private fun VyroCutApp() {
                                 color = StudioMuted,
                                 fontSize = VyroCutTypography.CaptionSp.sp,
                             )
+                            Column(
+                                Modifier.fillMaxWidth()
+                                    .background(StudioPanel, RoundedCornerShape(VyroCutShapes.MediumCornerDp.dp))
+                                    .padding(
+                                        horizontal = VyroCutEffectsPanelMetrics.HorizontalPaddingDp.dp,
+                                        vertical = VyroCutEffectsPanelMetrics.VerticalPaddingDp.dp,
+                                    ),
+                                verticalArrangement = Arrangement.spacedBy(VyroCutEffectsPanelMetrics.SectionGapDp.dp),
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "TIMED VIGNETTE",
+                                        color = StudioText,
+                                        fontSize = VyroCutTypography.LabelSp.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Spacer(Modifier.weight(1f))
+                                    Text(
+                                        "${selectedClip.timedEffectSegments.size} / $MAX_CLIP_TIMED_EFFECT_SEGMENTS",
+                                        color = StudioMuted,
+                                        fontSize = VyroCutTypography.CaptionSp.sp,
+                                    )
+                                }
+                                Text(
+                                    "Add a non-destructive Vignette interval from the playhead to this clip's end.",
+                                    color = StudioMuted,
+                                    fontSize = VyroCutTypography.CaptionSp.sp,
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("Strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
+                                    Spacer(Modifier.weight(1f))
+                                    Text(
+                                        "${timedVignetteIntensityDraft.toInt()}%",
+                                        color = StudioAccent,
+                                        fontSize = VyroCutTypography.LabelSp.sp,
+                                    )
+                                }
+                                Slider(
+                                    value = timedVignetteIntensityDraft.coerceIn(1f, 100f),
+                                    onValueChange = { timedVignetteIntensityDraft = it },
+                                    valueRange = 1f..100f,
+                                    steps = 98,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = StudioAccent,
+                                        activeTrackColor = StudioAccent,
+                                    ),
+                                )
+                                Button(
+                                    onClick = { addSelectedClipTimedVignetteSegment() },
+                                    enabled = selectedClip.durationMs > 0L &&
+                                        selectedClip.timedEffectSegments.size < MAX_CLIP_TIMED_EFFECT_SEGMENTS,
+                                ) {
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                                    Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
+                                    Text("Add at playhead", fontSize = VyroCutTypography.LabelSp.sp)
+                                }
+                                if (selectedTimedEffectSegment != null) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "Selected: ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
+                                            modifier = Modifier.weight(1f),
+                                            color = StudioMuted,
+                                            fontSize = VyroCutTypography.CaptionSp.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        TextButton(onClick = { removeSelectedClipTimedEffectSegment() }) {
+                                            Text("Remove", fontSize = VyroCutTypography.CaptionSp.sp)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 } else if (activeTool == "Filters" || activeTool == "Adjust") {
@@ -5280,12 +5427,14 @@ private fun TimelineEditorStrip(
     audioWaveforms: Map<String, List<Float>>,
     selectedIndex: Int,
     selectedAudioTrackId: String?,
+    selectedTimedEffectSelection: Pair<String, String>?,
     playheadPositionMs: Long,
     isPlaying: Boolean,
     onSelectAudioTrack: (AudioTrackClip) -> Unit,
     onSeek: (TimelineSeekTarget) -> Unit,
     onSelectText: (Int, Int) -> Unit,
     onSelectSticker: (Int, Int) -> Unit,
+    onSelectTimedEffect: (Int, String) -> Unit,
 ) {
     // A single horizontal scroll viewport keeps every track and ruler at the
     // same origin and offset. Multiple scroll containers sharing one state
@@ -5705,6 +5854,73 @@ private fun TimelineEditorStrip(
                 }
             }
             TimelinePlayheadMarker(markerX, stickerTrackHeight)
+        }
+
+        TimelineTrackHeader(
+            modifier = Modifier.width(totalWidth),
+            label = "EFFECTS",
+            detail = "Timed Vignette • tap a segment to select",
+            accentColor = VyroCutPalette.AccentSecondary,
+        )
+        val effectTrackHeight = timelineMetrics.stickerRowHeightDp.dp
+        Box(Modifier.width(totalWidth).height(effectTrackHeight)) {
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap.dp)) {
+                clips.forEachIndexed { index, clip ->
+                    Box(
+                        Modifier.width(clipWidths[index].dp)
+                            .fillMaxHeight()
+                            .background(
+                                VyroCutPalette.SurfaceTimeline,
+                                RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                            )
+                            .border(
+                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
+                                color = VyroCutPalette.TimelineSelectionOutline,
+                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                            ),
+                    ) {
+                        clip.timedEffectSegments
+                            .filter { it.preset == ClipCreativeEffectPreset.VIGNETTE }
+                            .forEach { segment ->
+                                val bounds = calculateClipTimedEffectSegmentTimelineBounds(
+                                    trackWidthPx = clipWidths[index],
+                                    clipDurationMs = clip.durationMs,
+                                    segment = segment,
+                                )
+                                bounds?.let { effectBounds ->
+                                    val isSelected = selectedTimedEffectSelection == (clip.id to segment.id)
+                                    Box(
+                                        Modifier.offset(x = effectBounds.startOffsetPx.dp)
+                                            .width(effectBounds.widthPx.dp)
+                                            .fillMaxHeight()
+                                            .background(
+                                                VyroCutPalette.AccentSecondary.copy(alpha = 0.22f),
+                                                RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                                            )
+                                            .border(
+                                                width = if (isSelected) 1.dp else 0.dp,
+                                                color = VyroCutPalette.TimelineSelectionOutline,
+                                                shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
+                                            )
+                                            .clickable { onSelectTimedEffect(index, segment.id) }
+                                            .padding(horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp),
+                                        contentAlignment = Alignment.CenterStart,
+                                    ) {
+                                        Text(
+                                            "${segment.intensity}%",
+                                            color = VyroCutPalette.AccentSecondary,
+                                            fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Clip,
+                                        )
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
+            TimelinePlayheadMarker(markerX, effectTrackHeight)
         }
 
         TimelineTrackHeader(

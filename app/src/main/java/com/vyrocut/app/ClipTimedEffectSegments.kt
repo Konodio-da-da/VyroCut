@@ -162,6 +162,24 @@ internal fun splitClipTimedEffectSegmentsAt(
 }
 
 /**
+ * Appends one validated effect interval without mutating the caller's list.
+ * Invalid existing data, duplicate IDs, clip-bound violations, and the per-clip
+ * segment cap all fail closed so editing cannot create an unpersistable project.
+ */
+internal fun appendClipTimedEffectSegment(
+    segments: List<ClipTimedEffectSegment>,
+    clipDurationMs: Long,
+    segment: ClipTimedEffectSegment,
+): List<ClipTimedEffectSegment>? {
+    if (!validateClipTimedEffectSegments(segments, clipDurationMs) ||
+        segments.size >= MAX_CLIP_TIMED_EFFECT_SEGMENTS ||
+        segments.any { it.id == segment.id } ||
+        !isValidClipTimedEffectSegment(segment, clipDurationMs)
+    ) return null
+    return segments + segment
+}
+
+/**
  * Keeps effect timing anchored to source time when a clip's source IN/OUT
  * points change. Intervals outside the retained source range are discarded.
  */

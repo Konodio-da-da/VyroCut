@@ -253,4 +253,41 @@ class ClipTimedEffectSegmentsTest {
 
         assertNull(decodeProjectStrict(malformed))
     }
+
+    @Test
+    fun appendingTimedEffectsRequiresUniqueIdsValidClipBoundsAndAvailableCapacity() {
+        val existing = listOf(
+            ClipTimedEffectSegment("existing", ClipCreativeEffectPreset.VIGNETTE, 35, 0L, 2_000L),
+        )
+        val added = ClipTimedEffectSegment(
+            "new",
+            ClipCreativeEffectPreset.VIGNETTE,
+            70,
+            2_000L,
+            null,
+        )
+
+        assertEquals(listOf(existing.single(), added), appendClipTimedEffectSegment(existing, 5_000L, added))
+        assertEquals(listOf(existing.single()), existing)
+        assertNull(appendClipTimedEffectSegment(existing, 5_000L, added.copy(id = "existing")))
+        assertNull(
+            appendClipTimedEffectSegment(
+                existing,
+                2_500L,
+                added.copy(endMs = 6_000L),
+            ),
+        )
+
+        val full = (0 until MAX_CLIP_TIMED_EFFECT_SEGMENTS).map { index ->
+            ClipTimedEffectSegment("full-$index", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, null)
+        }
+        assertNull(
+            appendClipTimedEffectSegment(
+                full,
+                5_000L,
+                ClipTimedEffectSegment("overflow", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, null),
+            ),
+        )
+        assertNull(appendClipTimedEffectSegment(existing, 0L, added))
+    }
 }
