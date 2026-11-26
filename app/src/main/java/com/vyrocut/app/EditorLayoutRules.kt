@@ -16,6 +16,7 @@ internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = 600
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = 440
 // Reserve extra width when a missing-source Relink/Reading action is present.
 internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = 64
+internal const val EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP = 680
 internal const val EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES = 1
 internal const val EDITOR_PREVIEW_STACKED_SUBTITLE_MAX_LINES = 2
 internal const val EDITOR_LARGE_FONT_SCALE_THRESHOLD = 1.15f
@@ -42,6 +43,7 @@ internal data class EditorLayoutMetrics(
     val contentPaddingVerticalDp: Int,
     val stackPreviewMetadataAboveTransportControls: Boolean,
     val previewMetadataSubtitleMaxLines: Int,
+    val useCompactClipActionLabels: Boolean,
 )
 
 /**
@@ -116,6 +118,8 @@ internal fun editorLayoutMetrics(
         } else {
             EDITOR_PREVIEW_INLINE_SUBTITLE_MAX_LINES
         },
+        useCompactClipActionLabels = safeWidth < EDITOR_CLIP_ACTION_STANDARD_LABEL_MIN_WIDTH_DP ||
+            safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD,
     )
 }
 
