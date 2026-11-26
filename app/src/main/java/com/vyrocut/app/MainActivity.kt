@@ -2070,6 +2070,7 @@ private fun VyroCutApp() {
                         windowHeightDp = maxHeight.value.roundToInt(),
                         windowWidthDp = maxWidth.value.roundToInt(),
                         fontScale = LocalDensity.current.fontScale,
+                        hasPreviewRelinkAction = selectedClip?.uri?.let { it in missingMediaUris } == true,
                     )
             Column(
                 Modifier.fillMaxSize()

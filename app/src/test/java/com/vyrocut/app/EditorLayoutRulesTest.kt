@@ -64,6 +64,35 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun missingSourceRelinkActionReservesAdditionalInlineWidth() {
+        val relinkThreshold = EDITOR_COMPACT_WINDOW_WIDTH_DP + EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP
+
+        assertEquals(
+            true,
+            editorLayoutMetrics(
+                windowHeightDp = 640,
+                windowWidthDp = EDITOR_COMPACT_WINDOW_WIDTH_DP,
+                hasPreviewRelinkAction = true,
+            ).stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            true,
+            editorLayoutMetrics(640, relinkThreshold - 1, hasPreviewRelinkAction = true)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            false,
+            editorLayoutMetrics(640, relinkThreshold, hasPreviewRelinkAction = true)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+        assertEquals(
+            false,
+            editorLayoutMetrics(640, EDITOR_COMPACT_WINDOW_WIDTH_DP)
+                .stackPreviewMetadataAboveTransportControls,
+        )
+    }
+
+    @Test
     fun invalidWindowWidthUsesSafeCompactFallback() {
         val expected = editorLayoutMetrics(640, EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
 
