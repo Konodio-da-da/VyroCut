@@ -67,6 +67,44 @@ class ClipTimedEffectSegmentsTest {
     }
 
     @Test
+    fun timedVignetteIntensitySubtractsTheOwningClipProjectTimelineStart() {
+        val segments = listOf(
+            ClipTimedEffectSegment("later-clip-vignette", ClipCreativeEffectPreset.VIGNETTE, 40, 500L, 1_500L),
+        )
+
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 9_999_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_499_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0.4f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_500_000L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0.4f,
+            activeClipTimedVignetteIntensityAtUs(segments, 11_499_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 11_500_000L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_500_000L, 2_000L, Long.MAX_VALUE),
+            0.0001f,
+        )
+    }
+
+    @Test
     fun splitPreservesIntervalsAcrossBothVideoHalvesAndKeepsClipEndSentinel() {
         val segments = listOf(
             ClipTimedEffectSegment("before", ClipCreativeEffectPreset.VIGNETTE, 40, 0L, 2_000L),

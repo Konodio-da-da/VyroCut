@@ -234,20 +234,29 @@ internal fun activeClipTimedEffectSegmentsAtMs(
 }
 
 /**
- * Resolves the Vignette strength for a clip-local Media3 frame timestamp.
- * Overlapping Vignette segments use the last active segment in the stable
- * start-time/ID ordering; a zero-intensity segment therefore disables an
- * earlier overlapping Vignette without mutating either segment.
+ * Resolves a clip-local Vignette interval from Media3's monotonic project /
+ * composition timestamp. Both ExoPlayer's video graph and Transformer feed
+ * frame timestamps on that shared timeline, so the owning clip's start must
+ * be removed before evaluating its non-destructive local interval.
+ *
+ * Overlapping Vignette segments use the last active segment in stable
+ * start-time/ID order; a zero-intensity segment disables an earlier overlap.
  */
 internal fun activeClipTimedVignetteIntensityAtUs(
     segments: List<ClipTimedEffectSegment>,
     presentationTimeUs: Long,
     clipDurationMs: Long,
+    clipPresentationStartMs: Long = 0L,
 ): Float {
-    if (presentationTimeUs < 0L) return 0f
+    if (presentationTimeUs < 0L || clipPresentationStartMs < 0L ||
+        clipPresentationStartMs > Long.MAX_VALUE / 1_000L
+    ) return 0f
+    val clipPresentationStartUs = clipPresentationStartMs * 1_000L
+    if (presentationTimeUs < clipPresentationStartUs) return 0f
+    val clipLocalTimeUs = presentationTimeUs - clipPresentationStartUs
     return activeClipTimedEffectSegmentsAtMs(
         segments = segments,
-        positionMs = presentationTimeUs / 1_000L,
+        positionMs = clipLocalTimeUs / 1_000L,
         clipDurationMs = clipDurationMs,
     ).lastOrNull { it.preset == ClipCreativeEffectPreset.VIGNETTE }
         ?.intensity

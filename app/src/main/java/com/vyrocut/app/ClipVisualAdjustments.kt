@@ -468,6 +468,7 @@ internal fun createClipVisualEffects(
 internal fun createClipTimedVignetteEffects(
     segments: List<ClipTimedEffectSegment>,
     clipDurationMs: Long,
+    clipPresentationStartMs: Long = 0L,
 ): List<Effect> {
     if (segments.none { it.preset == ClipCreativeEffectPreset.VIGNETTE }) return emptyList()
     require(validateClipTimedEffectSegments(segments, clipDurationMs)) {
@@ -481,6 +482,7 @@ internal fun createClipTimedVignetteEffects(
                         segments = segments,
                         presentationTimeUs = presentationTimeUs,
                         clipDurationMs = clipDurationMs,
+                        clipPresentationStartMs = clipPresentationStartMs,
                     )
                 },
             ),

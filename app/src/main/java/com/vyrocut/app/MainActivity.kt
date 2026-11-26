@@ -680,7 +680,11 @@ private fun VyroCutApp() {
             val restoredClip = clips[restoreTarget.clipIndex]
             player.setVideoEffects(
                 createClipVisualEffects(restoredClip.visualAdjustments) +
-                    createClipTimedVignetteEffects(restoredClip.timedEffectSegments, restoredClip.durationMs) +
+                    createClipTimedVignetteEffects(
+                        restoredClip.timedEffectSegments,
+                        restoredClip.durationMs,
+                        calculateTimelinePositionMs(clipDurationsMs, restoreTarget.clipIndex, 0L),
+                    ) +
                     createClipTextOverlayEffects(restoredClip.allTextOverlays) +
                     createClipStickerOverlayEffects(restoredClip.allStickerOverlays, context),
             )
@@ -1191,7 +1195,11 @@ private fun VyroCutApp() {
         clips.getOrNull(position.clipIndex)?.let { clip ->
             player.setVideoEffects(
                 createClipVisualEffects(clip.visualAdjustments) +
-                    createClipTimedVignetteEffects(clip.timedEffectSegments, clip.durationMs) +
+                    createClipTimedVignetteEffects(
+                        clip.timedEffectSegments,
+                        clip.durationMs,
+                        position.timelinePositionMs - position.clipPositionMs,
+                    ) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
                     createClipStickerOverlayEffects(clip.allStickerOverlays, context),
             )
@@ -1592,7 +1600,11 @@ private fun VyroCutApp() {
         if (player.currentMediaItem?.mediaId == clip.id) {
             player.setVideoEffects(
                 createClipVisualEffects(next) +
-                    createClipTimedVignetteEffects(clip.timedEffectSegments, clip.durationMs) +
+                    createClipTimedVignetteEffects(
+                        clip.timedEffectSegments,
+                        clip.durationMs,
+                        calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
+                    ) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
                     createClipStickerOverlayEffects(clip.allStickerOverlays, context),
             )
@@ -1667,7 +1679,11 @@ private fun VyroCutApp() {
         if (player.currentMediaItem?.mediaId == clip.id) {
             player.setVideoEffects(
                 createClipVisualEffects(updatedClip.visualAdjustments) +
-                    createClipTimedVignetteEffects(updatedClip.timedEffectSegments, updatedClip.durationMs) +
+                    createClipTimedVignetteEffects(
+                        updatedClip.timedEffectSegments,
+                        updatedClip.durationMs,
+                        calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
+                    ) +
                     createClipTextOverlayEffects(updatedClip.allTextOverlays) +
                     createClipStickerOverlayEffects(updatedClip.allStickerOverlays, context),
             )
@@ -3743,7 +3759,13 @@ private fun VyroCutApp() {
                                         return@exportPreparation
                                     }
                                     val composition = try {
-                                        val editedItems = exportClips.map { clip ->
+                                        val exportClipDurationsMs = exportClips.map { it.durationMs }
+                                        val editedItems = exportClips.mapIndexed { clipIndex, clip ->
+                                            val clipPresentationStartMs = calculateTimelinePositionMs(
+                                                exportClipDurationsMs,
+                                                clipIndex,
+                                                0L,
+                                            )
                                             val source = MediaItem.Builder()
                                                 .setUri(Uri.parse(clip.uri))
                                                 .setClippingConfiguration(
@@ -3760,7 +3782,11 @@ private fun VyroCutApp() {
                                                 videoEffects += FrameDropEffect.createDefaultFrameDropEffect(targetFps)
                                             }
                                             videoEffects += createClipVisualEffects(clip.visualAdjustments)
-                                            videoEffects += createClipTimedVignetteEffects(clip.timedEffectSegments, clip.durationMs)
+                                            videoEffects += createClipTimedVignetteEffects(
+                                                clip.timedEffectSegments,
+                                                clip.durationMs,
+                                                clipPresentationStartMs,
+                                            )
                                             videoEffects += Presentation.createForWidthAndHeight(
                                                 exportCanvasSize.widthPx,
                                                 exportCanvasSize.heightPx,
