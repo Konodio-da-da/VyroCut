@@ -2,122 +2,60 @@ package com.vyrocut.app
 
 import kotlin.math.ceil
 
-internal const val TIMELINE_RULER_HEIGHT_DP = 28
-internal const val TIMELINE_VIDEO_TRACK_HEIGHT_DP = 72
-internal const val TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP = 42
-internal const val TIMELINE_TEXT_ROW_HEIGHT_DP = 30
-internal const val TIMELINE_STICKER_ROW_HEIGHT_DP = 30
-internal const val TIMELINE_SOURCE_TRACK_HEIGHT_DP = 32
-internal const val TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP = 22
-internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = 36
-internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = 14
-
-// Timeline text sizes derive from the shared design-system typography scale.
-internal const val TIMELINE_TRACK_LABEL_FONT_SP = VyroCutTypography.LabelSp
-internal const val TIMELINE_TRACK_DETAIL_FONT_SP = VyroCutTypography.CaptionSp
-
- // Compact header badges add horizontal identity without increasing track-row height.
-internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = 6
-internal const val TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP = 4
-internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP
-internal const val TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP = 5
-internal const val TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP = 3
-internal const val TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP = 2
-internal const val TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP = 2
-internal const val TIMELINE_RULER_TICK_CORNER_RADIUS_DP = 1
-internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = 5
-internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = 4
-internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = 8
-internal const val TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP = 320
-internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTypography.CaptionSp
-internal const val TIMELINE_CLIP_LABEL_FONT_SP = VyroCutTypography.LabelSp
-internal const val TIMELINE_CLIP_META_FONT_SP = VyroCutTypography.CaptionSp
-internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = VyroCutTypography.TimelineStickerSymbolSp
-internal const val TIMELINE_PLAYHEAD_LINE_WIDTH_DP = 2
-internal const val TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP = 4
-internal const val TIMELINE_PLAYHEAD_CAP_WIDTH_DP = 14
-internal const val TIMELINE_PLAYHEAD_CAP_HEIGHT_DP = 9
-internal const val TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP = 2
-
-internal const val TIMELINE_RULER_MAJOR_TICK_WIDTH_DP = 2
-internal const val TIMELINE_RULER_MINOR_TICK_WIDTH_DP = 1
-internal const val TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP = 10
-internal const val TIMELINE_RULER_MINOR_TICK_HEIGHT_DP = 5
-internal const val TIMELINE_RULER_LABEL_HORIZONTAL_PADDING_DP = 3
-internal const val TIMELINE_RULER_LABEL_VERTICAL_PADDING_DP = 1
-internal const val TIMELINE_RULER_LABEL_VERTICAL_OFFSET_DP = 11
-internal const val TIMELINE_RULER_LABEL_CORNER_RADIUS_DP = 3
-internal const val TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP = 2
-internal const val TIMELINE_RULER_MIN_TICK_SPACING_DP = 8
-
-internal data class TimelineRulerTickVisualMetrics(
-    val widthDp: Int,
-    val heightDp: Int,
-)
-
-internal fun timelineRulerTickVisualMetrics(isMajor: Boolean) = TimelineRulerTickVisualMetrics(
-    widthDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_WIDTH_DP else TIMELINE_RULER_MINOR_TICK_WIDTH_DP,
-    heightDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP else TIMELINE_RULER_MINOR_TICK_HEIGHT_DP,
-)
-
-internal enum class TimelineRulerLabelAlignment {
-    START,
-    CENTER,
-    END,
-}
-
-internal data class TimelineRulerLabelPlacement(
-    val offsetDp: Float,
-    val alignment: TimelineRulerLabelAlignment,
-)
-
-internal data class TimelinePlayheadVisualMetrics(
-    val lineWidthDp: Int,
-    val outlineWidthDp: Int,
-    val capWidthDp: Int,
-    val capHeightDp: Int,
-)
-
-internal fun timelinePlayheadVisualMetrics() = TimelinePlayheadVisualMetrics(
-    lineWidthDp = TIMELINE_PLAYHEAD_LINE_WIDTH_DP,
-    outlineWidthDp = TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP,
-    capWidthDp = TIMELINE_PLAYHEAD_CAP_WIDTH_DP,
-    capHeightDp = TIMELINE_PLAYHEAD_CAP_HEIGHT_DP,
-)
-
-internal data class TimelinePlayheadGeometry(
-    val lineLeftDp: Float,
-    val outlineLeftDp: Float,
-    val capLeftDp: Float,
-)
-
-/** Keeps the dark outline and top cap centered on the accent playhead line. */
-internal fun timelinePlayheadGeometry(lineLeftDp: Float): TimelinePlayheadGeometry {
-    val safeLineLeft = lineLeftDp.takeIf { it.isFinite() } ?: 0f
-    val metrics = timelinePlayheadVisualMetrics()
-    return TimelinePlayheadGeometry(
-        lineLeftDp = safeLineLeft,
-        outlineLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.outlineWidthDp) / 2f,
-        capLeftDp = safeLineLeft + (metrics.lineWidthDp - metrics.capWidthDp) / 2f,
-    )
-}
-
-internal fun timelineClipSelectionBorderWidthDp(isSelected: Boolean): Int =
-    if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else 0
-
 /**
- * Returns the shared selection outline width for an audio clip only when its
- * stable ID matches the currently selected audio clip.
+ * Compatibility names keep the pure timeline layout API stable while all
+ * visual values are owned by VyroCutTimelineVisualMetrics in the design system.
  */
-internal fun timelineAudioClipSelectionBorderWidthDp(
-    clipId: String,
-    selectedAudioTrackId: String?,
-): Int = timelineClipSelectionBorderWidthDp(
-    isSelected = clipId.isNotBlank() && selectedAudioTrackId == clipId,
-)
-private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = 0.62f
-private const val TIMELINE_RULER_LABEL_GAP_DP = 8f
-private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = 32
+internal const val TIMELINE_RULER_HEIGHT_DP = VyroCutTimelineVisualMetrics.RulerHeightDp
+internal const val TIMELINE_VIDEO_TRACK_HEIGHT_DP = VyroCutTimelineVisualMetrics.VideoTrackHeightDp
+internal const val TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP = VyroCutTimelineVisualMetrics.VideoThumbnailHeightDp
+internal const val TIMELINE_TEXT_ROW_HEIGHT_DP = VyroCutTimelineVisualMetrics.TextRowHeightDp
+internal const val TIMELINE_STICKER_ROW_HEIGHT_DP = VyroCutTimelineVisualMetrics.StickerRowHeightDp
+internal const val TIMELINE_SOURCE_TRACK_HEIGHT_DP = VyroCutTimelineVisualMetrics.SourceTrackHeightDp
+internal const val TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP = VyroCutTimelineVisualMetrics.SourceWaveformHeightDp
+internal const val TIMELINE_AUDIO_LANE_HEIGHT_DP = VyroCutTimelineVisualMetrics.AudioLaneHeightDp
+internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = VyroCutTimelineVisualMetrics.AudioWaveformHeightDp
+
+internal const val TIMELINE_TRACK_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.TrackLabelFontSp
+internal const val TIMELINE_TRACK_DETAIL_FONT_SP = VyroCutTimelineVisualMetrics.TrackDetailFontSp
+internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = VyroCutTimelineVisualMetrics.TrackHeaderBadgeHorizontalPaddingDp
+internal const val TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp
+internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackHeaderCornerRadiusDp
+internal const val TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.VideoClipCornerRadiusDp
+internal const val TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.PlayheadCapOuterCornerRadiusDp
+internal const val TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.PlayheadCapInnerCornerRadiusDp
+internal const val TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.MediaBadgeCornerRadiusDp
+internal const val TIMELINE_RULER_TICK_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.RulerTickCornerRadiusDp
+internal const val TIMELINE_TRACK_HEADER_DOT_SIZE_DP = VyroCutTimelineVisualMetrics.TrackHeaderDotSizeDp
+internal const val TIMELINE_TRACK_HEADER_DOT_GAP_DP = VyroCutTimelineVisualMetrics.TrackHeaderDotGapDp
+internal const val TIMELINE_TRACK_HEADER_DETAIL_GAP_DP = VyroCutTimelineVisualMetrics.TrackHeaderDetailGapDp
+internal const val TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP = VyroCutTimelineVisualMetrics.TrackHeaderTrailingDetailMinWidthDp
+
+internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.RulerLabelFontSp
+internal const val TIMELINE_CLIP_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.ClipLabelFontSp
+internal const val TIMELINE_CLIP_META_FONT_SP = VyroCutTimelineVisualMetrics.ClipMetaFontSp
+internal const val TIMELINE_STICKER_SYMBOL_FONT_SP = VyroCutTimelineVisualMetrics.StickerSymbolFontSp
+
+internal const val TIMELINE_PLAYHEAD_LINE_WIDTH_DP = VyroCutTimelineVisualMetrics.PlayheadLineWidthDp
+internal const val TIMELINE_PLAYHEAD_OUTLINE_WIDTH_DP = VyroCutTimelineVisualMetrics.PlayheadOutlineWidthDp
+internal const val TIMELINE_PLAYHEAD_CAP_WIDTH_DP = VyroCutTimelineVisualMetrics.PlayheadCapWidthDp
+internal const val TIMELINE_PLAYHEAD_CAP_HEIGHT_DP = VyroCutTimelineVisualMetrics.PlayheadCapHeightDp
+internal const val TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP = VyroCutTimelineVisualMetrics.SelectedClipBorderWidthDp
+
+internal const val TIMELINE_RULER_MAJOR_TICK_WIDTH_DP = VyroCutTimelineVisualMetrics.RulerMajorTickWidthDp
+internal const val TIMELINE_RULER_MINOR_TICK_WIDTH_DP = VyroCutTimelineVisualMetrics.RulerMinorTickWidthDp
+internal const val TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP = VyroCutTimelineVisualMetrics.RulerMajorTickHeightDp
+internal const val TIMELINE_RULER_MINOR_TICK_HEIGHT_DP = VyroCutTimelineVisualMetrics.RulerMinorTickHeightDp
+internal const val TIMELINE_RULER_LABEL_HORIZONTAL_PADDING_DP = VyroCutTimelineVisualMetrics.RulerLabelHorizontalPaddingDp
+internal const val TIMELINE_RULER_LABEL_VERTICAL_PADDING_DP = VyroCutTimelineVisualMetrics.RulerLabelVerticalPaddingDp
+internal const val TIMELINE_RULER_LABEL_VERTICAL_OFFSET_DP = VyroCutTimelineVisualMetrics.RulerLabelVerticalOffsetDp
+internal const val TIMELINE_RULER_LABEL_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.RulerLabelCornerRadiusDp
+internal const val TIMELINE_RULER_LABEL_INTER_LABEL_GAP_DP = VyroCutTimelineVisualMetrics.RulerLabelInterLabelGapDp
+internal const val TIMELINE_RULER_MIN_TICK_SPACING_DP = VyroCutTimelineVisualMetrics.RulerMinimumTickSpacingDp
+
+private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = VyroCutTimelineVisualMetrics.RulerLabelGlyphWidthFactor
+private const val TIMELINE_RULER_LABEL_GAP_DP = VyroCutTimelineVisualMetrics.RulerLabelGapDp
+private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = VyroCutTimelineVisualMetrics.MaximumRulerLabelCharacters
 
 /**
  * Estimates the horizontal room needed by a ruler timecode, including a small

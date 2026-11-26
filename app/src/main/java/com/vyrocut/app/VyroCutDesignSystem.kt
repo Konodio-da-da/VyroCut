@@ -321,6 +321,66 @@ internal object VyroCutTimelinePanelMetrics {
  * Audio tool; the compact clip waveform keeps its own proportions. Values
  * intentionally preserve the existing renderers' visual output.
  */
+
+/**
+ * Timeline visual tokens shared by the ruler, track rows, clip segments, and
+ * playhead. The adjacent TimelineVisualMetrics file keeps the pure layout
+ * calculations; this object is the single source of truth for their geometry.
+ * Values intentionally match the existing rendered dimensions.
+ */
+internal object VyroCutTimelineVisualMetrics {
+    const val RulerHeightDp = 28
+    const val VideoTrackHeightDp = 72
+    const val VideoThumbnailHeightDp = 42
+    const val TextRowHeightDp = 30
+    const val StickerRowHeightDp = 30
+    const val SourceTrackHeightDp = 32
+    const val SourceWaveformHeightDp = 22
+    const val AudioLaneHeightDp = 36
+    const val AudioWaveformHeightDp = 14
+
+    const val TrackLabelFontSp = VyroCutTypography.LabelSp
+    const val TrackDetailFontSp = VyroCutTypography.CaptionSp
+    const val TrackHeaderBadgeHorizontalPaddingDp = 6
+    const val TrackSegmentCornerRadiusDp = 4
+    const val TrackHeaderCornerRadiusDp = TrackSegmentCornerRadiusDp
+    const val VideoClipCornerRadiusDp = 5
+    const val PlayheadCapOuterCornerRadiusDp = 3
+    const val PlayheadCapInnerCornerRadiusDp = 2
+    const val MediaBadgeCornerRadiusDp = 2
+    const val RulerTickCornerRadiusDp = 1
+    const val TrackHeaderDotSizeDp = 5
+    const val TrackHeaderDotGapDp = 4
+    const val TrackHeaderDetailGapDp = 8
+    const val TrackHeaderTrailingDetailMinWidthDp = 320
+
+    const val RulerLabelFontSp = VyroCutTypography.CaptionSp
+    const val ClipLabelFontSp = VyroCutTypography.LabelSp
+    const val ClipMetaFontSp = VyroCutTypography.CaptionSp
+    const val StickerSymbolFontSp = VyroCutTypography.TimelineStickerSymbolSp
+
+    const val PlayheadLineWidthDp = 2
+    const val PlayheadOutlineWidthDp = 4
+    const val PlayheadCapWidthDp = 14
+    const val PlayheadCapHeightDp = 9
+    const val SelectedClipBorderWidthDp = 2
+
+    const val RulerMajorTickWidthDp = 2
+    const val RulerMinorTickWidthDp = 1
+    const val RulerMajorTickHeightDp = 10
+    const val RulerMinorTickHeightDp = 5
+    const val RulerLabelHorizontalPaddingDp = 3
+    const val RulerLabelVerticalPaddingDp = 1
+    const val RulerLabelVerticalOffsetDp = 11
+    const val RulerLabelCornerRadiusDp = 3
+    const val RulerLabelInterLabelGapDp = 2
+    const val RulerMinimumTickSpacingDp = 8
+
+    const val RulerLabelGlyphWidthFactor = 0.62f
+    const val RulerLabelGapDp = 8f
+    const val MaximumRulerLabelCharacters = 32
+}
+
 internal object VyroCutWaveformMetrics {
     const val StripDefaultHeightDp = 24f
     const val StripBaselineAlpha = 0.28f

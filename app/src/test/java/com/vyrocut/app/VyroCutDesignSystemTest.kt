@@ -480,4 +480,71 @@ class VyroCutDesignSystemTest {
         )
     }
 
+
+    @Test
+    fun timelineVisualTokensPreserveTheCurrentEditorGeometry() {
+        assertEquals(
+            listOf(28, 72, 42, 30, 30, 32, 22, 36, 14),
+            listOf(
+                VyroCutTimelineVisualMetrics.RulerHeightDp,
+                VyroCutTimelineVisualMetrics.VideoTrackHeightDp,
+                VyroCutTimelineVisualMetrics.VideoThumbnailHeightDp,
+                VyroCutTimelineVisualMetrics.TextRowHeightDp,
+                VyroCutTimelineVisualMetrics.StickerRowHeightDp,
+                VyroCutTimelineVisualMetrics.SourceTrackHeightDp,
+                VyroCutTimelineVisualMetrics.SourceWaveformHeightDp,
+                VyroCutTimelineVisualMetrics.AudioLaneHeightDp,
+                VyroCutTimelineVisualMetrics.AudioWaveformHeightDp,
+            ),
+        )
+        assertEquals(
+            listOf(6, 4, 5, 3, 2, 1, 5, 4, 8, 320),
+            listOf(
+                VyroCutTimelineVisualMetrics.TrackHeaderBadgeHorizontalPaddingDp,
+                VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.VideoClipCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.PlayheadCapOuterCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.PlayheadCapInnerCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.RulerTickCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.TrackHeaderDotSizeDp,
+                VyroCutTimelineVisualMetrics.TrackHeaderDotGapDp,
+                VyroCutTimelineVisualMetrics.TrackHeaderDetailGapDp,
+                VyroCutTimelineVisualMetrics.TrackHeaderTrailingDetailMinWidthDp,
+            ),
+        )
+        assertEquals(
+            listOf(2, 4, 14, 9, 2, 2, 1, 10, 5, 3, 1, 11, 3, 2, 8),
+            listOf(
+                VyroCutTimelineVisualMetrics.PlayheadLineWidthDp,
+                VyroCutTimelineVisualMetrics.PlayheadOutlineWidthDp,
+                VyroCutTimelineVisualMetrics.PlayheadCapWidthDp,
+                VyroCutTimelineVisualMetrics.PlayheadCapHeightDp,
+                VyroCutTimelineVisualMetrics.SelectedClipBorderWidthDp,
+                VyroCutTimelineVisualMetrics.RulerMajorTickWidthDp,
+                VyroCutTimelineVisualMetrics.RulerMinorTickWidthDp,
+                VyroCutTimelineVisualMetrics.RulerMajorTickHeightDp,
+                VyroCutTimelineVisualMetrics.RulerMinorTickHeightDp,
+                VyroCutTimelineVisualMetrics.RulerLabelHorizontalPaddingDp,
+                VyroCutTimelineVisualMetrics.RulerLabelVerticalPaddingDp,
+                VyroCutTimelineVisualMetrics.RulerLabelVerticalOffsetDp,
+                VyroCutTimelineVisualMetrics.RulerLabelCornerRadiusDp,
+                VyroCutTimelineVisualMetrics.RulerLabelInterLabelGapDp,
+                VyroCutTimelineVisualMetrics.RulerMinimumTickSpacingDp,
+            ),
+        )
+        assertEquals(VyroCutTypography.LabelSp, VyroCutTimelineVisualMetrics.TrackLabelFontSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTimelineVisualMetrics.TrackDetailFontSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTimelineVisualMetrics.RulerLabelFontSp)
+        assertEquals(VyroCutTypography.LabelSp, VyroCutTimelineVisualMetrics.ClipLabelFontSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTimelineVisualMetrics.ClipMetaFontSp)
+        assertEquals(VyroCutTypography.TimelineStickerSymbolSp, VyroCutTimelineVisualMetrics.StickerSymbolFontSp)
+        assertEquals(0.62f, VyroCutTimelineVisualMetrics.RulerLabelGlyphWidthFactor, 0f)
+        assertEquals(8f, VyroCutTimelineVisualMetrics.RulerLabelGapDp, 0f)
+        assertEquals(32, VyroCutTimelineVisualMetrics.MaximumRulerLabelCharacters)
+        assertEquals(
+            VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp,
+            VyroCutTimelineVisualMetrics.TrackHeaderCornerRadiusDp,
+        )
+    }
+
 }
