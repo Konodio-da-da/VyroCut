@@ -589,4 +589,11 @@ class VyroCutDesignSystemTest {
         )
     }
 
+    @Test
+    fun editorSpacingAndThumbnailCornerTokensPreserveExistingDimensions() {
+        assertEquals(8, VyroCutSpacing.SmallDp)
+        assertEquals(6, VyroCutEditorChromeMetrics.RelinkButtonHorizontalPaddingDp)
+        assertEquals(6, VyroCutTimelineVisualMetrics.VideoThumbnailCornerRadiusDp)
+    }
+
 }

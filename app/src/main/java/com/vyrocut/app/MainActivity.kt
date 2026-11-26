@@ -3255,7 +3255,7 @@ private fun VyroCutApp() {
                             )
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("SIZE", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.ChipGapDp.dp)) {
                                     listOf("Small" to 0.8f, "Medium" to 1f, "Large" to 1.25f).forEach { (label, scale) ->
                                         FilterChip(
@@ -3268,7 +3268,7 @@ private fun VyroCutApp() {
                             }
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text("POSITION", color = StudioMuted, fontSize = VyroCutTextPanelMetrics.CaptionFontSizeSp.sp, fontWeight = FontWeight.Bold)
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(VyroCutTextPanelMetrics.ChipGapDp.dp)) {
                                     ClipTextPosition.values().forEach { position ->
                                         FilterChip(
@@ -4229,7 +4229,7 @@ private fun VyroCutApp() {
                         onDismissRequest = { showProjects = false },
                         title = { Text("Your projects") },
                         text = {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                                 projects.forEach { project ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         TextButton(
@@ -4254,7 +4254,7 @@ private fun VyroCutApp() {
                                     }
                                 }
                                 HorizontalDivider()
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp)) {
                                     OutlinedButton(
                                         onClick = {
                                             val name = projects.firstOrNull { it.id == activeProjectId }?.name ?: "VyroCut"
@@ -4530,7 +4530,10 @@ private fun ClipThumbnail(clip: EditClip, modifier: Modifier = Modifier) {
         }
     }
     Box(
-        modifier = modifier.background(VyroCutPalette.SurfaceTrack, RoundedCornerShape(6.dp)),
+        modifier = modifier.background(
+            VyroCutPalette.SurfaceTrack,
+            RoundedCornerShape(VyroCutTimelineVisualMetrics.VideoThumbnailCornerRadiusDp.dp),
+        ),
         contentAlignment = Alignment.Center
     ) {
         if (thumbnail != null) {
@@ -5901,7 +5904,10 @@ private fun EditorPreviewMetadata(
             TextButton(
                 onClick = onRelink,
                 enabled = relinkEnabled,
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
+                contentPadding = PaddingValues(
+                    horizontal = VyroCutEditorChromeMetrics.RelinkButtonHorizontalPaddingDp.dp,
+                    vertical = 0.dp,
+                ),
             ) {
                 Text(relinkLabel, fontSize = VyroCutTypography.LabelSp.sp)
             }
