@@ -282,6 +282,24 @@ internal object VyroCutExportPanelMetrics {
 
 
 /**
+ * Timeline panel spacing and insets. These values preserve the existing
+ * timeline composition while keeping its repeated geometry centrally editable.
+ */
+internal object VyroCutTimelinePanelMetrics {
+    const val EmptyStateSectionGapDp = 6
+    const val EmptyStateVerticalPaddingDp = 18
+    const val TrackVerticalGapDp = 6
+    const val VideoClipContentPaddingDp = 3
+    const val ClipMetaBadgeHorizontalPaddingDp = 4
+    const val ClipMetaBadgeVerticalPaddingDp = 2
+    const val TextOverlaySegmentHorizontalPaddingDp = 6
+    const val StickerAddLabelHorizontalPaddingDp = 6
+    const val StickerAddLabelVerticalPaddingDp = 6
+    const val StickerSegmentHorizontalPaddingDp = 4
+    const val AudioSegmentHorizontalPaddingDp = 5
+}
+
+/**
  * Shared waveform renderer metrics. The strip is used by audio lanes and the
  * Audio tool; the compact clip waveform keeps its own proportions. Values
  * intentionally preserve the existing renderers' visual output.

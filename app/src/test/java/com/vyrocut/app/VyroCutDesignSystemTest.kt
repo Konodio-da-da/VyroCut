@@ -451,4 +451,24 @@ class VyroCutDesignSystemTest {
         assertEquals(1f, VyroCutWaveformMetrics.ClipBarBaseAlpha + VyroCutWaveformMetrics.ClipBarPeakAlpha, 0f)
     }
 
+    @Test
+    fun timelinePanelMetricsPreserveExistingLayoutDimensions() {
+        assertEquals(
+            listOf(6, 18, 6, 3, 4, 2, 6, 6, 6, 4, 5),
+            listOf(
+                VyroCutTimelinePanelMetrics.EmptyStateSectionGapDp,
+                VyroCutTimelinePanelMetrics.EmptyStateVerticalPaddingDp,
+                VyroCutTimelinePanelMetrics.TrackVerticalGapDp,
+                VyroCutTimelinePanelMetrics.VideoClipContentPaddingDp,
+                VyroCutTimelinePanelMetrics.ClipMetaBadgeHorizontalPaddingDp,
+                VyroCutTimelinePanelMetrics.ClipMetaBadgeVerticalPaddingDp,
+                VyroCutTimelinePanelMetrics.TextOverlaySegmentHorizontalPaddingDp,
+                VyroCutTimelinePanelMetrics.StickerAddLabelHorizontalPaddingDp,
+                VyroCutTimelinePanelMetrics.StickerAddLabelVerticalPaddingDp,
+                VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp,
+                VyroCutTimelinePanelMetrics.AudioSegmentHorizontalPaddingDp,
+            ),
+        )
+    }
+
 }

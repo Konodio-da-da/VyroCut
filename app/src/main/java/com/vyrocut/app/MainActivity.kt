@@ -5174,9 +5174,9 @@ private fun TimelineEditorStrip(
     }
 
     if (clips.isEmpty()) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(VyroCutTimelinePanelMetrics.EmptyStateSectionGapDp.dp)) {
             Text("VIDEO", color = StudioMuted, fontSize = TIMELINE_TRACK_LABEL_FONT_SP.sp, fontWeight = FontWeight.Bold)
-            Text("Import footage to build your timeline", color = StudioMuted, fontSize = VyroCutTypography.SmallBodySp.sp, modifier = Modifier.padding(vertical = 18.dp))
+            Text("Import footage to build your timeline", color = StudioMuted, fontSize = VyroCutTypography.SmallBodySp.sp, modifier = Modifier.padding(vertical = VyroCutTimelinePanelMetrics.EmptyStateVerticalPaddingDp.dp))
         }
         return
     }
@@ -5212,7 +5212,7 @@ private fun TimelineEditorStrip(
                 }
             }
             .horizontalScroll(timelineScroll),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(VyroCutTimelinePanelMetrics.TrackVerticalGapDp.dp)
     ) {
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
@@ -5291,17 +5291,23 @@ private fun TimelineEditorStrip(
                                 color = VyroCutPalette.TimelineSelectionOutline,
                                 shape = RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp),
                             )
-                            .padding(3.dp)
+                            .padding(VyroCutTimelinePanelMetrics.VideoClipContentPaddingDp.dp)
                     ) {
                         Box(Modifier.fillMaxWidth().height(TIMELINE_VIDEO_THUMBNAIL_HEIGHT_DP.dp)) {
                             ClipThumbnail(clip, Modifier.fillMaxSize())
                             Text(
                                 "V" + (index + 1), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                modifier = Modifier.align(Alignment.TopStart).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(
+                                    horizontal = VyroCutTimelinePanelMetrics.ClipMetaBadgeHorizontalPaddingDp.dp,
+                                    vertical = VyroCutTimelinePanelMetrics.ClipMetaBadgeVerticalPaddingDp.dp,
+                                )
                             )
                             Text(
                                 formatTime(clip.durationMs), color = VyroCutPalette.MediaOverlayText, fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
-                                modifier = Modifier.align(Alignment.BottomEnd).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(horizontal = 4.dp, vertical = 2.dp)
+                                modifier = Modifier.align(Alignment.BottomEnd).background(VyroCutPalette.MediaOverlayScrim, RoundedCornerShape(TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP.dp)).padding(
+                                    horizontal = VyroCutTimelinePanelMetrics.ClipMetaBadgeHorizontalPaddingDp.dp,
+                                    vertical = VyroCutTimelinePanelMetrics.ClipMetaBadgeVerticalPaddingDp.dp,
+                                )
                             )
                         }
                         Text(clip.name, color = if (index == selectedIndex) StudioAccent else StudioText, fontSize = TIMELINE_CLIP_LABEL_FONT_SP.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -5396,7 +5402,7 @@ private fun TimelineEditorStrip(
                                             color = StudioMuted,
                                             fontSize = TIMELINE_TRACK_DETAIL_FONT_SP.sp,
                                             maxLines = 1,
-                                            modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = 6.dp),
+                                            modifier = Modifier.align(Alignment.CenterStart).padding(horizontal = VyroCutTimelinePanelMetrics.TextOverlaySegmentHorizontalPaddingDp.dp),
                                         )
                                     }
                                 } else {
@@ -5411,7 +5417,7 @@ private fun TimelineEditorStrip(
                                                 .width(segment.widthPx.dp)
                                                 .fillMaxHeight()
                                                 .background(VyroCutPalette.SurfaceSelected, RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
-                                                .padding(horizontal = 6.dp),
+                                                .padding(horizontal = VyroCutTimelinePanelMetrics.TextOverlaySegmentHorizontalPaddingDp.dp),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
                                             Text(
@@ -5474,7 +5480,10 @@ private fun TimelineEditorStrip(
                                             maxLines = 1,
                                             modifier = Modifier.fillMaxSize()
                                                 .clickable { onSelectSticker(index, layerIndex) }
-                                                .padding(horizontal = 6.dp, vertical = 6.dp),
+                                                .padding(
+                                                    horizontal = VyroCutTimelinePanelMetrics.StickerAddLabelHorizontalPaddingDp.dp,
+                                                    vertical = VyroCutTimelinePanelMetrics.StickerAddLabelVerticalPaddingDp.dp,
+                                                ),
                                         )
                                     }
                                 } else {
@@ -5493,7 +5502,7 @@ private fun TimelineEditorStrip(
                                                     RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                                 )
                                                 .clickable { onSelectSticker(index, layerIndex) }
-                                                .padding(horizontal = 4.dp),
+                                                .padding(horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp),
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
                                             Text(
@@ -5530,7 +5539,7 @@ private fun TimelineEditorStrip(
                                 color = VyroCutPalette.TimelineSelectionOutline,
                                 shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             )
-                            .padding(horizontal = 5.dp),
+                            .padding(horizontal = VyroCutTimelinePanelMetrics.AudioSegmentHorizontalPaddingDp.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         AudioWaveform(clip, Modifier.fillMaxWidth().height(timelineMetrics.sourceWaveformHeightDp.dp))
@@ -5585,7 +5594,7 @@ private fun TimelineEditorStrip(
                                 shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                             )
                             .clickable { onSelectAudioTrack(trackClip) }
-                            .padding(horizontal = 5.dp),
+                            .padding(horizontal = VyroCutTimelinePanelMetrics.AudioSegmentHorizontalPaddingDp.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Column(
