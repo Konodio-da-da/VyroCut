@@ -135,6 +135,21 @@ internal fun clipCreativeEffectPresetFromId(id: String?): ClipCreativeEffectPres
         ClipCreativeEffectPreset.values().firstOrNull { it.id == id }
     }
 
+private val CLIP_TIMED_CREATIVE_EFFECT_PRESETS = listOf(
+    ClipCreativeEffectPreset.WARM,
+    ClipCreativeEffectPreset.COOL,
+    ClipCreativeEffectPreset.CINEMATIC,
+    ClipCreativeEffectPreset.VIGNETTE,
+    ClipCreativeEffectPreset.NEGATIVE,
+    ClipCreativeEffectPreset.GRAYSCALE,
+    ClipCreativeEffectPreset.SEPIA,
+    ClipCreativeEffectPreset.FILM_FADE,
+)
+
+/** Presets with a renderer that evaluates the owning clip's frame timestamp. */
+internal fun clipTimedCreativeEffectPresets(): List<ClipCreativeEffectPreset> =
+    CLIP_TIMED_CREATIVE_EFFECT_PRESETS
+
 /**
  * Removes only the creative look, preserving the clip's manual brightness,
  * contrast, saturation, and hue adjustments.
@@ -397,6 +412,105 @@ private val CINEMATIC_MATRIX = floatArrayOf(
 
 internal fun cinematicRgbMatrix(): FloatArray = CINEMATIC_MATRIX.copyOf()
 
+// Matrices use the same column-major convention as Media3 RgbMatrix.
+private val IDENTITY_RGB_MATRIX = floatArrayOf(
+    1f, 0f, 0f, 0f,
+    0f, 1f, 0f, 0f,
+    0f, 0f, 1f, 0f,
+    0f, 0f, 0f, 1f,
+)
+
+private val WARM_TIMED_MATRIX = floatArrayOf(
+    1.08f, 0f, 0f, 0f,
+    0f, 1f, 0f, 0f,
+    0f, 0f, 0.88f, 0f,
+    0f, 0f, 0f, 1f,
+)
+
+private val COOL_TIMED_MATRIX = floatArrayOf(
+    0.88f, 0f, 0f, 0f,
+    0f, 1f, 0f, 0f,
+    0f, 0f, 1.08f, 0f,
+    0f, 0f, 0f, 1f,
+)
+
+private val NEGATIVE_TIMED_MATRIX = floatArrayOf(
+    -1f, 0f, 0f, 0f,
+    0f, -1f, 0f, 0f,
+    0f, 0f, -1f, 0f,
+    1f, 1f, 1f, 1f,
+)
+
+private val GRAYSCALE_TIMED_MATRIX = floatArrayOf(
+    0.2126f, 0.2126f, 0.2126f, 0f,
+    0.7152f, 0.7152f, 0.7152f, 0f,
+    0.0722f, 0.0722f, 0.0722f, 0f,
+    0f, 0f, 0f, 1f,
+)
+
+private fun timedCreativeEffectBaseMatrix(preset: ClipCreativeEffectPreset): FloatArray? =
+    when (preset) {
+        ClipCreativeEffectPreset.WARM -> WARM_TIMED_MATRIX
+        ClipCreativeEffectPreset.COOL -> COOL_TIMED_MATRIX
+        ClipCreativeEffectPreset.CINEMATIC -> CINEMATIC_MATRIX
+        ClipCreativeEffectPreset.NEGATIVE -> NEGATIVE_TIMED_MATRIX
+        ClipCreativeEffectPreset.GRAYSCALE -> GRAYSCALE_TIMED_MATRIX
+        ClipCreativeEffectPreset.SEPIA -> SEPIA_MATRIX
+        ClipCreativeEffectPreset.FILM_FADE -> FILM_FADE_MATRIX
+        ClipCreativeEffectPreset.ORIGINAL,
+        ClipCreativeEffectPreset.SOFT_FOCUS,
+        ClipCreativeEffectPreset.VIGNETTE -> null
+    }
+
+internal fun multiplyRgbMatrices(left: FloatArray, right: FloatArray): FloatArray {
+    require(left.size == 16 && right.size == 16) {
+        "RGB transformation matrices must contain 16 values"
+    }
+    return FloatArray(16) { index ->
+        val row = index % 4
+        val column = index / 4
+        var value = 0f
+        for (inner in 0..3) {
+            value += left[inner * 4 + row] * right[column * 4 + inner]
+        }
+        value
+    }
+}
+
+/**
+ * Resolves all active matrix-backed timed looks on the clip-local project clock.
+ * Unsupported presets intentionally produce no matrix and are not offered by the
+ * timed-effects selector until a matching frame-time renderer exists.
+ */
+internal fun activeClipTimedCreativeEffectMatrixAtUs(
+    segments: List<ClipTimedEffectSegment>,
+    presentationTimeUs: Long,
+    clipDurationMs: Long,
+    clipPresentationStartMs: Long = 0L,
+): FloatArray {
+    if (presentationTimeUs < 0L || clipPresentationStartMs < 0L ||
+        clipPresentationStartMs > Long.MAX_VALUE / 1_000L
+    ) return IDENTITY_RGB_MATRIX.copyOf()
+
+    val clipStartUs = clipPresentationStartMs * 1_000L
+    if (presentationTimeUs < clipStartUs) return IDENTITY_RGB_MATRIX.copyOf()
+    val clipLocalPositionMs = (presentationTimeUs - clipStartUs) / 1_000L
+    var composed = IDENTITY_RGB_MATRIX.copyOf()
+
+    activeClipTimedEffectSegmentsAtMs(
+        segments = segments,
+        positionMs = clipLocalPositionMs,
+        clipDurationMs = clipDurationMs,
+    ).forEach { segment ->
+        val baseMatrix = timedCreativeEffectBaseMatrix(segment.preset) ?: return@forEach
+        if (segment.intensity <= 0) return@forEach
+        val intensity = segment.intensity / 100f
+        val effectMatrix = blendRgbMatrixWithIdentity(baseMatrix, intensity)
+        composed = multiplyRgbMatrices(effectMatrix, composed)
+    }
+    return composed
+}
+
 @OptIn(UnstableApi::class)
 private object SepiaRgbMatrix : RgbMatrix {
     override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = SEPIA_MATRIX
@@ -460,34 +574,67 @@ internal fun createClipVisualEffects(
 }
 
 /**
- * Creates the first time-ranged creative effect renderer. The bitmap is
- * generated once at maximum Vignette opacity; Media3 applies a per-frame alpha
- * scale, avoiding per-frame bitmap allocation and preserving clip-local timing.
+ * Resolves timed creative looks against the same frame timestamp in preview and
+ * Transformer export. Matrix-backed looks share one time-varying RgbMatrix;
+ * Vignette keeps its bounded bitmap overlay and per-frame alpha path.
  */
 @OptIn(UnstableApi::class)
-internal fun createClipTimedVignetteEffects(
+private class TimedClipCreativeEffectRgbMatrix(
+    private val segments: List<ClipTimedEffectSegment>,
+    private val clipDurationMs: Long,
+    private val clipPresentationStartMs: Long,
+) : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray =
+        activeClipTimedCreativeEffectMatrixAtUs(
+            segments = segments,
+            presentationTimeUs = presentationTimeUs,
+            clipDurationMs = clipDurationMs,
+            clipPresentationStartMs = clipPresentationStartMs,
+        )
+}
+
+@OptIn(UnstableApi::class)
+internal fun createClipTimedCreativeEffects(
     segments: List<ClipTimedEffectSegment>,
     clipDurationMs: Long,
     clipPresentationStartMs: Long = 0L,
 ): List<Effect> {
-    if (segments.none { it.preset == ClipCreativeEffectPreset.VIGNETTE }) return emptyList()
+    val supportedSegments = segments.filter { it.preset in CLIP_TIMED_CREATIVE_EFFECT_PRESETS }
+    if (supportedSegments.isEmpty()) return emptyList()
     require(validateClipTimedEffectSegments(segments, clipDurationMs)) {
-        "Timed Vignette segments must be valid for their owning clip"
+        "Timed creative effect segments must be valid for their owning clip"
     }
-    return listOf(
-        OverlayEffect(
-            listOf(
-                VignetteBitmapOverlay(intensity = 1f) { presentationTimeUs ->
-                    activeClipTimedVignetteIntensityAtUs(
-                        segments = segments,
-                        presentationTimeUs = presentationTimeUs,
-                        clipDurationMs = clipDurationMs,
-                        clipPresentationStartMs = clipPresentationStartMs,
-                    )
-                },
-            ),
-        ),
-    )
+
+    return buildList {
+        if (supportedSegments.any {
+                it.preset != ClipCreativeEffectPreset.VIGNETTE && it.intensity > 0
+            }
+        ) {
+            add(
+                TimedClipCreativeEffectRgbMatrix(
+                    segments = segments,
+                    clipDurationMs = clipDurationMs,
+                    clipPresentationStartMs = clipPresentationStartMs,
+                ),
+            )
+        }
+        if (supportedSegments.any { it.preset == ClipCreativeEffectPreset.VIGNETTE }) {
+            add(
+                OverlayEffect(
+                    listOf(
+                        VignetteBitmapOverlay(intensity = 1f) { presentationTimeUs ->
+                            activeClipTimedVignetteIntensityAtUs(
+                                segments = segments,
+                                presentationTimeUs = presentationTimeUs,
+                                clipDurationMs = clipDurationMs,
+                                clipPresentationStartMs = clipPresentationStartMs,
+                            )
+                        },
+                    ),
+                ),
+            )
+        }
+    }
 }
 
 /**

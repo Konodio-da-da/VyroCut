@@ -458,4 +458,113 @@ class ClipVisualAdjustmentsTest {
         assertArrayEquals(halfStrength, blendRgbMatrixWithIdentity(inverted, 0.5f), 0.0001f)
         assertArrayEquals(inverted, blendRgbMatrixWithIdentity(inverted, 1f), 0.0001f)
     }
+
+    @Test
+    fun timedEffectPresetSelectorOnlyOffersPresetsWithFrameTimeRenderers() {
+        assertEquals(
+            listOf(
+                ClipCreativeEffectPreset.WARM,
+                ClipCreativeEffectPreset.COOL,
+                ClipCreativeEffectPreset.CINEMATIC,
+                ClipCreativeEffectPreset.VIGNETTE,
+                ClipCreativeEffectPreset.NEGATIVE,
+                ClipCreativeEffectPreset.GRAYSCALE,
+                ClipCreativeEffectPreset.SEPIA,
+                ClipCreativeEffectPreset.FILM_FADE,
+            ),
+            clipTimedCreativeEffectPresets(),
+        )
+        assertFalse(ClipCreativeEffectPreset.ORIGINAL in clipTimedCreativeEffectPresets())
+        assertFalse(ClipCreativeEffectPreset.SOFT_FOCUS in clipTimedCreativeEffectPresets())
+    }
+
+    @Test
+    fun timedCreativeEffectMatrixIsIdentityOutsideTheIntervalAndScalesWarmTint() {
+        val segment = ClipTimedEffectSegment(
+            "timed-warm",
+            ClipCreativeEffectPreset.WARM,
+            50,
+            1_000L,
+            2_000L,
+        )
+        val identity = floatArrayOf(
+            1f, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            0f, 0f, 0f, 1f,
+        )
+
+        assertArrayEquals(
+            identity,
+            activeClipTimedCreativeEffectMatrixAtUs(listOf(segment), 999_999L, 3_000L),
+            0.0001f,
+        )
+        val active = activeClipTimedCreativeEffectMatrixAtUs(
+            listOf(segment),
+            presentationTimeUs = 1_000_000L,
+            clipDurationMs = 3_000L,
+        )
+        assertEquals(1.04f, active[0], 0.0001f)
+        assertEquals(1f, active[5], 0.0001f)
+        assertEquals(0.94f, active[10], 0.0001f)
+        assertEquals(1f, active[15], 0.0001f)
+        assertArrayEquals(
+            identity,
+            activeClipTimedCreativeEffectMatrixAtUs(listOf(segment), 2_000_000L, 3_000L),
+            0.0001f,
+        )
+    }
+
+    @Test
+    fun timedCreativeEffectMatrixUsesProjectClockAndComposesOverlappingLooks() {
+        val segments = listOf(
+            ClipTimedEffectSegment("a-warm", ClipCreativeEffectPreset.WARM, 50, 0L, 1_000L),
+            ClipTimedEffectSegment("b-cool", ClipCreativeEffectPreset.COOL, 50, 0L, 1_000L),
+        )
+
+        val beforeClip = activeClipTimedCreativeEffectMatrixAtUs(
+            segments = segments,
+            presentationTimeUs = 9_999_999L,
+            clipDurationMs = 2_000L,
+            clipPresentationStartMs = 10_000L,
+        )
+        assertEquals(1f, beforeClip[0], 0.0001f)
+
+        val active = activeClipTimedCreativeEffectMatrixAtUs(
+            segments = segments,
+            presentationTimeUs = 10_500_000L,
+            clipDurationMs = 2_000L,
+            clipPresentationStartMs = 10_000L,
+        )
+        assertEquals(0.9776f, active[0], 0.0002f)
+        assertEquals(1f, active[5], 0.0001f)
+        assertEquals(0.9776f, active[10], 0.0002f)
+        assertEquals(1f, active[15], 0.0001f)
+    }
+
+    @Test
+    fun timedCreativeEffectMatrixSupportsMonochromeAndVintageLooks() {
+        val cases = listOf(
+            ClipCreativeEffectPreset.NEGATIVE,
+            ClipCreativeEffectPreset.GRAYSCALE,
+            ClipCreativeEffectPreset.SEPIA,
+            ClipCreativeEffectPreset.FILM_FADE,
+            ClipCreativeEffectPreset.CINEMATIC,
+        )
+        cases.forEachIndexed { index, preset ->
+            val matrix = activeClipTimedCreativeEffectMatrixAtUs(
+                segments = listOf(ClipTimedEffectSegment("timed-$index", preset, 75, 0L, 1_000L)),
+                presentationTimeUs = 500_000L,
+                clipDurationMs = 1_000L,
+            )
+            assertEquals("Preset $preset must preserve alpha", 1f, matrix[15], 0.0001f)
+            assertFalse(matrix.contentEquals(floatArrayOf(
+                1f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f,
+                0f, 0f, 1f, 0f,
+                0f, 0f, 0f, 1f,
+            )))
+        }
+    }
+
 }

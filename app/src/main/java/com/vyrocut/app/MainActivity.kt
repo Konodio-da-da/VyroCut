@@ -463,7 +463,10 @@ private fun VyroCutApp() {
             clip.timedEffectSegments.firstOrNull { it.id == selection.second }
         }
     }
-    var timedVignetteIntensityDraft by remember(selectedClip?.id) {
+    var timedEffectPresetDraft by remember(selectedClip?.id) {
+        mutableStateOf(ClipCreativeEffectPreset.VIGNETTE)
+    }
+    var timedEffectIntensityDraft by remember(selectedClip?.id) {
         mutableFloatStateOf(70f)
     }
     val selectedAudioTrack = audioTrackClips.firstOrNull { it.id == selectedAudioTrackId }
@@ -690,7 +693,7 @@ private fun VyroCutApp() {
             val restoredClip = clips[restoreTarget.clipIndex]
             player.setVideoEffects(
                 createClipVisualEffects(restoredClip.visualAdjustments) +
-                    createClipTimedVignetteEffects(
+                    createClipTimedCreativeEffects(
                         restoredClip.timedEffectSegments,
                         restoredClip.durationMs,
                         calculateTimelinePositionMs(clipDurationsMs, restoreTarget.clipIndex, 0L),
@@ -1205,7 +1208,7 @@ private fun VyroCutApp() {
         clips.getOrNull(position.clipIndex)?.let { clip ->
             player.setVideoEffects(
                 createClipVisualEffects(clip.visualAdjustments) +
-                    createClipTimedVignetteEffects(
+                    createClipTimedCreativeEffects(
                         clip.timedEffectSegments,
                         clip.durationMs,
                         position.timelinePositionMs - position.clipPositionMs,
@@ -1610,7 +1613,7 @@ private fun VyroCutApp() {
         if (player.currentMediaItem?.mediaId == clip.id) {
             player.setVideoEffects(
                 createClipVisualEffects(next) +
-                    createClipTimedVignetteEffects(
+                    createClipTimedCreativeEffects(
                         clip.timedEffectSegments,
                         clip.durationMs,
                         calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
@@ -1621,7 +1624,7 @@ private fun VyroCutApp() {
         }
         exportMessage = "Clip visual effects updated"
     }
-    fun addSelectedClipTimedVignetteSegment() {
+    fun addSelectedClipTimedEffectSegment() {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (clip.durationMs <= 0L) {
             exportMessage = "Select a clip with a valid duration before adding an effect."
@@ -1632,8 +1635,8 @@ private fun VyroCutApp() {
             .coerceIn(0L, clip.durationMs - 1L)
         val segment = ClipTimedEffectSegment(
             id = java.util.UUID.randomUUID().toString(),
-            preset = ClipCreativeEffectPreset.VIGNETTE,
-            intensity = timedVignetteIntensityDraft.toInt().coerceIn(1, 100),
+            preset = timedEffectPresetDraft,
+            intensity = timedEffectIntensityDraft.toInt().coerceIn(1, 100),
             startMs = localStartMs,
             endMs = null,
         )
@@ -1654,7 +1657,7 @@ private fun VyroCutApp() {
         seekPreviewToTimelinePosition(
             calculateTimelinePositionMs(clipDurationsMs, selectedIndex, localStartMs),
         )
-        exportMessage = "Timed Vignette added from the playhead to the clip end"
+        exportMessage = "Timed ${segment.preset.label} added from the playhead to the clip end"
     }
 
     fun removeSelectedClipTimedEffectSegment() {
@@ -1741,7 +1744,7 @@ private fun VyroCutApp() {
         if (player.currentMediaItem?.mediaId == clip.id) {
             player.setVideoEffects(
                 createClipVisualEffects(updatedClip.visualAdjustments) +
-                    createClipTimedVignetteEffects(
+                    createClipTimedCreativeEffects(
                         updatedClip.timedEffectSegments,
                         updatedClip.durationMs,
                         calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
@@ -2526,6 +2529,8 @@ private fun VyroCutApp() {
                             if (segment != null) {
                                 selectedIndex = index
                                 selectedTimedEffectSelection = clip.id to segment.id
+                                timedEffectPresetDraft = segment.preset
+                                timedEffectIntensityDraft = segment.intensity.toFloat()
                                 activeTool = "Effects"
                                 seekPreviewToTimelinePosition(
                                     calculateTimelinePositionMs(clipDurationsMs, index, segment.startMs),
@@ -2890,7 +2895,7 @@ private fun VyroCutApp() {
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
-                                        "TIMED VIGNETTE",
+                                        "TIMED EFFECTS",
                                         color = StudioText,
                                         fontSize = VyroCutTypography.LabelSp.sp,
                                         fontWeight = FontWeight.Bold,
@@ -2903,22 +2908,39 @@ private fun VyroCutApp() {
                                     )
                                 }
                                 Text(
-                                    "Add a non-destructive Vignette interval from the playhead to this clip's end.",
+                                    "Choose a look and add a non-destructive interval from the playhead to this clip's end.",
                                     color = StudioMuted,
                                     fontSize = VyroCutTypography.CaptionSp.sp,
                                 )
+                                Row(
+                                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(VyroCutSpacing.SmallDp.dp),
+                                ) {
+                                    clipTimedCreativeEffectPresets().forEach { preset ->
+                                        FilterChip(
+                                            selected = timedEffectPresetDraft == preset,
+                                            onClick = { timedEffectPresetDraft = preset },
+                                            label = {
+                                                Text(
+                                                    preset.label,
+                                                    fontSize = VyroCutTypography.CaptionSp.sp,
+                                                )
+                                            },
+                                        )
+                                    }
+                                }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
+                                    Text("New effect strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
                                     Spacer(Modifier.weight(1f))
                                     Text(
-                                        "${timedVignetteIntensityDraft.toInt()}%",
+                                        "${timedEffectIntensityDraft.toInt()}%",
                                         color = StudioAccent,
                                         fontSize = VyroCutTypography.LabelSp.sp,
                                     )
                                 }
                                 Slider(
-                                    value = timedVignetteIntensityDraft.coerceIn(1f, 100f),
-                                    onValueChange = { timedVignetteIntensityDraft = it },
+                                    value = timedEffectIntensityDraft.coerceIn(1f, 100f),
+                                    onValueChange = { timedEffectIntensityDraft = it },
                                     valueRange = 1f..100f,
                                     steps = 98,
                                     colors = SliderDefaults.colors(
@@ -2927,7 +2949,7 @@ private fun VyroCutApp() {
                                     ),
                                 )
                                 Button(
-                                    onClick = { addSelectedClipTimedVignetteSegment() },
+                                    onClick = { addSelectedClipTimedEffectSegment() },
                                     enabled = selectedClip.durationMs > 0L &&
                                         selectedClip.timedEffectSegments.size < MAX_CLIP_TIMED_EFFECT_SEGMENTS,
                                 ) {
@@ -2938,7 +2960,7 @@ private fun VyroCutApp() {
                                 if (selectedTimedEffectSegment != null) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
-                                            "Selected: ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
+                                            "Selected: ${selectedTimedEffectSegment.preset.label} • ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
                                             modifier = Modifier.weight(1f),
                                             color = StudioMuted,
                                             fontSize = VyroCutTypography.CaptionSp.sp,
@@ -3962,7 +3984,7 @@ private fun VyroCutApp() {
                                                 videoEffects += FrameDropEffect.createDefaultFrameDropEffect(targetFps)
                                             }
                                             videoEffects += createClipVisualEffects(clip.visualAdjustments)
-                                            videoEffects += createClipTimedVignetteEffects(
+                                            videoEffects += createClipTimedCreativeEffects(
                                                 clip.timedEffectSegments,
                                                 clip.durationMs,
                                                 clipPresentationStartMs,
@@ -5935,7 +5957,7 @@ private fun TimelineEditorStrip(
                             ),
                     ) {
                         clip.timedEffectSegments
-                            .filter { it.preset == ClipCreativeEffectPreset.VIGNETTE }
+                            .filter { it.preset in clipTimedCreativeEffectPresets() }
                             .forEach { segment ->
                                 val bounds = calculateClipTimedEffectSegmentTimelineBounds(
                                     trackWidthPx = clipWidths[index],
@@ -5973,7 +5995,7 @@ private fun TimelineEditorStrip(
                                         contentAlignment = Alignment.CenterStart,
                                     ) {
                                         Text(
-                                            "${segment.intensity}%",
+                                            "${segment.preset.label} ${segment.intensity}%",
                                             modifier = Modifier.fillMaxWidth()
                                                 .padding(horizontal = handleHitWidthDp.dp),
                                             color = VyroCutPalette.AccentSecondary,
