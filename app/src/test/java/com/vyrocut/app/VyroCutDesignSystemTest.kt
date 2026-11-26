@@ -148,6 +148,12 @@ class VyroCutDesignSystemTest {
         assertEquals(6, VyroCutClipActionMetrics.ButtonGapDp)
         assertEquals(VyroCutShapes.CompactPanelCornerDp, VyroCutClipActionMetrics.ButtonCornerDp)
         assertEquals(10, VyroCutClipActionMetrics.ButtonCornerDp)
+        assertEquals(6, VyroCutClipActionMetrics.CompactButtonHorizontalPaddingDp)
+        assertEquals(24, VyroCutClipActionMetrics.StandardButtonHorizontalPaddingDp)
+        assertEquals(10, VyroCutClipActionMetrics.ButtonVerticalPaddingDp)
+        assertEquals(16, VyroCutClipActionMetrics.CompactIconSizeDp)
+        assertEquals(24, VyroCutClipActionMetrics.StandardIconSizeDp)
+        assertEquals(48, VyroCutControlMetrics.MinimumTouchTargetDp)
     }
 
     @Test
