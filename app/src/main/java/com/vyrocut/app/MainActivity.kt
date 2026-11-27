@@ -2226,10 +2226,33 @@ private fun VyroCutApp() {
                         contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp.dp, vertical = 0.dp)
                     ) { Text("‹ Projects", color = StudioAccent, fontSize = VyroCutTypography.SmallBodySp.sp) }
                     Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(VyroCutEditorChromeMetrics.BrandIconSizeDp.dp))
-                    Text("VyroCut", color = StudioText, fontSize = VyroCutTypography.BrandSp.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = VyroCutEditorChromeMetrics.BrandTitleStartPaddingDp.dp))
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { showProjects = true }) {
-                        Text(projects.firstOrNull { it.id == activeProjectId }?.name ?: "Project", color = StudioAccent, maxLines = 1)
+                    if (editorHeaderShowsBrandTitle(
+                            windowWidthDp = maxWidth.value.roundToInt(),
+                            fontScale = LocalDensity.current.fontScale,
+                        )
+                    ) {
+                        Text(
+                            "VyroCut",
+                            color = StudioText,
+                            fontSize = VyroCutTypography.BrandSp.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = VyroCutEditorChromeMetrics.BrandTitleStartPaddingDp.dp),
+                        )
+                    }
+                    TextButton(
+                        modifier = Modifier.weight(1f),
+                        onClick = { showProjects = true },
+                        contentPadding = PaddingValues(
+                            horizontal = VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp.dp,
+                            vertical = 0.dp,
+                        ),
+                    ) {
+                        Text(
+                            projects.firstOrNull { it.id == activeProjectId }?.name ?: "Project",
+                            color = StudioAccent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     IconButton(onClick = { saveProject(clips) }) { Icon(Icons.Default.Save, "Save project", tint = StudioAccent) }
                 }
