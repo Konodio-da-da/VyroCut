@@ -81,6 +81,7 @@ internal object VyroCutShapes {
     const val LargeCornerDp = 16
     const val CardCornerDp = 20
     const val PillCornerDp = 24
+    const val CircularIndicatorCornerDp = 50
 }
 
 /** Small, explicit type scale shared by the home, editor, and timeline. */
@@ -242,6 +243,7 @@ internal object VyroCutEffectsPanelMetrics {
     const val HorizontalPaddingDp = 10
     const val VerticalPaddingDp = 9
     const val SectionGapDp = 6
+    const val AddActionIconSizeDp = 16
     const val ResetButtonHorizontalPaddingDp = 6
     const val ResetButtonVerticalPaddingDp = 0
     const val HeaderLetterSpacingSp = 1f
