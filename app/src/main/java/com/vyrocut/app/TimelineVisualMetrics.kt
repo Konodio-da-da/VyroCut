@@ -34,6 +34,7 @@ internal const val TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP = VyroCutT
 internal const val TIMED_EFFECT_TRIM_HANDLE_WIDTH_DP = VyroCutTimelineVisualMetrics.TimedEffectTrimHandleWidthDp
 internal const val TIMED_EFFECT_TRIM_HANDLE_HEIGHT_FRACTION = VyroCutTimelineVisualMetrics.TimedEffectTrimHandleHeightFraction
 internal const val TIMED_EFFECT_TRIM_HANDLE_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TimedEffectTrimHandleCornerRadiusDp
+internal const val TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP = VyroCutTimelineVisualMetrics.TimedEffectSelectedBorderWidthDp
 
 internal const val TIMELINE_RULER_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.RulerLabelFontSp
 internal const val TIMELINE_CLIP_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.ClipLabelFontSp
@@ -145,6 +146,11 @@ internal fun timelineOverlaySelectionBorderWidthDp(
         clipIndex == selectedClipIndex &&
         layerIndex == selectedLayerIndex,
 )
+
+/** Uses the centralized one-dp outline for a selected timed-effect segment. */
+internal fun timelineTimedEffectSelectionBorderWidthDp(isSelected: Boolean): Int =
+    if (isSelected) TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP else 0
+
 
 /**
  * Estimates the horizontal room needed by a ruler timecode, including a small

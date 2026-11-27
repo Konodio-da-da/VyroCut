@@ -154,6 +154,16 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun timedEffectSelectionBorderUsesCentralDesignToken() {
+        assertEquals(1, TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP)
+        assertEquals(
+            TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP,
+            timelineTimedEffectSelectionBorderWidthDp(true),
+        )
+        assertEquals(0, timelineTimedEffectSelectionBorderWidthDp(false))
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)

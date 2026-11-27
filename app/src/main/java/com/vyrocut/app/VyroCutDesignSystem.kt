@@ -399,6 +399,7 @@ internal object VyroCutTimelineVisualMetrics {
     const val TimedEffectTrimHandleWidthDp = 4
     const val TimedEffectTrimHandleHeightFraction = 0.72f
     const val TimedEffectTrimHandleCornerRadiusDp = 2
+    const val TimedEffectSelectedBorderWidthDp = 1
 
     const val RulerLabelFontSp = VyroCutTypography.CaptionSp
     const val ClipLabelFontSp = VyroCutTypography.LabelSp

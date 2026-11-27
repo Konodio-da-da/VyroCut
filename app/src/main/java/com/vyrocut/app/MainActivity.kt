@@ -6108,7 +6108,7 @@ private fun TimelineEditorStrip(
                                                 RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                             )
                                             .border(
-                                                width = if (isSelected) 1.dp else 0.dp,
+                                                width = timelineTimedEffectSelectionBorderWidthDp(isSelected).dp,
                                                 color = VyroCutPalette.TimelineSelectionOutline,
                                                 shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                             )
