@@ -168,11 +168,11 @@ internal fun editorHeaderShowsBrandTitle(
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
     val safeFontScale = fontScale
         .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
+        ?.coerceIn(1f, VyroCutEditorLayoutMetrics.HeaderBrandTitleMaxFontScale)
         ?: 1f
     val fontScaleGrowth = (
         (safeFontScale - 1f) * EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP
-    ).roundToInt().coerceIn(0, EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP)
+    ).roundToInt().coerceAtLeast(0)
     val requiredWidth = EDITOR_HEADER_BRAND_TITLE_MINIMUM_WINDOW_WIDTH_DP + fontScaleGrowth
     return safeWidth >= requiredWidth
 }

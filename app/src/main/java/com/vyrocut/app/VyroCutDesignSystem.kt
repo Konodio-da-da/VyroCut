@@ -165,6 +165,7 @@ internal object VyroCutEditorLayoutMetrics {
     const val CompactWindowWidthDp = 440
     const val HeaderBrandTitleMinimumWindowWidthDp = 320
     const val HeaderBrandTitleFontScaleWidthGrowthDp = 96
+    const val HeaderBrandTitleMaxFontScale = 4f
     // The transport row contains four frame/seek controls, speed, and play.
     // Below this window width the row scrolls instead of clipping its actions.
     const val TransportControlsMinimumWindowWidthDp = 340

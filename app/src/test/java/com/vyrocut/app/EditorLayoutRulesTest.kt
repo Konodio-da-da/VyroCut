@@ -318,6 +318,10 @@ class EditorLayoutRulesTest {
         assertTrue(editorHeaderShowsBrandTitle(368, fontScale = 1.5f))
         assertFalse(editorHeaderShowsBrandTitle(415, fontScale = 2f))
         assertTrue(editorHeaderShowsBrandTitle(416, fontScale = 2f))
+        assertFalse(editorHeaderShowsBrandTitle(463, fontScale = 2.5f))
+        assertTrue(editorHeaderShowsBrandTitle(464, fontScale = 2.5f))
+        assertFalse(editorHeaderShowsBrandTitle(607, fontScale = 4f))
+        assertTrue(editorHeaderShowsBrandTitle(608, fontScale = 4f))
     }
 
     @Test
@@ -327,7 +331,7 @@ class EditorLayoutRulesTest {
             editorHeaderShowsBrandTitle(0),
         )
         assertEquals(editorHeaderShowsBrandTitle(320), editorHeaderShowsBrandTitle(320, Float.NaN))
-        assertEquals(editorHeaderShowsBrandTitle(320, 2f), editorHeaderShowsBrandTitle(320, 2.5f))
+        assertEquals(editorHeaderShowsBrandTitle(608, 4f), editorHeaderShowsBrandTitle(608, 4.5f))
         assertTrue(editorHeaderShowsBrandTitle(416, Float.POSITIVE_INFINITY))
     }
 }
