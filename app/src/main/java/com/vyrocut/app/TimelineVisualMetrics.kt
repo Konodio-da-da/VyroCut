@@ -88,6 +88,14 @@ internal fun timelineRulerTickVisualMetrics(isMajor: Boolean) = TimelineRulerTic
     heightDp = if (isMajor) TIMELINE_RULER_MAJOR_TICK_HEIGHT_DP else TIMELINE_RULER_MINOR_TICK_HEIGHT_DP,
 )
 
+/**
+ * Increases ruler tick separation with accessibility text so the time axis
+ * does not become visually crowded as its labels grow. Tick positions remain
+ * in project-time coordinates; this only thins rendered marks.
+ */
+internal fun timelineRulerMinimumTickSpacingDp(fontScale: Float): Float =
+    TIMELINE_RULER_MIN_TICK_SPACING_DP * safeTimelineFontScale(fontScale)
+
 internal enum class TimelineRulerLabelAlignment {
     START,
     CENTER,
