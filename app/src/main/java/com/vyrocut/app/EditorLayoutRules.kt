@@ -14,6 +14,8 @@ internal const val MAX_EDITOR_PREVIEW_HEIGHT_DP = VyroCutEditorLayoutMetrics.Max
 internal const val EDITOR_TIGHT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.TightWindowHeightDp
 internal const val EDITOR_COMPACT_WINDOW_HEIGHT_DP = VyroCutEditorLayoutMetrics.CompactWindowHeightDp
 internal const val EDITOR_COMPACT_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.CompactWindowWidthDp
+internal const val EDITOR_HEADER_BRAND_TITLE_MINIMUM_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.HeaderBrandTitleMinimumWindowWidthDp
+internal const val EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP = VyroCutEditorLayoutMetrics.HeaderBrandTitleFontScaleWidthGrowthDp
 internal const val EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP = VyroCutEditorLayoutMetrics.TransportControlsMinimumWindowWidthDp
 internal const val EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP = VyroCutEditorLayoutMetrics.TransportControlsFontScaleWidthGrowthDp
 internal const val EDITOR_RELINK_ACTION_EXTRA_WIDTH_DP = VyroCutEditorLayoutMetrics.RelinkActionExtraWidthDp
@@ -150,6 +152,29 @@ internal fun editorLayoutMetrics(
         scrollClipActionControlsHorizontally = safeWidth < clipActionMinimumWindowWidthDp,
         scrollTransportControlsHorizontally = safeWidth < transportControlsMinimumWindowWidthDp,
     )
+}
+
+/**
+ * Keeps the project title action readable in compact windows. The brand
+ * wordmark yields space before the project action is forced below its
+ * minimum useful width. Font-scale growth is bounded to the supported 2x
+ * accessibility range.
+ */
+internal fun editorHeaderShowsBrandTitle(
+    windowWidthDp: Int,
+    fontScale: Float = 1f,
+): Boolean {
+    val safeWidth = windowWidthDp.takeIf { it > 0 }
+        ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
+    val safeFontScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+    val fontScaleGrowth = (
+        (safeFontScale - 1f) * EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP
+    ).roundToInt().coerceIn(0, EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP)
+    val requiredWidth = EDITOR_HEADER_BRAND_TITLE_MINIMUM_WINDOW_WIDTH_DP + fontScaleGrowth
+    return safeWidth >= requiredWidth
 }
 
 /** Kept as a small compatibility helper for callers that only need the preview height. */
