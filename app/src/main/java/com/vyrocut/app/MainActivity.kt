@@ -6126,12 +6126,17 @@ private fun TimelineEditorStrip(
                                         Text(
                                             "${segment.preset.label} ${segment.intensity}%",
                                             modifier = Modifier.fillMaxWidth()
-                                                .padding(horizontal = handleHitWidthDp.dp),
+                                                .padding(
+                                                    horizontal = timelineTimedEffectLabelHorizontalInsetDp(
+                                                        isSelected = isSelected,
+                                                        handleHitWidthDp = handleHitWidthDp,
+                                                    ).dp,
+                                                ),
                                             color = VyroCutPalette.AccentSecondary,
                                             fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
                                             maxLines = 1,
                                             softWrap = false,
-                                            overflow = TextOverflow.Clip,
+                                            overflow = TextOverflow.Ellipsis,
                                         )
                                         if (isSelected) {
                                             Box(

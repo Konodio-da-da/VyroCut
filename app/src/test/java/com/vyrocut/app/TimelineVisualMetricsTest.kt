@@ -164,6 +164,16 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun timedEffectLabelsReserveTrimHandleSpaceOnlyWhileSelected() {
+        assertEquals(48f, timelineTimedEffectLabelHorizontalInsetDp(true, 48f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(false, 48f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, Float.NaN), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, Float.POSITIVE_INFINITY), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, -1f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, 0f), 0f)
+    }
+
+    @Test
     fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
         val baseline = timelineReadabilityMetrics(1f)
         val large = timelineReadabilityMetrics(1.5f)

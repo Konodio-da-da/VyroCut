@@ -151,6 +151,18 @@ internal fun timelineOverlaySelectionBorderWidthDp(
 internal fun timelineTimedEffectSelectionBorderWidthDp(isSelected: Boolean): Int =
     if (isSelected) TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP else 0
 
+/**
+ * Trim handles cover the label's edge area only while the effect is selected.
+ * Unselected segments have no handles, so their labels can use the full width.
+ */
+internal fun timelineTimedEffectLabelHorizontalInsetDp(
+    isSelected: Boolean,
+    handleHitWidthDp: Float,
+): Float {
+    if (!isSelected) return 0f
+    return handleHitWidthDp.takeIf { it.isFinite() && it > 0f } ?: 0f
+}
+
 
 /**
  * Estimates the horizontal room needed by a ruler timecode, including a small
