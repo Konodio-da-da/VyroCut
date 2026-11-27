@@ -103,6 +103,15 @@ internal fun isValidClipStickerOverlayScale(scale: Float): Boolean =
 internal fun isValidClipStickerOverlayRotation(rotationDegrees: Int): Boolean =
     rotationDegrees in MIN_CLIP_STICKER_ROTATION_DEGREES..MAX_CLIP_STICKER_ROTATION_DEGREES
 
+/** Rejects stale layer taps after a sticker is removed or the clip changes. */
+internal fun resolveClipStickerLayerSelection(
+    requestedIndex: Int,
+    overlayCount: Int,
+): Int? =
+    requestedIndex.takeIf {
+        overlayCount in 1..MAX_CLIP_STICKER_OVERLAYS && it in 0 until overlayCount
+    }
+
 /**
  * Updates one sticker's size without changing its timing, position, or symbol.
  * Finite values are clamped to the supported editor range; non-finite values

@@ -353,6 +353,16 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerLayerSelectionAcceptsOnlyAnExistingLayerIndex() {
+        assertEquals(0, resolveClipStickerLayerSelection(0, 1))
+        assertEquals(4, resolveClipStickerLayerSelection(4, MAX_CLIP_STICKER_OVERLAYS))
+        assertNull(resolveClipStickerLayerSelection(-1, 3))
+        assertNull(resolveClipStickerLayerSelection(3, 3))
+        assertNull(resolveClipStickerLayerSelection(0, 0))
+        assertNull(resolveClipStickerLayerSelection(0, MAX_CLIP_STICKER_OVERLAYS + 1))
+    }
+
+    @Test
     fun assetStickerIdsDecodeAndUnknownFutureAssetsKeepTheirUnicodeFallback() {
         val builtIn = decodeClipStickerOverlay("⭐", assetId = "star")
         assertEquals("star", builtIn?.assetId)

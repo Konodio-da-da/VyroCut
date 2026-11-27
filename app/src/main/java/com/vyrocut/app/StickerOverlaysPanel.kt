@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Slider
@@ -18,6 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.util.Locale
@@ -27,6 +29,7 @@ internal fun StickerOverlaysPanel(
     selectedClip: EditClip?,
     selectedStickerPosition: ClipStickerPosition,
     selectedStickerLayerIndex: Int,
+    onSelectStickerLayer: (Int) -> Unit,
     onPositionSelected: (ClipStickerPosition) -> Unit,
     onAddSticker: (String, String?) -> Unit,
     onRemoveSticker: (Int) -> Unit,
@@ -79,6 +82,7 @@ internal fun StickerOverlaysPanel(
             StickerLayersEditor(
                 clip = selectedClip,
                 selectedLayerIndex = selectedStickerLayerIndex,
+                onSelectStickerLayer = onSelectStickerLayer,
                 onRemoveSticker = onRemoveSticker,
                 onScaleChange = onScaleChange,
                 onRotationChange = onRotationChange,
@@ -194,6 +198,7 @@ private fun StickerQuickEmojiPicker(
 private fun StickerLayersEditor(
     clip: EditClip,
     selectedLayerIndex: Int,
+    onSelectStickerLayer: (Int) -> Unit,
     onRemoveSticker: (Int) -> Unit,
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
@@ -218,6 +223,10 @@ private fun StickerLayersEditor(
                 clipDurationMs = clip.durationMs,
                 sticker = sticker,
                 selected = selectedLayerIndex == index,
+                onSelect = {
+                    resolveClipStickerLayerSelection(index, clip.allStickerOverlays.size)
+                        ?.let(onSelectStickerLayer)
+                },
                 onRemove = { onRemoveSticker(index) },
                 onScaleChange = { scale -> onScaleChange(index, scale) },
                 onRotationChange = { degrees -> onRotationChange(index, degrees) },
@@ -235,6 +244,7 @@ private fun StickerLayerEditor(
     clipDurationMs: Long,
     sticker: ClipStickerOverlay,
     selected: Boolean,
+    onSelect: () -> Unit,
     onRemove: () -> Unit,
     onScaleChange: (Float) -> Unit,
     onRotationChange: (Float) -> Unit,
@@ -277,6 +287,11 @@ private fun StickerLayerEditor(
             .background(
                 if (selected) VyroCutPalette.SurfaceSelected else VyroCutPalette.Background,
                 RoundedCornerShape(VyroCutShapes.SmallCornerDp.dp),
+            )
+            .selectable(
+                selected = selected,
+                onClick = onSelect,
+                role = Role.RadioButton,
             )
             .padding(
                 horizontal = VyroCutSpacing.SmallDp.dp,

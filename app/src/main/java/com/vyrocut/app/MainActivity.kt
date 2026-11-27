@@ -3386,6 +3386,7 @@ private fun VyroCutApp() {
                         selectedClip = selectedClip,
                         selectedStickerPosition = selectedStickerPosition,
                         selectedStickerLayerIndex = selectedStickerLayerIndex,
+                        onSelectStickerLayer = { index -> selectedStickerLayerIndex = index },
                         onPositionSelected = { selectedStickerPosition = it },
                         onAddSticker = { symbol, assetId ->
                             addSelectedClipSticker(symbol, assetId)
