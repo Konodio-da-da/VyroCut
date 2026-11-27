@@ -48,12 +48,22 @@ class ToolDockLayoutRulesTest {
     }
 
     @Test
-    fun fontScaleGrowthIsBoundedAtTheSharedMaximum() {
-        val maximum = toolDockLayoutMetrics(360f, VyroCutControlMetrics.ToolDockMaxFontScale)
+    fun fontScaleGrowthScalesThroughFourTimesAndCapsLargerValues() {
+        assertEquals(4f, VyroCutControlMetrics.ToolDockMaxFontScale, 0f)
 
-        assertEquals(84, maximum.buttonWidthDp)
-        assertEquals(64, maximum.buttonHeightDp)
-        assertEquals(maximum, toolDockLayoutMetrics(360f, 4f))
+        val twice = toolDockLayoutMetrics(360f, 2f)
+        assertEquals(84, twice.buttonWidthDp)
+        assertEquals(64, twice.buttonHeightDp)
+
+        val twoAndHalf = toolDockLayoutMetrics(360f, 2.5f)
+        assertEquals(100, twoAndHalf.buttonWidthDp)
+        assertEquals(72, twoAndHalf.buttonHeightDp)
+
+        val fourTimes = toolDockLayoutMetrics(360f, 4f)
+        assertEquals(148, fourTimes.buttonWidthDp)
+        assertEquals(96, fourTimes.buttonHeightDp)
+        assertEquals(fourTimes, toolDockLayoutMetrics(360f, 4.5f))
+        assertEquals(fourTimes, toolDockLayoutMetrics(360f, Float.MAX_VALUE))
     }
 
     @Test

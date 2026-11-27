@@ -117,7 +117,7 @@ internal object VyroCutControlMetrics {
     const val CompactToolItemHorizontalPaddingDp = 4
     const val ToolDockCompactWidthThresholdDp = 480
     const val ToolDockLargeFontScaleThreshold = 1.3f
-    const val ToolDockMaxFontScale = 2f
+    const val ToolDockMaxFontScale = 4f
     const val ToolDockFontScaleWidthGrowthDp = 32
     const val ToolDockFontScaleHeightGrowthDp = 16
 }

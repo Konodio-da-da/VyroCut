@@ -39,10 +39,10 @@ internal fun toolDockLayoutMetrics(
     val fontScaleGrowth = (safeFontScale - 1f).coerceAtLeast(0f)
     val widthGrowth = (fontScaleGrowth * VyroCutControlMetrics.ToolDockFontScaleWidthGrowthDp)
         .roundToInt()
-        .coerceIn(0, VyroCutControlMetrics.ToolDockFontScaleWidthGrowthDp)
+        .coerceAtLeast(0)
     val heightGrowth = (fontScaleGrowth * VyroCutControlMetrics.ToolDockFontScaleHeightGrowthDp)
         .roundToInt()
-        .coerceIn(0, VyroCutControlMetrics.ToolDockFontScaleHeightGrowthDp)
+        .coerceAtLeast(0)
 
     return ToolDockLayoutMetrics(
         isCompact = false,
