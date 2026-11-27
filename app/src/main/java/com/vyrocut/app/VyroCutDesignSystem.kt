@@ -401,6 +401,7 @@ internal object VyroCutTimelineVisualMetrics {
     const val TrackSegmentCornerRadiusDp = 4
     const val TrackHeaderCornerRadiusDp = TrackSegmentCornerRadiusDp
     const val VideoClipCornerRadiusDp = 5
+    const val VideoClipBoundaryBorderWidthDp = 1
     const val VideoThumbnailCornerRadiusDp = 6
     const val PlayheadCapOuterCornerRadiusDp = 3
     const val PlayheadCapInnerCornerRadiusDp = 2
