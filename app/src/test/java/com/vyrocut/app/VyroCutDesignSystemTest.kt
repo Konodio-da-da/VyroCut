@@ -2,11 +2,20 @@ package com.vyrocut.app
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.text.font.FontWeight
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VyroCutDesignSystemTest {
+    @Test
+    fun typographyWeightsUseSharedSemanticRoles() {
+        assertEquals(FontWeight.Normal, VyroCutTypography.RegularWeight)
+        assertEquals(FontWeight.Medium, VyroCutTypography.MediumWeight)
+        assertEquals(FontWeight.SemiBold, VyroCutTypography.EmphasisWeight)
+        assertEquals(FontWeight.Bold, VyroCutTypography.StrongWeight)
+    }
+
     @Test
     fun sharedPaletteMatchesTheApprovedDesignReference() {
         assertEquals(Color(0xFF131313), VyroCutPalette.Background)
