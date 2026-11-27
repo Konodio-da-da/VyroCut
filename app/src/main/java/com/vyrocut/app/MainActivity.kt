@@ -2185,9 +2185,10 @@ private fun VyroCutApp() {
                 BoxWithConstraints(
                     modifier = Modifier.fillMaxSize().imePadding(),
                 ) {
+                    val editorWindowWidthDp = maxWidth.value.roundToInt()
                     val editorMetrics = editorLayoutMetrics(
                         windowHeightDp = maxHeight.value.roundToInt(),
-                        windowWidthDp = maxWidth.value.roundToInt(),
+                        windowWidthDp = editorWindowWidthDp,
                         fontScale = LocalDensity.current.fontScale,
                         hasPreviewRelinkAction = selectedClip?.uri?.let { it in missingMediaUris } == true,
                     )
@@ -2227,7 +2228,7 @@ private fun VyroCutApp() {
                     ) { Text("‹ Projects", color = StudioAccent, fontSize = VyroCutTypography.SmallBodySp.sp) }
                     Icon(Icons.Default.Movie, null, tint = StudioAccent, modifier = Modifier.size(VyroCutEditorChromeMetrics.BrandIconSizeDp.dp))
                     if (editorHeaderShowsBrandTitle(
-                            windowWidthDp = maxWidth.value.roundToInt(),
+                            windowWidthDp = editorWindowWidthDp,
                             fontScale = LocalDensity.current.fontScale,
                         )
                     ) {
