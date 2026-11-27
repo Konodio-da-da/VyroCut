@@ -60,6 +60,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -6361,6 +6363,11 @@ private fun TimelineLaneRow(
     height: Dp,
     content: @Composable () -> Unit,
 ) {
+    val displayLabel = timelineLaneDisplayLabel(
+        label = label,
+        gutterWidthDp = gutterWidth.value.roundToInt(),
+        fontScale = LocalDensity.current.fontScale,
+    )
     Row(
         modifier = Modifier.width(gutterWidth + contentWidth).height(height),
         verticalAlignment = Alignment.CenterVertically,
@@ -6381,7 +6388,8 @@ private fun TimelineLaneRow(
             )
             Spacer(Modifier.width(TIMELINE_LANE_LABEL_DOT_GAP_DP.dp))
             Text(
-                text = label,
+                text = displayLabel,
+                modifier = Modifier.semantics { contentDescription = label },
                 color = accentColor,
                 fontSize = TIMELINE_LANE_LABEL_FONT_SP.sp,
                 fontWeight = FontWeight.Bold,

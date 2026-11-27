@@ -414,3 +414,50 @@ internal fun timelineLaneGutterWidthDp(viewportWidthDp: Float, fontScale: Float)
         .coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
     return scaledWidth.coerceIn(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP, maximumWidth)
 }
+
+/**
+ * Shortens only lane labels that exceed the fixed gutter's estimated text
+ * budget. The caller keeps the original label in accessibility semantics.
+ */
+internal fun timelineLaneDisplayLabel(
+    label: String,
+    gutterWidthDp: Int,
+    fontScale: Float,
+): String {
+    val safeLabel = label.trim()
+    if (safeLabel.isEmpty()) return ""
+
+    val safeGutterWidth = gutterWidthDp.coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
+    val safeFontScale = fontScale.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val availableTextWidthDp = (
+        safeGutterWidth -
+            2 * TIMELINE_LANE_LABEL_HORIZONTAL_PADDING_DP -
+            TIMELINE_LANE_LABEL_DOT_SIZE_DP -
+            TIMELINE_LANE_LABEL_DOT_GAP_DP
+        ).coerceAtLeast(0)
+
+    fun estimatedTextWidthDp(value: String): Double =
+        value.length.toDouble() *
+            TIMELINE_LANE_LABEL_FONT_SP *
+            VyroCutTimelineVisualMetrics.LaneLabelGlyphWidthFactor *
+            safeFontScale.toDouble()
+
+    if (estimatedTextWidthDp(safeLabel) <= availableTextWidthDp) return safeLabel
+
+    val compactLabel = when (safeLabel.uppercase()) {
+        "STICKER" -> "STKR"
+        "EFFECT" -> "FX"
+        "SOURCE" -> "SRC"
+        "VOICE" -> "VO"
+        "VIDEO" -> "VID"
+        "MUSIC" -> "MUS"
+        "TEXT" -> "TXT"
+        "SFX" -> "SFX"
+        else -> safeLabel.take(3)
+    }
+    return if (estimatedTextWidthDp(compactLabel) <= availableTextWidthDp) {
+        compactLabel
+    } else {
+        compactLabel.take(2)
+    }
+}

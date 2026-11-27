@@ -404,6 +404,7 @@ internal object VyroCutTimelineVisualMetrics {
     const val LaneGutterMaximumWidthDp = 88
     const val LaneGutterViewportWidthFraction = 0.25f
     const val LaneLabelFontSp = 9
+    const val LaneLabelGlyphWidthFactor = 0.62f
     const val LaneLabelHorizontalPaddingDp = 5
     const val LaneLabelDotSizeDp = 5
     const val LaneLabelDotGapDp = 4

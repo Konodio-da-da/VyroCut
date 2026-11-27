@@ -267,6 +267,7 @@ class TimelineVisualMetricsTest {
         assertEquals(VyroCutTypography.LabelSp, TIMELINE_CLIP_LABEL_FONT_SP)
         assertEquals(VyroCutTypography.CaptionSp, TIMELINE_CLIP_META_FONT_SP)
         assertEquals(VyroCutTypography.TimelineStickerSymbolSp, TIMELINE_STICKER_SYMBOL_FONT_SP)
+        assertEquals(0.62f, VyroCutTimelineVisualMetrics.LaneLabelGlyphWidthFactor, 0f)
         assertEquals(1.3f, VyroCutTypography.TimelineSectionLetterSpacingSp, 0f)
     }
 
@@ -309,6 +310,29 @@ class TimelineVisualMetricsTest {
         assertEquals(72, timelineLaneGutterWidthDp(Float.POSITIVE_INFINITY, 1f))
         assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NaN))
         assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
+    fun laneLabelsAbbreviateOnlyWhenTheGutterCannotFitTheirEstimatedWidth() {
+        assertEquals("STICKER", timelineLaneDisplayLabel("STICKER", 88, 1.5f))
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 88, 2f))
+        assertEquals("VIDEO", timelineLaneDisplayLabel("VIDEO", 88, 2f))
+        assertEquals("VID", timelineLaneDisplayLabel("VIDEO", 88, 4f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 64, 4f))
+    }
+
+    @Test
+    fun laneLabelCompactionUsesSafeDefaultsForInvalidInputs() {
+        assertEquals("", timelineLaneDisplayLabel("  ", 88, 1f))
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 1f),
+            timelineLaneDisplayLabel("STICKER", 88, Float.NaN),
+        )
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 1f),
+            timelineLaneDisplayLabel("STICKER", 88, Float.POSITIVE_INFINITY),
+        )
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 88, Float.MAX_VALUE))
     }
 
     @Test
