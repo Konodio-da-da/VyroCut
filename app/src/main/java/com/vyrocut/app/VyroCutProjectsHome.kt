@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,7 +64,7 @@ internal fun VyroCutProjectsHome(
                     "VyroCut",
                     color = HomeAccent,
                     fontSize = VyroCutTypography.BrandSp.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = VyroCutTypography.StrongWeight,
                 )
                 Spacer(Modifier.width(VyroCutSpacing.MediumDp.dp))
                 OutlinedTextField(
@@ -112,7 +111,7 @@ internal fun VyroCutProjectsHome(
                 ) {
                     Box(Modifier.size(VyroCutHomeMetrics.OfflineIndicatorSizeDp.dp).background(HomeAccent, CircleShape))
                     Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
-                    Text("Offline-first", color = HomeAccent, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = FontWeight.Bold)
+                    Text("Offline-first", color = HomeAccent, fontSize = VyroCutTypography.LabelSp.sp, fontWeight = VyroCutTypography.StrongWeight)
                     Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                     Text("Projects stay on this device", color = HomeMuted, fontSize = VyroCutTypography.LabelSp.sp)
                 }
@@ -140,7 +139,7 @@ internal fun VyroCutProjectsHome(
                     )
                 }
                 Spacer(Modifier.height(VyroCutHomeMetrics.HeroTitleGapDp.dp))
-                Text("New project", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.HeroTitleSp.sp, fontWeight = FontWeight.Bold)
+                Text("New project", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.HeroTitleSp.sp, fontWeight = VyroCutTypography.StrongWeight)
                 Spacer(Modifier.height(VyroCutSpacing.XSmallDp.dp))
                 Text(
                     "Import videos from your device and start editing",
@@ -156,7 +155,7 @@ internal fun VyroCutProjectsHome(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Your projects", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.SectionTitleSp.sp, fontWeight = FontWeight.Bold)
+                    Text("Your projects", color = VyroCutPalette.TextPrimary, fontSize = VyroCutTypography.SectionTitleSp.sp, fontWeight = VyroCutTypography.StrongWeight)
                     Text(
                         "${projects.size} saved on this device",
                         color = HomeMuted,
@@ -184,7 +183,7 @@ internal fun VyroCutProjectsHome(
                     Text(
                         if (projects.isEmpty()) "No projects yet" else "No matching projects",
                         color = VyroCutPalette.TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = VyroCutTypography.EmphasisWeight,
                     )
                     Text(
                         if (projects.isEmpty()) "Create a project to start your first edit."
@@ -223,7 +222,7 @@ internal fun VyroCutProjectsHome(
                                     Modifier.padding(horizontal = VyroCutHomeMetrics.ProjectBadgeHorizontalPaddingDp.dp, vertical = VyroCutHomeMetrics.ProjectBadgeVerticalPaddingDp.dp),
                                     color = VyroCutPalette.AccentInk,
                                     fontSize = VyroCutTypography.BadgeSp.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontWeight = VyroCutTypography.StrongWeight,
                                 )
                             }
                         }
@@ -236,7 +235,7 @@ internal fun VyroCutProjectsHome(
                         Text(
                             project.second,
                             color = VyroCutPalette.TextPrimary,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = VyroCutTypography.EmphasisWeight,
                             fontSize = VyroCutTypography.BodySp.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
