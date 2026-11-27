@@ -133,7 +133,7 @@ private fun StickerAssetPicker(
             "BUILT-IN VECTOR PACK",
             color = VyroCutPalette.TextMuted,
             fontSize = VyroCutTypography.ToolLabelSp.sp,
-            fontWeight = androidx.compose.ui.text.font.VyroCutTypography.StrongWeight,
+            fontWeight = VyroCutTypography.StrongWeight,
         )
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -173,7 +173,7 @@ private fun StickerQuickEmojiPicker(
             "QUICK EMOJI",
             color = VyroCutPalette.TextMuted,
             fontSize = VyroCutTypography.ToolLabelSp.sp,
-            fontWeight = androidx.compose.ui.text.font.VyroCutTypography.StrongWeight,
+            fontWeight = VyroCutTypography.StrongWeight,
         )
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -211,7 +211,7 @@ private fun StickerLayersEditor(
         "ADDED • ${clip.allStickerOverlays.size}/${MAX_CLIP_STICKER_OVERLAYS}",
         color = VyroCutPalette.TextMuted,
         fontSize = VyroCutTypography.ToolLabelSp.sp,
-        fontWeight = androidx.compose.ui.text.font.VyroCutTypography.StrongWeight,
+        fontWeight = VyroCutTypography.StrongWeight,
     )
     if (clip.allStickerOverlays.isEmpty()) {
         Text(
