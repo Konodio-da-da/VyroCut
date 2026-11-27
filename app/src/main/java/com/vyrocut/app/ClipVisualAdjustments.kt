@@ -604,11 +604,9 @@ internal fun createClipTimedCreativeEffects(
     clipDurationMs: Long,
     clipPresentationStartMs: Long = 0L,
 ): List<Effect> {
-    val supportedSegments = segments.filter { it.preset in CLIP_TIMED_CREATIVE_EFFECT_PRESETS }
+    val supportedSegments = supportedClipTimedEffectSegmentsOrNull(segments, clipDurationMs)
+        ?: error("Timed creative effect segments must be valid for their owning clip")
     if (supportedSegments.isEmpty()) return emptyList()
-    require(validateClipTimedEffectSegments(segments, clipDurationMs)) {
-        "Timed creative effect segments must be valid for their owning clip"
-    }
 
     return buildList {
         if (supportedSegments.any {
