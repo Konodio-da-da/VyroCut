@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 
 /**
  * Shared visual tokens for the home screen, editor, and Material components.
@@ -86,6 +87,12 @@ internal object VyroCutShapes {
 
 /** Small, explicit type scale shared by the home, editor, and timeline. */
 internal object VyroCutTypography {
+    // Semantic weight roles shared by the home and editor surfaces.
+    val RegularWeight = FontWeight.Normal
+    val MediumWeight = FontWeight.Medium
+    val EmphasisWeight = FontWeight.SemiBold
+    val StrongWeight = FontWeight.Bold
+
     const val BadgeSp = 8
     const val ToolLabelSp = 9
     const val CaptionSp = 10
