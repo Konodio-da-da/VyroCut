@@ -170,6 +170,14 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun videoClipBoundariesRemainVisibleAndSelectionRemainsStronger() {
+        assertEquals(1, TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP)
+        assertEquals(TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP, timelineVideoClipBorderWidthDp(false))
+        assertEquals(TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP, timelineVideoClipBorderWidthDp(true))
+        assertTrue(timelineVideoClipBorderWidthDp(true) > timelineVideoClipBorderWidthDp(false))
+    }
+
+    @Test
     fun audioClipSelectionOutlineFollowsTheSelectedStableId() {
         assertEquals(
             TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP,
