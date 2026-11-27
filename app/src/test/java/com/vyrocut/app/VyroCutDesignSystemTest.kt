@@ -69,6 +69,18 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun videoClipBoundaryHasDedicatedContrastWithoutRivalingSelection() {
+        assertEquals(Color(0xFF586E65), VyroCutPalette.TimelineClipBoundary)
+        assertTrue(
+            contrastRatio(VyroCutPalette.TimelineClipBoundary, VyroCutPalette.SurfaceClip) >= 2.5,
+        )
+        assertTrue(
+            contrastRatio(VyroCutPalette.TimelineSelectionOutline, VyroCutPalette.SurfaceSelected) >
+                contrastRatio(VyroCutPalette.TimelineClipBoundary, VyroCutPalette.SurfaceClip),
+        )
+    }
+
+    @Test
     fun materialColorSchemeUsesTheSharedPalette() {
         val scheme = vyroCutColorScheme()
 
