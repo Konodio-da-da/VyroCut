@@ -1,7 +1,7 @@
 package com.vyrocut.app
 
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
  * user actions through explicit callbacks.
  */
 @Composable
-internal fun VyroCutEditorTransportControls(
+internal fun RowScope.VyroCutEditorTransportControls(
     hasSelectedClip: Boolean,
     hasClips: Boolean,
     isResolvingFrameStep: Boolean,
@@ -43,7 +43,6 @@ internal fun VyroCutEditorTransportControls(
     onPlaybackSpeed: () -> Unit,
     onPlayPause: () -> Unit,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(
             onClick = onPreviousFrame,
             enabled = hasSelectedClip && !isResolvingFrameStep,
@@ -120,5 +119,4 @@ internal fun VyroCutEditorTransportControls(
                 modifier = Modifier.size(VyroCutEditorChromeMetrics.PlaybackButtonIconSizeDp.dp),
             )
         }
-    }
 }
