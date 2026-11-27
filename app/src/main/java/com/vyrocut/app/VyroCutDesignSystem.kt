@@ -394,6 +394,14 @@ internal object VyroCutTimelineVisualMetrics {
     const val TrackHeaderDetailGapDp = 8
     const val TrackHeaderInlineMinimumWidthDp = 168
     const val TrackHeaderTrailingDetailMinWidthDp = 320
+    const val LaneGutterMinimumWidthDp = 64
+    const val LaneGutterBaseWidthDp = 72
+    const val LaneGutterMaximumWidthDp = 88
+    const val LaneGutterViewportWidthFraction = 0.25f
+    const val LaneLabelFontSp = 9
+    const val LaneLabelHorizontalPaddingDp = 5
+    const val LaneLabelDotSizeDp = 5
+    const val LaneLabelDotGapDp = 4
     const val TimedEffectTrackHeightDp = 48
     const val TimedEffectTrimHandleHitWidthDp = 48
     const val TimedEffectTrimHandleWidthDp = 4

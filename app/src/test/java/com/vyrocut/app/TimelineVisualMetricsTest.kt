@@ -295,6 +295,23 @@ class TimelineVisualMetricsTest {
 
 
     @Test
+    fun laneGutterAdaptsToViewportWidthAndSystemFontScale() {
+        assertEquals(72, timelineLaneGutterWidthDp(360f, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(320f, 1f))
+        assertEquals(64, timelineLaneGutterWidthDp(240f, 1f))
+        assertEquals(80, timelineLaneGutterWidthDp(320f, 1.5f))
+        assertEquals(88, timelineLaneGutterWidthDp(360f, 2f))
+    }
+
+    @Test
+    fun laneGutterUsesSafeDefaultsForMalformedViewportAndFontScale() {
+        assertEquals(72, timelineLaneGutterWidthDp(Float.NaN, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(Float.POSITIVE_INFINITY, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NaN))
+        assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
     fun trackHeadersCounterScrollAgainstTheSharedTimelineOffset() {
         assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(0), 0f)
         assertEquals(96f, timelineTrackHeaderPinnedTranslationPx(96), 0f)

@@ -18,6 +18,14 @@ internal const val TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP = VyroCutTimelineVisualMetr
 
 internal const val TIMELINE_TRACK_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.TrackLabelFontSp
 internal const val TIMELINE_TRACK_DETAIL_FONT_SP = VyroCutTimelineVisualMetrics.TrackDetailFontSp
+internal const val TIMELINE_LANE_GUTTER_MIN_WIDTH_DP = VyroCutTimelineVisualMetrics.LaneGutterMinimumWidthDp
+internal const val TIMELINE_LANE_GUTTER_BASE_WIDTH_DP = VyroCutTimelineVisualMetrics.LaneGutterBaseWidthDp
+internal const val TIMELINE_LANE_GUTTER_MAX_WIDTH_DP = VyroCutTimelineVisualMetrics.LaneGutterMaximumWidthDp
+internal const val TIMELINE_LANE_GUTTER_VIEWPORT_FRACTION = VyroCutTimelineVisualMetrics.LaneGutterViewportWidthFraction
+internal const val TIMELINE_LANE_LABEL_FONT_SP = VyroCutTimelineVisualMetrics.LaneLabelFontSp
+internal const val TIMELINE_LANE_LABEL_HORIZONTAL_PADDING_DP = VyroCutTimelineVisualMetrics.LaneLabelHorizontalPaddingDp
+internal const val TIMELINE_LANE_LABEL_DOT_SIZE_DP = VyroCutTimelineVisualMetrics.LaneLabelDotSizeDp
+internal const val TIMELINE_LANE_LABEL_DOT_GAP_DP = VyroCutTimelineVisualMetrics.LaneLabelDotGapDp
 internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = VyroCutTimelineVisualMetrics.TrackHeaderBadgeHorizontalPaddingDp
 internal const val TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp
 internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackHeaderCornerRadiusDp
@@ -382,3 +390,27 @@ internal fun timelineStickerTrackHeightDp(
  */
 internal fun timelineTrackHeaderPinnedTranslationPx(scrollOffsetPx: Int): Float =
     scrollOffsetPx.coerceAtLeast(0).toFloat()
+
+/**
+ * Resolves a compact fixed lane-label gutter that grows modestly with system
+ * font scale while preserving at least three quarters of the viewport for
+ * the time axis. Invalid geometry falls back to the default 360 dp viewport.
+ */
+internal fun timelineLaneGutterWidthDp(viewportWidthDp: Float, fontScale: Float): Int {
+    val safeViewportWidth = viewportWidthDp
+        .takeIf { it.isFinite() && it > 0f }
+        ?: 360f
+    val safeFontScale = fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, 2f)
+        ?: 1f
+    val scaledWidth = ceil(
+        TIMELINE_LANE_GUTTER_BASE_WIDTH_DP * safeFontScale.coerceAtMost(1.25f),
+    ).toInt()
+    val viewportMaximum = (safeViewportWidth * TIMELINE_LANE_GUTTER_VIEWPORT_FRACTION)
+        .toInt()
+        .coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
+    val maximumWidth = minOf(TIMELINE_LANE_GUTTER_MAX_WIDTH_DP, viewportMaximum)
+        .coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
+    return scaledWidth.coerceIn(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP, maximumWidth)
+}
