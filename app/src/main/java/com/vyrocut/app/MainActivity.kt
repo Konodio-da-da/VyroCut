@@ -2131,6 +2131,23 @@ private fun VyroCutApp() {
         }
     }
 
+    val timelineEditorCallbacks = createTimelineEditorCallbacks(
+        clips = clips,
+        clipDurationsMs = clipDurationsMs,
+        setSelectedAudioTrackId = { selectedAudioTrackId = it },
+        setSelectedAudioTrackType = { selectedAudioTrackType = it },
+        setActiveTool = { activeTool = it },
+        seekPreviewToTimelinePosition = { seekPreviewToTimelinePosition(it) },
+        setSelectedIndex = { selectedIndex = it },
+        setSelectedTextLayerIndex = { selectedTextLayerIndex = it },
+        setSelectedStickerLayerIndex = { selectedStickerLayerIndex = it },
+        setSelectedTimedEffectSelection = { selectedTimedEffectSelection = it },
+        setTimedEffectPresetDraft = { timedEffectPresetDraft = it },
+        setTimedEffectIntensityDraft = { timedEffectIntensityDraft = it },
+        onChanged = { changed(it) },
+        setExportMessage = { exportMessage = it },
+    )
+
     VyroCutTheme {
         Surface(Modifier.fillMaxSize(), color = StudioBackground) {
             if (showHome) {
@@ -2486,85 +2503,12 @@ private fun VyroCutApp() {
                     selectedTimedEffectSelection = selectedTimedEffectSelection,
                     playheadPositionMs = timelinePositionMs.toLong(),
                     isPlaying = isPlaying,
-                    onSelectAudioTrack = { trackClip ->
-                        selectedAudioTrackId = trackClip.id
-                        selectedAudioTrackType = trackClip.type
-                        activeTool = "Audio"
-                        seekPreviewToTimelinePosition(trackClip.startMs)
-                    },
-                    onSeek = { target ->
-                        seekPreviewToTimelinePosition(
-                            calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
-                        )
-                    },
-                    onSelectText = { index, layerIndex ->
-                        clips.getOrNull(index)?.let { clip ->
-                            selectedIndex = index
-                            selectedTextLayerIndex = layerIndex
-                            activeTool = "Text"
-                            val positionMs = clipTextOverlaySeekPositionMs(
-                                clip.allTextOverlays.getOrNull(layerIndex)?.startMs,
-                                clip.durationMs,
-                            )
-                            seekPreviewToTimelinePosition(
-                                calculateTimelinePositionMs(clipDurationsMs, index, positionMs),
-                            )
-                        }
-                    },
-                    onSelectSticker = { index, layerIndex ->
-                        clips.getOrNull(index)?.let { clip ->
-                            selectedIndex = index
-                            selectedStickerLayerIndex = layerIndex.takeIf {
-                                it in clip.allStickerOverlays.indices
-                            } ?: -1
-                            activeTool = "Stickers"
-                            val localPositionMs = clip.allStickerOverlays.getOrNull(layerIndex)?.startMs
-                                ?.coerceIn(0L, (clip.durationMs - 1L).coerceAtLeast(0L))
-                                ?: 0L
-                            seekPreviewToTimelinePosition(
-                                calculateTimelinePositionMs(clipDurationsMs, index, localPositionMs),
-                            )
-                        }
-                    },
-                    onSelectTimedEffect = { index, segmentId ->
-                        clips.getOrNull(index)?.let { clip ->
-                            val segment = clip.timedEffectSegments.firstOrNull { it.id == segmentId }
-                            if (segment != null) {
-                                selectedIndex = index
-                                selectedTimedEffectSelection = clip.id to segment.id
-                                timedEffectPresetDraft = segment.preset
-                                timedEffectIntensityDraft = segment.intensity.toFloat()
-                                activeTool = "Effects"
-                                seekPreviewToTimelinePosition(
-                                    calculateTimelinePositionMs(clipDurationsMs, index, segment.startMs),
-                                )
-                            }
-                        }
-                    },
-                    onEditTimedEffectSegment = { index, segmentId, mode, deltaMs ->
-                        clips.getOrNull(index)?.let { clip ->
-                            val nextSegments = editClipTimedEffectSegment(
-                                segments = clip.timedEffectSegments,
-                                segmentId = segmentId,
-                                clipDurationMs = clip.durationMs,
-                                mode = mode,
-                                deltaMs = deltaMs,
-                            )
-                            if (nextSegments != null && nextSegments != clip.timedEffectSegments) {
-                                changed(clips.toMutableList().apply {
-                                    this[index] = clip.copy(timedEffectSegments = nextSegments)
-                                })
-                                selectedIndex = index
-                                selectedTimedEffectSelection = clip.id to segmentId
-                                activeTool = "Effects"
-                                exportMessage = when (mode) {
-                                    ClipTimedEffectSegmentEditMode.MOVE -> "Timed effect moved"
-                                    ClipTimedEffectSegmentEditMode.TRIM_START -> "Timed effect start trimmed"
-                                    ClipTimedEffectSegmentEditMode.TRIM_END -> "Timed effect end trimmed"
-                                }
-                            }
-                        }
-                    }
+                    onSelectAudioTrack = timelineEditorCallbacks.onSelectAudioTrack,
+                    onSeek = timelineEditorCallbacks.onSeek,
+                    onSelectText = timelineEditorCallbacks.onSelectText,
+                    onSelectSticker = timelineEditorCallbacks.onSelectSticker,
+                    onSelectTimedEffect = timelineEditorCallbacks.onSelectTimedEffect,
+                    onEditTimedEffectSegment = timelineEditorCallbacks.onEditTimedEffectSegment,
                 )
 
                 Box(
@@ -5521,6 +5465,129 @@ private fun Modifier.timedEffectSegmentDrag(
             accumulatedDragPx += dragAmount.x
             change.consume()
         },
+    )
+}
+
+private data class TimelineEditorCallbacks(
+    val onSelectAudioTrack: (AudioTrackClip) -> Unit,
+    val onSeek: (TimelineSeekTarget) -> Unit,
+    val onSelectText: (Int, Int) -> Unit,
+    val onSelectSticker: (Int, Int) -> Unit,
+    val onSelectTimedEffect: (Int, String) -> Unit,
+    val onEditTimedEffectSegment: (Int, String, ClipTimedEffectSegmentEditMode, Long) -> Unit,
+)
+
+/**
+ * Builds timeline event handlers outside the editor's large BoxWithConstraints
+ * composition lambda. Keeping the edit callbacks in ordinary Kotlin methods
+ * avoids pushing the generated Compose method over the JVM 64 KiB limit.
+ */
+private fun createTimelineEditorCallbacks(
+    clips: List<EditClip>,
+    clipDurationsMs: List<Long>,
+    setSelectedAudioTrackId: (String?) -> Unit,
+    setSelectedAudioTrackType: (AudioTrackType) -> Unit,
+    setActiveTool: (String) -> Unit,
+    seekPreviewToTimelinePosition: (Long) -> Unit,
+    setSelectedIndex: (Int) -> Unit,
+    setSelectedTextLayerIndex: (Int) -> Unit,
+    setSelectedStickerLayerIndex: (Int) -> Unit,
+    setSelectedTimedEffectSelection: (Pair<String, String>?) -> Unit,
+    setTimedEffectPresetDraft: (ClipCreativeEffectPreset) -> Unit,
+    setTimedEffectIntensityDraft: (Float) -> Unit,
+    onChanged: (List<EditClip>) -> Unit,
+    setExportMessage: (String) -> Unit,
+): TimelineEditorCallbacks {
+    val onSelectAudioTrack: (AudioTrackClip) -> Unit = { trackClip ->
+        setSelectedAudioTrackId(trackClip.id)
+        setSelectedAudioTrackType(trackClip.type)
+        setActiveTool("Audio")
+        seekPreviewToTimelinePosition(trackClip.startMs)
+    }
+    val onSeek: (TimelineSeekTarget) -> Unit = { target ->
+        seekPreviewToTimelinePosition(
+            calculateTimelinePositionMs(clipDurationsMs, target.clipIndex, target.positionMs),
+        )
+    }
+    val onSelectText: (Int, Int) -> Unit = { index, layerIndex ->
+        clips.getOrNull(index)?.let { clip ->
+            setSelectedIndex(index)
+            setSelectedTextLayerIndex(layerIndex)
+            setActiveTool("Text")
+            val positionMs = clipTextOverlaySeekPositionMs(
+                clip.allTextOverlays.getOrNull(layerIndex)?.startMs,
+                clip.durationMs,
+            )
+            seekPreviewToTimelinePosition(
+                calculateTimelinePositionMs(clipDurationsMs, index, positionMs),
+            )
+        }
+    }
+    val onSelectSticker: (Int, Int) -> Unit = { index, layerIndex ->
+        clips.getOrNull(index)?.let { clip ->
+            setSelectedIndex(index)
+            setSelectedStickerLayerIndex(
+                layerIndex.takeIf { it in clip.allStickerOverlays.indices } ?: -1,
+            )
+            setActiveTool("Stickers")
+            val localPositionMs = clip.allStickerOverlays.getOrNull(layerIndex)?.startMs
+                ?.coerceIn(0L, (clip.durationMs - 1L).coerceAtLeast(0L))
+                ?: 0L
+            seekPreviewToTimelinePosition(
+                calculateTimelinePositionMs(clipDurationsMs, index, localPositionMs),
+            )
+        }
+    }
+    val onSelectTimedEffect: (Int, String) -> Unit = { index, segmentId ->
+        clips.getOrNull(index)?.let { clip ->
+            val segment = clip.timedEffectSegments.firstOrNull { it.id == segmentId }
+            if (segment != null) {
+                setSelectedIndex(index)
+                setSelectedTimedEffectSelection(clip.id to segment.id)
+                setTimedEffectPresetDraft(segment.preset)
+                setTimedEffectIntensityDraft(segment.intensity.toFloat())
+                setActiveTool("Effects")
+                seekPreviewToTimelinePosition(
+                    calculateTimelinePositionMs(clipDurationsMs, index, segment.startMs),
+                )
+            }
+        }
+    }
+    val onEditTimedEffectSegment:
+        (Int, String, ClipTimedEffectSegmentEditMode, Long) -> Unit =
+        { index, segmentId, mode, deltaMs ->
+            clips.getOrNull(index)?.let { clip ->
+                val nextSegments = editClipTimedEffectSegment(
+                    segments = clip.timedEffectSegments,
+                    segmentId = segmentId,
+                    clipDurationMs = clip.durationMs,
+                    mode = mode,
+                    deltaMs = deltaMs,
+                )
+                if (nextSegments != null && nextSegments != clip.timedEffectSegments) {
+                    onChanged(clips.toMutableList().apply {
+                        this[index] = clip.copy(timedEffectSegments = nextSegments)
+                    })
+                    setSelectedIndex(index)
+                    setSelectedTimedEffectSelection(clip.id to segmentId)
+                    setActiveTool("Effects")
+                    setExportMessage(
+                        when (mode) {
+                            ClipTimedEffectSegmentEditMode.MOVE -> "Timed effect moved"
+                            ClipTimedEffectSegmentEditMode.TRIM_START -> "Timed effect start trimmed"
+                            ClipTimedEffectSegmentEditMode.TRIM_END -> "Timed effect end trimmed"
+                        },
+                    )
+                }
+            }
+        }
+    return TimelineEditorCallbacks(
+        onSelectAudioTrack = onSelectAudioTrack,
+        onSeek = onSeek,
+        onSelectText = onSelectText,
+        onSelectSticker = onSelectSticker,
+        onSelectTimedEffect = onSelectTimedEffect,
+        onEditTimedEffectSegment = onEditTimedEffectSegment,
     )
 }
 
