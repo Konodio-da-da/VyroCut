@@ -52,6 +52,21 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun rulerTickSpacingScalesWithAccessibilityFontScaleAndCapsAtFourTimes() {
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(1f), 0f)
+        assertEquals(12f, timelineRulerMinimumTickSpacingDp(1.5f), 0f)
+        assertEquals(16f, timelineRulerMinimumTickSpacingDp(2f), 0f)
+        assertEquals(32f, timelineRulerMinimumTickSpacingDp(4f), 0f)
+        assertEquals(
+            timelineRulerMinimumTickSpacingDp(4f),
+            timelineRulerMinimumTickSpacingDp(4.5f),
+            0f,
+        )
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(Float.NaN), 0f)
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(0f), 0f)
+    }
+
+    @Test
     fun rulerLabelSpacingBoundsMalformedCharacterCountsAndFontScales() {
         assertEquals(
             timelineRulerLabelMinimumSpacingDp(1, 1f),
