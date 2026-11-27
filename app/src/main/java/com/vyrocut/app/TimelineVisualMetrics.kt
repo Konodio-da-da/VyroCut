@@ -30,6 +30,7 @@ internal const val TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP = VyroCutTi
 internal const val TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackSegmentCornerRadiusDp
 internal const val TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.TrackHeaderCornerRadiusDp
 internal const val TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.VideoClipCornerRadiusDp
+internal const val TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP = VyroCutTimelineVisualMetrics.VideoClipBoundaryBorderWidthDp
 internal const val TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.PlayheadCapOuterCornerRadiusDp
 internal const val TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.PlayheadCapInnerCornerRadiusDp
 internal const val TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP = VyroCutTimelineVisualMetrics.MediaBadgeCornerRadiusDp
@@ -140,6 +141,10 @@ internal fun timelinePlayheadGeometry(lineLeftDp: Float): TimelinePlayheadGeomet
 
 internal fun timelineClipSelectionBorderWidthDp(isSelected: Boolean): Int =
     if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else 0
+
+/** Keeps unselected video clip edges visible without competing with the active selection. */
+internal fun timelineVideoClipBorderWidthDp(isSelected: Boolean): Int =
+    if (isSelected) TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP else TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP
 
 /**
  * Returns the shared selection outline width for an audio clip only when its
