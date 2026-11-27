@@ -2945,7 +2945,7 @@ private fun VyroCutApp() {
                                     enabled = selectedClip.durationMs > 0L &&
                                         selectedClip.timedEffectSegments.size < MAX_CLIP_TIMED_EFFECT_SEGMENTS,
                                 ) {
-                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Add, null, modifier = Modifier.size(VyroCutEffectsPanelMetrics.AddActionIconSizeDp.dp))
                                     Spacer(Modifier.width(VyroCutSpacing.SmallDp.dp))
                                     Text("Add at playhead", fontSize = VyroCutTypography.LabelSp.sp)
                                 }
@@ -6377,7 +6377,7 @@ private fun TimelineLaneRow(
         ) {
             Box(
                 Modifier.size(TIMELINE_LANE_LABEL_DOT_SIZE_DP.dp)
-                    .background(accentColor, RoundedCornerShape(50.dp)),
+                    .background(accentColor, RoundedCornerShape(VyroCutShapes.CircularIndicatorCornerDp.dp)),
             )
             Spacer(Modifier.width(TIMELINE_LANE_LABEL_DOT_GAP_DP.dp))
             Text(
@@ -6498,7 +6498,7 @@ private fun TimelineTrackHeaderBadge(
             Modifier
                 .width(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
                 .height(TIMELINE_TRACK_HEADER_DOT_SIZE_DP.dp)
-                .background(accentColor, RoundedCornerShape(50)),
+                .background(accentColor, RoundedCornerShape(VyroCutShapes.CircularIndicatorCornerDp.dp)),
         )
         Spacer(Modifier.width(TIMELINE_TRACK_HEADER_DOT_GAP_DP.dp))
         Text(
