@@ -363,6 +363,47 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun duplicatingStickerPreservesItsSettingsAndUsesAnUnusedVisiblePosition() {
+        val original = ClipStickerOverlay(
+            symbol = "⭐",
+            scale = 1.4f,
+            position = ClipStickerPosition.BOTTOM_RIGHT,
+            startMs = 600L,
+            endMs = 3_200L,
+            assetId = "star",
+            rotationDegrees = 45,
+        )
+        val other = ClipStickerOverlay(
+            symbol = "❤️",
+            position = ClipStickerPosition.TOP_LEFT,
+        )
+        val originalLayers = listOf(original, other)
+
+        val result = duplicateClipStickerOverlay(originalLayers, selectedIndex = 0)
+
+        assertEquals(
+            listOf(original, other, original.copy(position = ClipStickerPosition.TOP_RIGHT)),
+            result?.overlays,
+        )
+        assertEquals(2, result?.selectedIndex)
+        assertEquals(listOf(original, other), originalLayers)
+    }
+
+    @Test
+    fun stickerDuplicationRejectsInvalidSelectionAndFullLayerCapacity() {
+        val sticker = ClipStickerOverlay(symbol = "⭐")
+        assertNull(duplicateClipStickerOverlay(emptyList(), 0))
+        assertNull(duplicateClipStickerOverlay(listOf(sticker), -1))
+        assertNull(duplicateClipStickerOverlay(listOf(sticker), 1))
+
+        val fullLayers = ClipStickerPosition.values().map { position ->
+            ClipStickerOverlay(symbol = "⭐", position = position)
+        }
+        assertNull(duplicateClipStickerOverlay(fullLayers, 0))
+        assertNull(duplicateClipStickerOverlay(fullLayers + sticker, 0))
+    }
+
+    @Test
     fun assetStickerIdsDecodeAndUnknownFutureAssetsKeepTheirUnicodeFallback() {
         val builtIn = decodeClipStickerOverlay("⭐", assetId = "star")
         assertEquals("star", builtIn?.assetId)

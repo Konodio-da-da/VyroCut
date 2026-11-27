@@ -1778,6 +1778,22 @@ private fun VyroCutApp() {
         )
         selectedStickerLayerIndex = addedIndex
     }
+    fun duplicateSelectedClipSticker(overlayIndex: Int) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val duplicate = duplicateClipStickerOverlay(clip.allStickerOverlays, overlayIndex)
+        if (duplicate == null) {
+            if (clip.allStickerOverlays.size >= MAX_CLIP_STICKER_OVERLAYS) {
+                exportMessage = "A clip can contain up to $MAX_CLIP_STICKER_OVERLAYS stickers."
+            }
+            return
+        }
+        commitSelectedClipStickerOverlays(
+            clip,
+            duplicate.overlays,
+            "Sticker duplicated",
+        )
+        selectedStickerLayerIndex = duplicate.selectedIndex
+    }
     fun removeSelectedClipSticker(overlayIndex: Int) {
         val clip = clips.getOrNull(selectedIndex) ?: return
         if (overlayIndex !in clip.allStickerOverlays.indices) return
@@ -3387,6 +3403,7 @@ private fun VyroCutApp() {
                         selectedStickerPosition = selectedStickerPosition,
                         selectedStickerLayerIndex = selectedStickerLayerIndex,
                         onSelectStickerLayer = { index -> selectedStickerLayerIndex = index },
+                        onDuplicateSticker = { index -> duplicateSelectedClipSticker(index) },
                         onPositionSelected = { selectedStickerPosition = it },
                         onAddSticker = { symbol, assetId ->
                             addSelectedClipSticker(symbol, assetId)

@@ -112,6 +112,34 @@ internal fun resolveClipStickerLayerSelection(
         overlayCount in 1..MAX_CLIP_STICKER_OVERLAYS && it in 0 until overlayCount
     }
 
+internal data class ClipStickerOverlayDuplicateResult(
+    val overlays: List<ClipStickerOverlay>,
+    val selectedIndex: Int,
+)
+
+/**
+ * Duplicates a layer without changing its source-time interval or visual settings.
+ * The copy is placed at the first unused preset position so it remains visible
+ * instead of being hidden exactly underneath the original layer.
+ */
+internal fun duplicateClipStickerOverlay(
+    overlays: List<ClipStickerOverlay>,
+    selectedIndex: Int,
+): ClipStickerOverlayDuplicateResult? {
+    if (overlays.size !in 1 until MAX_CLIP_STICKER_OVERLAYS ||
+        selectedIndex !in overlays.indices
+    ) return null
+
+    val availablePosition = ClipStickerPosition.values().firstOrNull { candidate ->
+        overlays.none { it.position == candidate }
+    } ?: return null
+    val duplicate = overlays[selectedIndex].copy(position = availablePosition)
+    return ClipStickerOverlayDuplicateResult(
+        overlays = overlays + duplicate,
+        selectedIndex = overlays.size,
+    )
+}
+
 /**
  * Updates one sticker's size without changing its timing, position, or symbol.
  * Finite values are clamped to the supported editor range; non-finite values

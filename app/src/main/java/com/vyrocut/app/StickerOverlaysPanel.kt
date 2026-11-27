@@ -30,6 +30,7 @@ internal fun StickerOverlaysPanel(
     selectedStickerPosition: ClipStickerPosition,
     selectedStickerLayerIndex: Int,
     onSelectStickerLayer: (Int) -> Unit,
+    onDuplicateSticker: (Int) -> Unit,
     onPositionSelected: (ClipStickerPosition) -> Unit,
     onAddSticker: (String, String?) -> Unit,
     onRemoveSticker: (Int) -> Unit,
@@ -83,6 +84,7 @@ internal fun StickerOverlaysPanel(
                 clip = selectedClip,
                 selectedLayerIndex = selectedStickerLayerIndex,
                 onSelectStickerLayer = onSelectStickerLayer,
+                onDuplicateSticker = onDuplicateSticker,
                 onRemoveSticker = onRemoveSticker,
                 onScaleChange = onScaleChange,
                 onRotationChange = onRotationChange,
@@ -199,6 +201,7 @@ private fun StickerLayersEditor(
     clip: EditClip,
     selectedLayerIndex: Int,
     onSelectStickerLayer: (Int) -> Unit,
+    onDuplicateSticker: (Int) -> Unit,
     onRemoveSticker: (Int) -> Unit,
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
@@ -227,6 +230,8 @@ private fun StickerLayersEditor(
                     resolveClipStickerLayerSelection(index, clip.allStickerOverlays.size)
                         ?.let(onSelectStickerLayer)
                 },
+                onDuplicate = { onDuplicateSticker(index) },
+                canDuplicate = clip.allStickerOverlays.size < MAX_CLIP_STICKER_OVERLAYS,
                 onRemove = { onRemoveSticker(index) },
                 onScaleChange = { scale -> onScaleChange(index, scale) },
                 onRotationChange = { degrees -> onRotationChange(index, degrees) },
@@ -245,6 +250,8 @@ private fun StickerLayerEditor(
     sticker: ClipStickerOverlay,
     selected: Boolean,
     onSelect: () -> Unit,
+    onDuplicate: () -> Unit,
+    canDuplicate: Boolean,
     onRemove: () -> Unit,
     onScaleChange: (Float) -> Unit,
     onRotationChange: (Float) -> Unit,
@@ -324,6 +331,20 @@ private fun StickerLayerEditor(
                 fontSize = VyroCutTypography.CaptionSp.sp,
             )
             Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = onDuplicate,
+                enabled = canDuplicate,
+                contentPadding = PaddingValues(
+                    horizontal = VyroCutStickerPanelMetrics.RemoveButtonHorizontalPaddingDp.dp,
+                    vertical = 0.dp,
+                ),
+            ) {
+                Text(
+                    "Duplicate",
+                    color = VyroCutPalette.TextPrimary,
+                    fontSize = VyroCutTypography.CaptionSp.sp,
+                )
+            }
             TextButton(
                 onClick = onRemove,
                 contentPadding = PaddingValues(
