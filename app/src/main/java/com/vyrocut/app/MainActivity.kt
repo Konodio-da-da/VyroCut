@@ -2286,7 +2286,6 @@ private fun VyroCutApp() {
                     onOpenProjects = { showProjects = true },
                     onSave = { saveProject(clips) },
                 )
-                }
                 Box(
                     Modifier.fillMaxWidth().height(editorMetrics.previewHeightDp.dp)
                         .background(canvasBackground, RoundedCornerShape(VyroCutEditorChromeMetrics.PreviewCanvasCornerDp.dp)),
