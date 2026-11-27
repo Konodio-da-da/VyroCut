@@ -454,5 +454,60 @@ class ClipTimedEffectSegmentsTest {
         assertNull(calculateClipTimedEffectDragDeltaMs(1f, 0f, 10_000L))
         assertNull(calculateClipTimedEffectDragDeltaMs(1f, 100f, 0L))
     }
+    @Test
+    fun updatingTimedEffectIntensityPreservesPresetIntervalAndOtherSegments() {
+        val selected = ClipTimedEffectSegment(
+            "selected",
+            ClipCreativeEffectPreset.VIGNETTE,
+            45,
+            1_000L,
+            3_000L,
+        )
+        val other = ClipTimedEffectSegment(
+            "other",
+            ClipCreativeEffectPreset.WARM,
+            70,
+            3_000L,
+            null,
+        )
+        val original = listOf(selected, other)
 
+        val updated = updateClipTimedEffectSegmentIntensity(
+            segments = original,
+            segmentId = selected.id,
+            clipDurationMs = 5_000L,
+            intensity = 0,
+        )
+
+        assertEquals(listOf(selected.copy(intensity = 0), other), updated)
+        assertEquals(45, original.first().intensity)
+        assertEquals(
+            original,
+            updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, 45),
+        )
+    }
+
+    @Test
+    fun timedEffectIntensityUpdatesRejectMissingSegmentsInvalidTracksAndOutOfRangeValues() {
+        val selected = ClipTimedEffectSegment(
+            "selected",
+            ClipCreativeEffectPreset.VIGNETTE,
+            45,
+            1_000L,
+            3_000L,
+        )
+        val original = listOf(selected)
+
+        assertNull(updateClipTimedEffectSegmentIntensity(original, "missing", 5_000L, 50))
+        assertNull(updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, -1))
+        assertNull(updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, 101))
+        assertNull(
+            updateClipTimedEffectSegmentIntensity(
+                listOf(selected.copy(endMs = 6_000L)),
+                selected.id,
+                5_000L,
+                50,
+            ),
+        )
+    }
 }

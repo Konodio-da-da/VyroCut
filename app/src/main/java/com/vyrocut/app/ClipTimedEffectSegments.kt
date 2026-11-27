@@ -181,6 +181,30 @@ internal fun appendClipTimedEffectSegment(
 }
 
 /**
+ * Updates one selected effect's strength without changing its preset or interval.
+ * Invalid tracks, missing IDs, and out-of-range values fail closed.
+ */
+internal fun updateClipTimedEffectSegmentIntensity(
+    segments: List<ClipTimedEffectSegment>,
+    segmentId: String,
+    clipDurationMs: Long,
+    intensity: Int,
+): List<ClipTimedEffectSegment>? {
+    if (!validateClipTimedEffectSegments(segments, clipDurationMs) ||
+        intensity !in MIN_CREATIVE_EFFECT_INTENSITY..MAX_CREATIVE_EFFECT_INTENSITY
+    ) return null
+
+    val index = segments.indexOfFirst { it.id == segmentId }
+    if (index < 0) return null
+    val selected = segments[index]
+    if (selected.intensity == intensity) return segments
+
+    return segments.toMutableList().apply {
+        this[index] = selected.copy(intensity = intensity)
+    }
+}
+
+/**
  * Keeps effect timing anchored to source time when a clip's source IN/OUT
  * points change. Intervals outside the retained source range are discarded.
  */

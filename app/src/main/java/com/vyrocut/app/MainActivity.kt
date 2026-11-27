@@ -473,6 +473,13 @@ private fun VyroCutApp() {
     var timedEffectIntensityDraft by remember(selectedClip?.id) {
         mutableFloatStateOf(70f)
     }
+    var selectedTimedEffectIntensityDraft by remember(
+        selectedClip?.id,
+        selectedTimedEffectSegment?.id,
+        selectedTimedEffectSegment?.intensity,
+    ) {
+        mutableFloatStateOf(selectedTimedEffectSegment?.intensity?.toFloat() ?: 0f)
+    }
     val selectedAudioTrack = audioTrackClips.firstOrNull { it.id == selectedAudioTrackId }
     var audioTrackVolumeDraft by remember(selectedAudioTrackId, selectedAudioTrack?.volume) {
         mutableFloatStateOf(selectedAudioTrack?.volume ?: 1f)
@@ -1662,6 +1669,34 @@ private fun VyroCutApp() {
             calculateTimelinePositionMs(clipDurationsMs, selectedIndex, localStartMs),
         )
         exportMessage = "Timed ${segment.preset.label} added from the playhead to the clip end"
+    }
+
+    fun commitSelectedClipTimedEffectIntensity(intensity: Int) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val selection = selectedTimedEffectSelection?.takeIf { it.first == clip.id } ?: return
+        val nextSegments = updateClipTimedEffectSegmentIntensity(
+            segments = clip.timedEffectSegments,
+            segmentId = selection.second,
+            clipDurationMs = clip.durationMs,
+            intensity = intensity,
+        ) ?: return
+        if (nextSegments == clip.timedEffectSegments) return
+        changed(clips.toMutableList().apply {
+            this[selectedIndex] = clip.copy(timedEffectSegments = nextSegments)
+        })
+        if (player.currentMediaItem?.mediaId == clip.id) {
+            player.setVideoEffects(
+                createClipVisualEffects(clip.visualAdjustments) +
+                    createClipTimedCreativeEffects(
+                        nextSegments,
+                        clip.durationMs,
+                        calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
+                    ) +
+                    createClipTextOverlayEffects(clip.allTextOverlays) +
+                    createClipStickerOverlayEffects(clip.allStickerOverlays, context),
+            )
+        }
+        exportMessage = "Timed effect strength updated"
     }
 
     fun removeSelectedClipTimedEffectSegment() {
@@ -2968,6 +3003,33 @@ private fun VyroCutApp() {
                                     Text("Add at playhead", fontSize = VyroCutTypography.LabelSp.sp)
                                 }
                                 if (selectedTimedEffectSegment != null) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Selected effect strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
+                                        Spacer(Modifier.weight(1f))
+                                        Text(
+                                            "${selectedTimedEffectIntensityDraft.toInt()}%",
+                                            color = StudioAccent,
+                                            fontSize = VyroCutTypography.LabelSp.sp,
+                                        )
+                                    }
+                                    Slider(
+                                        value = selectedTimedEffectIntensityDraft.coerceIn(0f, 100f),
+                                        onValueChange = { selectedTimedEffectIntensityDraft = it },
+                                        onValueChangeFinished = {
+                                            commitSelectedClipTimedEffectIntensity(
+                                                selectedTimedEffectIntensityDraft.toInt().coerceIn(
+                                                    MIN_CREATIVE_EFFECT_INTENSITY,
+                                                    MAX_CREATIVE_EFFECT_INTENSITY,
+                                                ),
+                                            )
+                                        },
+                                        valueRange = 0f..100f,
+                                        steps = 99,
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = StudioAccent,
+                                            activeTrackColor = StudioAccent,
+                                        ),
+                                    )
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                             "Selected: ${selectedTimedEffectSegment.preset.label} • ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
