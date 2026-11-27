@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -115,7 +114,7 @@ internal fun VyroCutToolDock(
                                 tool.title,
                                 color = if (isSelected) VyroCutPalette.AccentSoft else VyroCutPalette.TextMuted,
                                 fontSize = VyroCutTypography.ToolLabelSp.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (isSelected) VyroCutTypography.StrongWeight else VyroCutTypography.MediumWeight,
                                 maxLines = 1,
                                 softWrap = false,
                                 overflow = TextOverflow.Ellipsis,
