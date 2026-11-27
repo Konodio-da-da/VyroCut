@@ -33,6 +33,13 @@ internal const val TIGHT_EDITOR_CONTENT_PADDING_VERTICAL_DP = VyroCutEditorLayou
 internal const val COMPACT_EDITOR_SECTION_SPACING_DP = VyroCutEditorLayoutMetrics.CompactSectionSpacingDp
 internal const val DEFAULT_EDITOR_SECTION_SPACING_DP = VyroCutEditorLayoutMetrics.DefaultSectionSpacingDp
 
+/** Keeps editor width calculations aligned with the shared bounded accessibility policy. */
+private fun safeEditorFontScale(fontScale: Float): Float =
+    fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, VyroCutAccessibilityMetrics.MaxSupportedFontScale)
+        ?: 1f
+
 /**
  * Small, pure layout values shared by the editor screen.
  *
@@ -67,7 +74,7 @@ internal fun editorLayoutMetrics(
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_HEIGHT_DP
     val safeWidth = windowWidthDp.takeIf { it > 0 }
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
-    val safeFontScale = fontScale.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val safeFontScale = safeEditorFontScale(fontScale)
     val tight = safeHeight < EDITOR_TIGHT_WINDOW_HEIGHT_DP
     val compact = safeHeight < EDITOR_COMPACT_WINDOW_HEIGHT_DP
 
@@ -117,7 +124,7 @@ internal fun editorLayoutMetrics(
     val transportControlsFontScaleGrowthDp = (
         (safeFontScale - 1f).coerceAtLeast(0f) *
             EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP
-        ).roundToInt().coerceIn(0, EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP)
+        ).roundToInt().coerceAtLeast(0)
     val transportControlsMinimumWindowWidthDp =
         EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP + transportControlsFontScaleGrowthDp
 
@@ -126,10 +133,7 @@ internal fun editorLayoutMetrics(
     val clipActionFontScaleGrowthDp = (
         (safeFontScale - 1f).coerceAtLeast(0f) *
             VyroCutEditorLayoutMetrics.ClipActionControlsFontScaleWidthGrowthDp
-        ).roundToInt().coerceIn(
-            0,
-            VyroCutEditorLayoutMetrics.ClipActionControlsFontScaleWidthGrowthDp,
-        )
+        ).roundToInt().coerceAtLeast(0)
     val clipActionMinimumContentWidthDp =
         VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp +
             clipActionFontScaleGrowthDp
@@ -157,7 +161,7 @@ internal fun editorLayoutMetrics(
 /**
  * Keeps the project title action readable in compact windows. The brand
  * wordmark yields space before the project action is forced below its
- * minimum useful width. Font-scale growth is bounded to the supported 2x
+ * minimum useful width. Font-scale growth follows the shared 4x
  * accessibility range.
  */
 internal fun editorHeaderShowsBrandTitle(
@@ -166,10 +170,7 @@ internal fun editorHeaderShowsBrandTitle(
 ): Boolean {
     val safeWidth = windowWidthDp.takeIf { it > 0 }
         ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
-    val safeFontScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, VyroCutEditorLayoutMetrics.HeaderBrandTitleMaxFontScale)
-        ?: 1f
+    val safeFontScale = safeEditorFontScale(fontScale)
     val fontScaleGrowth = (
         (safeFontScale - 1f) * EDITOR_HEADER_BRAND_TITLE_FONT_SCALE_WIDTH_GROWTH_DP
     ).roundToInt().coerceAtLeast(0)

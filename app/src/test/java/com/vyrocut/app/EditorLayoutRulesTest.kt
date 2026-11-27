@@ -152,20 +152,23 @@ class EditorLayoutRulesTest {
     }
 
     @Test
-    fun clipActionMinimumWidthGrowsWithFontScaleAndCapsAtTwoTimes() {
+    fun clipActionMinimumWidthGrowsWithFontScaleAndCapsAtFourTimes() {
         val base = VyroCutEditorLayoutMetrics.ClipActionControlsMinimumContentWidthDp
         val insets = 2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp
 
         assertEquals(base, editorLayoutMetrics(640, 640, fontScale = 1f).clipActionControlsMinimumContentWidthDp)
         assertEquals(base + 24, editorLayoutMetrics(640, 640, fontScale = 1.5f).clipActionControlsMinimumContentWidthDp)
         assertEquals(base + 48, editorLayoutMetrics(640, 640, fontScale = 2f).clipActionControlsMinimumContentWidthDp)
+        assertEquals(base + 72, editorLayoutMetrics(640, 640, fontScale = 2.5f).clipActionControlsMinimumContentWidthDp)
+        assertEquals(base + 144, editorLayoutMetrics(640, 640, fontScale = 4f).clipActionControlsMinimumContentWidthDp)
         assertEquals(
-            editorLayoutMetrics(640, 2 * VyroCutEditorChromeMetrics.HorizontalContentPaddingDp + base + 48, fontScale = 2f)
-                .clipActionControlsMinimumContentWidthDp,
-            editorLayoutMetrics(640, 640, fontScale = 2.5f).clipActionControlsMinimumContentWidthDp,
+            editorLayoutMetrics(640, 640, fontScale = 4f).clipActionControlsMinimumContentWidthDp,
+            editorLayoutMetrics(640, 640, fontScale = 4.5f).clipActionControlsMinimumContentWidthDp,
         )
         assertTrue(editorLayoutMetrics(640, base + insets + 23, fontScale = 1.5f).scrollClipActionControlsHorizontally)
         assertFalse(editorLayoutMetrics(640, base + insets + 24, fontScale = 1.5f).scrollClipActionControlsHorizontally)
+        assertTrue(editorLayoutMetrics(640, base + insets + 143, fontScale = 4f).scrollClipActionControlsHorizontally)
+        assertFalse(editorLayoutMetrics(640, base + insets + 144, fontScale = 4f).scrollClipActionControlsHorizontally)
         assertEquals(
             editorLayoutMetrics(640, 640, fontScale = 1f).clipActionControlsMinimumContentWidthDp,
             editorLayoutMetrics(640, 640, fontScale = Float.NaN).clipActionControlsMinimumContentWidthDp,
@@ -180,14 +183,18 @@ class EditorLayoutRulesTest {
     }
 
     @Test
-    fun transportControlScrollThresholdGrowsWithAccessibilityFontScale() {
+    fun transportControlScrollThresholdGrowsThroughFourTimesFontScale() {
         assertEquals(true, editorLayoutMetrics(640, 359, fontScale = 1.5f).scrollTransportControlsHorizontally)
         assertEquals(false, editorLayoutMetrics(640, 360, fontScale = 1.5f).scrollTransportControlsHorizontally)
         assertEquals(true, editorLayoutMetrics(640, 379, fontScale = 2f).scrollTransportControlsHorizontally)
         assertEquals(false, editorLayoutMetrics(640, 380, fontScale = 2f).scrollTransportControlsHorizontally)
+        assertEquals(true, editorLayoutMetrics(640, 399, fontScale = 2.5f).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 400, fontScale = 2.5f).scrollTransportControlsHorizontally)
+        assertEquals(true, editorLayoutMetrics(640, 459, fontScale = 4f).scrollTransportControlsHorizontally)
+        assertEquals(false, editorLayoutMetrics(640, 460, fontScale = 4f).scrollTransportControlsHorizontally)
         assertEquals(
-            editorLayoutMetrics(640, 380, fontScale = 2f),
-            editorLayoutMetrics(640, 380, fontScale = 2.5f),
+            editorLayoutMetrics(640, 460, fontScale = 4f),
+            editorLayoutMetrics(640, 460, fontScale = 4.5f),
         )
     }
 
@@ -299,6 +306,13 @@ class EditorLayoutRulesTest {
         assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = -1f))
         assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = Float.NaN))
         assertEquals(expected, editorLayoutMetrics(640, 600, fontScale = Float.POSITIVE_INFINITY))
+    }
+
+    @Test
+    fun editorLayoutFontScaleUsesTheSharedFourTimesUpperBound() {
+        val fourTimes = editorLayoutMetrics(640, 600, fontScale = 4f)
+        assertEquals(fourTimes, editorLayoutMetrics(640, 600, fontScale = 4.5f))
+        assertEquals(fourTimes, editorLayoutMetrics(640, 600, fontScale = Float.MAX_VALUE))
     }
 
     @Test
