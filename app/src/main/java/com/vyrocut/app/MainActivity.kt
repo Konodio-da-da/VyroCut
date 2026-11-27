@@ -5819,7 +5819,7 @@ private fun TimelineEditorStrip(
                                 color = if (index == selectedIndex) {
                                     VyroCutPalette.TimelineSelectionOutline
                                 } else {
-                                    VyroCutPalette.Outline
+                                    VyroCutPalette.TimelineClipBoundary
                                 },
                                 shape = RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp),
                             )
