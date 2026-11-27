@@ -610,4 +610,10 @@ class VyroCutDesignSystemTest {
         assertEquals(6, VyroCutTimelineVisualMetrics.VideoThumbnailCornerRadiusDp)
     }
 
+    @Test
+    fun smallActionAndCircularIndicatorStylesUseSharedTokens() {
+        assertEquals(16, VyroCutEffectsPanelMetrics.AddActionIconSizeDp)
+        assertEquals(50, VyroCutShapes.CircularIndicatorCornerDp)
+    }
+
 }
