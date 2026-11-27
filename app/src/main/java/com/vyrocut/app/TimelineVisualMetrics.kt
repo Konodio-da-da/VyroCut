@@ -375,3 +375,10 @@ internal fun timelineStickerTrackHeightDp(
     layerCount: Int,
     rowHeightDp: Int = TIMELINE_STICKER_ROW_HEIGHT_DP,
 ): Int = boundedTimelineTrackHeight(layerCount, rowHeightDp, MAX_CLIP_STICKER_OVERLAYS)
+
+/**
+ * Counter-translates non-interactive track metadata against the shared
+ * horizontal scroll offset. Negative offsets are treated as the origin.
+ */
+internal fun timelineTrackHeaderPinnedTranslationPx(scrollOffsetPx: Int): Float =
+    scrollOffsetPx.coerceAtLeast(0).toFloat()

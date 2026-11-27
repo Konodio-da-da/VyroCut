@@ -54,6 +54,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -5724,10 +5725,10 @@ private fun TimelineEditorStrip(
     ) {
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
+            scrollOffsetPx = { timelineScroll.value },
             label = "VIDEO",
-            detail = "Main track",
+            detail = "Main track • tap to seek • hold to scrub",
             accentColor = VyroCutPalette.AccentSoft,
-            trailingDetail = "Tap to seek • hold to scrub",
         )
 
         // Ruler ticks share the playhead's absolute project-time mapping, so
@@ -5875,6 +5876,7 @@ private fun TimelineEditorStrip(
         val textTrackHeight = timelineTextTrackHeightDp(textLayerCount, timelineMetrics.textRowHeightDp).dp
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
+            scrollOffsetPx = { timelineScroll.value },
             label = "TEXT",
             detail = "Timed layers • tap a row to edit its in/out points",
             accentColor = VyroCutPalette.AccentSecondary,
@@ -5975,6 +5977,7 @@ private fun TimelineEditorStrip(
         val stickerTrackHeight = timelineStickerTrackHeightDp(stickerLayerCount, timelineMetrics.stickerRowHeightDp).dp
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
+            scrollOffsetPx = { timelineScroll.value },
             label = "STICKERS",
             detail = "Timed emoji overlays • tap a segment to edit its timing",
             accentColor = VyroCutPalette.Accent,
@@ -6064,6 +6067,7 @@ private fun TimelineEditorStrip(
 
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
+            scrollOffsetPx = { timelineScroll.value },
             label = "EFFECTS",
             detail = "Drag to move • selected edges trim",
             accentColor = VyroCutPalette.AccentSecondary,
@@ -6197,6 +6201,7 @@ private fun TimelineEditorStrip(
 
         TimelineTrackHeader(
             modifier = Modifier.width(totalWidth),
+            scrollOffsetPx = { timelineScroll.value },
             label = "SOURCE",
             detail = "Original clip audio",
             accentColor = VyroCutPalette.TextMuted,
@@ -6230,6 +6235,7 @@ private fun TimelineEditorStrip(
             }
             TimelineTrackHeader(
                 modifier = Modifier.width(totalWidth),
+                scrollOffsetPx = { timelineScroll.value },
                 label = type.name,
                 detail = when (type) {
                     AudioTrackType.MUSIC -> "Music"
@@ -6302,13 +6308,21 @@ private fun TimelineEditorStrip(
 @Composable
 private fun TimelineTrackHeader(
     modifier: Modifier = Modifier,
+    scrollOffsetPx: () -> Int = { 0 },
     label: String,
     detail: String,
     accentColor: Color,
     badgeColor: Color = accentColor.copy(alpha = 0.14f),
     trailingDetail: String? = null,
 ) {
-    BoxWithConstraints(modifier = modifier) {
+    // Header metadata is not part of the time axis. Counter-scroll only its
+    // drawing layer so lane identity stays visible while ruler, clips, playhead
+    // markers and gesture coordinates keep the single shared scroll state.
+    BoxWithConstraints(
+        modifier = modifier.graphicsLayer {
+            translationX = timelineTrackHeaderPinnedTranslationPx(scrollOffsetPx())
+        },
+    ) {
         val fontScale = LocalDensity.current.fontScale
         val stackDetail = timelineTrackHeaderStacksDetail(
             availableWidthDp = maxWidth.value,

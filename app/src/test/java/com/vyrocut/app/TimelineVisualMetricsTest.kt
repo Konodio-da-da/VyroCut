@@ -293,4 +293,14 @@ class TimelineVisualMetricsTest {
         assertEquals(false, timelineTrackHeaderStacksDetail(168f, 0.8f))
     }
 
+
+    @Test
+    fun trackHeadersCounterScrollAgainstTheSharedTimelineOffset() {
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(0), 0f)
+        assertEquals(96f, timelineTrackHeaderPinnedTranslationPx(96), 0f)
+        assertEquals(640f, timelineTrackHeaderPinnedTranslationPx(640), 0f)
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(-1), 0f)
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(Int.MIN_VALUE), 0f)
+    }
+
 }
