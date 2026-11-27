@@ -99,6 +99,11 @@ internal object VyroCutTypography {
     const val TimelineSectionLetterSpacingSp = 1.3f
 }
 
+/** One bounded accessibility font-scale policy shared by responsive editor surfaces. */
+internal object VyroCutAccessibilityMetrics {
+    const val MaxSupportedFontScale = 4f
+}
+
 /** Control geometry tokens preserve the current dock's minimum hit dimensions. */
 internal object VyroCutControlMetrics {
     const val MinimumTouchTargetDp = 48
@@ -117,7 +122,7 @@ internal object VyroCutControlMetrics {
     const val CompactToolItemHorizontalPaddingDp = 4
     const val ToolDockCompactWidthThresholdDp = 480
     const val ToolDockLargeFontScaleThreshold = 1.3f
-    const val ToolDockMaxFontScale = 4f
+    const val ToolDockMaxFontScale = VyroCutAccessibilityMetrics.MaxSupportedFontScale
     const val ToolDockFontScaleWidthGrowthDp = 32
     const val ToolDockFontScaleHeightGrowthDp = 16
 }
@@ -165,7 +170,7 @@ internal object VyroCutEditorLayoutMetrics {
     const val CompactWindowWidthDp = 440
     const val HeaderBrandTitleMinimumWindowWidthDp = 320
     const val HeaderBrandTitleFontScaleWidthGrowthDp = 96
-    const val HeaderBrandTitleMaxFontScale = 4f
+    const val HeaderBrandTitleMaxFontScale = VyroCutAccessibilityMetrics.MaxSupportedFontScale
     // The transport row contains four frame/seek controls, speed, and play.
     // Below this window width the row scrolls instead of clipping its actions.
     const val TransportControlsMinimumWindowWidthDp = 340

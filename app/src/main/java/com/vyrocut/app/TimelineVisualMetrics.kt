@@ -70,6 +70,13 @@ private const val TIMELINE_RULER_LABEL_GLYPH_WIDTH_FACTOR = VyroCutTimelineVisua
 private const val TIMELINE_RULER_LABEL_GAP_DP = VyroCutTimelineVisualMetrics.RulerLabelGapDp
 private const val MAX_TIMELINE_RULER_LABEL_CHARACTERS = VyroCutTimelineVisualMetrics.MaximumRulerLabelCharacters
 
+/** Keeps timeline geometry in step with the shared accessibility text-scale policy. */
+private fun safeTimelineFontScale(fontScale: Float): Float =
+    fontScale
+        .takeIf { it.isFinite() && it > 0f }
+        ?.coerceIn(1f, VyroCutAccessibilityMetrics.MaxSupportedFontScale)
+        ?: 1f
+
 
 internal data class TimelineRulerTickVisualMetrics(
     val widthDp: Int,
@@ -181,10 +188,7 @@ internal fun timelineRulerLabelMinimumSpacingDp(
     maxLabelCharacters: Int,
     fontScale: Float,
 ): Int {
-    val safeScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
-        ?: 1f
+    val safeScale = safeTimelineFontScale(fontScale)
     val safeCharacters = maxLabelCharacters.coerceIn(1, MAX_TIMELINE_RULER_LABEL_CHARACTERS)
     return ceil(
         safeCharacters * TIMELINE_RULER_LABEL_FONT_SP *
@@ -263,10 +267,7 @@ internal fun timelineTrackHeaderStacksDetail(
     val safeWidth = availableWidthDp
         .takeIf { it.isFinite() && it > 0f }
         ?: 0f
-    val safeFontScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
-        ?: 1f
+    val safeFontScale = safeTimelineFontScale(fontScale)
     val requiredInlineWidth = ceil(
         TIMELINE_TRACK_HEADER_INLINE_MINIMUM_WIDTH_DP * safeFontScale,
     )
@@ -280,10 +281,7 @@ internal fun timelineTrackHeaderShowsTrailingDetail(
     val safeWidth = availableWidthDp
         .takeIf { it.isFinite() && it > 0f }
         ?: 0f
-    val safeFontScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
-        ?: 1f
+    val safeFontScale = safeTimelineFontScale(fontScale)
     val requiredWidth = ceil(
         TIMELINE_TRACK_HEADER_TRAILING_DETAIL_MIN_WIDTH_DP * safeFontScale,
     )
@@ -302,10 +300,7 @@ internal data class TimelineReadabilityMetrics(
 )
 
 internal fun timelineReadabilityMetrics(fontScale: Float): TimelineReadabilityMetrics {
-    val safeScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
-        ?: 1f
+    val safeScale = safeTimelineFontScale(fontScale)
 
     fun scaledHeight(baseHeightDp: Int, contentHeightDp: Float, extraPaddingDp: Int): Int =
         maxOf(baseHeightDp, ceil(contentHeightDp * safeScale).toInt() + extraPaddingDp)
@@ -400,10 +395,7 @@ internal fun timelineLaneGutterWidthDp(viewportWidthDp: Float, fontScale: Float)
     val safeViewportWidth = viewportWidthDp
         .takeIf { it.isFinite() && it > 0f }
         ?: 360f
-    val safeFontScale = fontScale
-        .takeIf { it.isFinite() && it > 0f }
-        ?.coerceIn(1f, 2f)
-        ?: 1f
+    val safeFontScale = safeTimelineFontScale(fontScale)
     val scaledWidth = ceil(
         TIMELINE_LANE_GUTTER_BASE_WIDTH_DP * safeFontScale.coerceAtMost(1.25f),
     ).toInt()
@@ -428,7 +420,7 @@ internal fun timelineLaneDisplayLabel(
     if (safeLabel.isEmpty()) return ""
 
     val safeGutterWidth = gutterWidthDp.coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
-    val safeFontScale = fontScale.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val safeFontScale = safeTimelineFontScale(fontScale)
     val availableTextWidthDp = (
         safeGutterWidth -
             2 * TIMELINE_LANE_LABEL_HORIZONTAL_PADDING_DP -

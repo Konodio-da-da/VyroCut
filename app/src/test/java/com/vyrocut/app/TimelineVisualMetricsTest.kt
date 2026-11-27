@@ -25,12 +25,29 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun sharedAccessibilityFontScalePolicyCapsResponsiveSurfacesAtFourTimes() {
+        assertEquals(4f, VyroCutAccessibilityMetrics.MaxSupportedFontScale, 0f)
+        assertEquals(
+            VyroCutAccessibilityMetrics.MaxSupportedFontScale,
+            VyroCutControlMetrics.ToolDockMaxFontScale,
+            0f,
+        )
+        assertEquals(
+            VyroCutAccessibilityMetrics.MaxSupportedFontScale,
+            VyroCutEditorLayoutMetrics.HeaderBrandTitleMaxFontScale,
+            0f,
+        )
+    }
+
+    @Test
     fun rulerLabelSpacingAccountsForTimecodeWidthAndSystemFontScale() {
         assertEquals(39, timelineRulerLabelMinimumSpacingDp(5, 1f))
         assertEquals(55, timelineRulerLabelMinimumSpacingDp(5, 1.5f))
+        assertEquals(70, timelineRulerLabelMinimumSpacingDp(5, 2f))
+        assertEquals(132, timelineRulerLabelMinimumSpacingDp(5, 4f))
         assertEquals(
-            timelineRulerLabelMinimumSpacingDp(5, 2f),
             timelineRulerLabelMinimumSpacingDp(5, 4f),
+            timelineRulerLabelMinimumSpacingDp(5, 4.5f),
         )
     }
 
@@ -41,6 +58,11 @@ class TimelineVisualMetricsTest {
             timelineRulerLabelMinimumSpacingDp(0, Float.NaN),
         )
         assertEquals(405, timelineRulerLabelMinimumSpacingDp(100, 2f))
+        assertEquals(802, timelineRulerLabelMinimumSpacingDp(100, 4f))
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 4f),
+            timelineRulerLabelMinimumSpacingDp(5, Float.MAX_VALUE),
+        )
         assertEquals(
             timelineRulerLabelMinimumSpacingDp(5, 1f),
             timelineRulerLabelMinimumSpacingDp(5, Float.NEGATIVE_INFINITY),
@@ -75,9 +97,11 @@ class TimelineVisualMetricsTest {
     fun rulerLabelWidthIncludesPillPaddingAndRespectsFontScale() {
         assertEquals(37, timelineRulerLabelWidthDp(5, 1f))
         assertEquals(53, timelineRulerLabelWidthDp(5, 1.5f))
+        assertEquals(68, timelineRulerLabelWidthDp(5, 2f))
+        assertEquals(130, timelineRulerLabelWidthDp(5, 4f))
         assertEquals(
-            timelineRulerLabelWidthDp(5, 2f),
             timelineRulerLabelWidthDp(5, 4f),
+            timelineRulerLabelWidthDp(5, 4.5f),
         )
     }
 
@@ -189,10 +213,26 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
+    fun fourTimesFontScaleExpandsEveryTimelineRowAndWaveform() {
+        val twoTimes = timelineReadabilityMetrics(2f)
+        val fourTimes = timelineReadabilityMetrics(4f)
+
+        assertTrue(fourTimes.rulerHeightDp > twoTimes.rulerHeightDp)
+        assertTrue(fourTimes.videoTrackHeightDp > twoTimes.videoTrackHeightDp)
+        assertTrue(fourTimes.textRowHeightDp > twoTimes.textRowHeightDp)
+        assertTrue(fourTimes.stickerRowHeightDp > twoTimes.stickerRowHeightDp)
+        assertTrue(fourTimes.sourceTrackHeightDp > twoTimes.sourceTrackHeightDp)
+        assertTrue(fourTimes.sourceWaveformHeightDp > twoTimes.sourceWaveformHeightDp)
+        assertTrue(fourTimes.audioLaneHeightDp > twoTimes.audioLaneHeightDp)
+        assertTrue(fourTimes.audioWaveformHeightDp > twoTimes.audioWaveformHeightDp)
+    }
+
+    @Test
     fun videoTrackKeepsThumbnailFixedWhileScalingOnlyItsLabel() {
         assertEquals(TIMELINE_VIDEO_TRACK_HEIGHT_DP, timelineReadabilityMetrics(1f).videoTrackHeightDp)
         assertEquals(77, timelineReadabilityMetrics(1.5f).videoTrackHeightDp)
         assertEquals(84, timelineReadabilityMetrics(2f).videoTrackHeightDp)
+        assertEquals(114, timelineReadabilityMetrics(4f).videoTrackHeightDp)
     }
 
     @Test
@@ -206,8 +246,13 @@ class TimelineVisualMetricsTest {
     }
 
     @Test
-    fun extremeFontScaleIsBoundedAtTwoTimes() {
-        assertEquals(timelineReadabilityMetrics(2f), timelineReadabilityMetrics(4f))
+    fun extremeFontScaleIsBoundedAtFourTimes() {
+        val fourTimes = timelineReadabilityMetrics(4f)
+        assertEquals(fourTimes, timelineReadabilityMetrics(4.5f))
+        assertEquals(fourTimes, timelineReadabilityMetrics(Float.MAX_VALUE))
+        assertTrue(fourTimes.rulerHeightDp > timelineReadabilityMetrics(2f).rulerHeightDp)
+        assertTrue(fourTimes.videoTrackHeightDp > timelineReadabilityMetrics(2f).videoTrackHeightDp)
+        assertTrue(fourTimes.audioLaneHeightDp > timelineReadabilityMetrics(2f).audioLaneHeightDp)
     }
 
     @Test
@@ -277,6 +322,12 @@ class TimelineVisualMetricsTest {
         assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 1f))
         assertEquals(false, timelineTrackHeaderShowsTrailingDetail(639.9f, 2f))
         assertEquals(true, timelineTrackHeaderShowsTrailingDetail(640f, 2f))
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(1279.9f, 4f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(1280f, 4f))
+        assertEquals(
+            timelineTrackHeaderShowsTrailingDetail(1280f, 4f),
+            timelineTrackHeaderShowsTrailingDetail(1280f, 4.5f),
+        )
         assertEquals(false, timelineTrackHeaderShowsTrailingDetail(Float.NaN, 1f))
         assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, Float.NaN))
         assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 0.8f))
@@ -289,6 +340,8 @@ class TimelineVisualMetricsTest {
         assertEquals(false, timelineTrackHeaderStacksDetail(168f, 1f))
         assertEquals(true, timelineTrackHeaderStacksDetail(335.9f, 2f))
         assertEquals(false, timelineTrackHeaderStacksDetail(336f, 2f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(671.9f, 4f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(672f, 4f))
         assertEquals(true, timelineTrackHeaderStacksDetail(Float.NaN, 1f))
         assertEquals(false, timelineTrackHeaderStacksDetail(168f, Float.NaN))
         assertEquals(false, timelineTrackHeaderStacksDetail(168f, 0.8f))
@@ -302,6 +355,11 @@ class TimelineVisualMetricsTest {
         assertEquals(64, timelineLaneGutterWidthDp(240f, 1f))
         assertEquals(80, timelineLaneGutterWidthDp(320f, 1.5f))
         assertEquals(88, timelineLaneGutterWidthDp(360f, 2f))
+        assertEquals(88, timelineLaneGutterWidthDp(360f, 4f))
+        assertEquals(
+            timelineLaneGutterWidthDp(360f, 4f),
+            timelineLaneGutterWidthDp(360f, 4.5f),
+        )
     }
 
     @Test
@@ -319,6 +377,10 @@ class TimelineVisualMetricsTest {
         assertEquals("VIDEO", timelineLaneDisplayLabel("VIDEO", 88, 2f))
         assertEquals("VID", timelineLaneDisplayLabel("VIDEO", 88, 4f))
         assertEquals("ST", timelineLaneDisplayLabel("STICKER", 64, 4f))
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 4f),
+            timelineLaneDisplayLabel("STICKER", 88, 4.5f),
+        )
     }
 
     @Test
