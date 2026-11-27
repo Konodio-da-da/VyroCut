@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -47,7 +46,7 @@ internal fun VyroCutTrimDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(VyroCutSpacing.MediumDp.dp),
             ) {
-                Text(clipName, fontWeight = FontWeight.SemiBold)
+                Text(clipName, fontWeight = VyroCutTypography.EmphasisWeight)
                 if (isLoadingSource) {
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                     Text("Reading original video duration…")
@@ -57,11 +56,11 @@ internal fun VyroCutTrimDialog(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column {
-                            Text("IN", fontWeight = FontWeight.Bold)
+                            Text("IN", fontWeight = VyroCutTypography.StrongWeight)
                             Text(formatTrimTime(selectedRange.startMs))
                         }
                         Column {
-                            Text("OUT", fontWeight = FontWeight.Bold)
+                            Text("OUT", fontWeight = VyroCutTypography.StrongWeight)
                             Text(formatTrimTime(selectedRange.endMs))
                         }
                     }
@@ -81,7 +80,7 @@ internal fun VyroCutTrimDialog(
                     )
                     Text(
                         "Selected length  ${formatTrimTime((selectedRange.endMs - selectedRange.startMs).coerceAtLeast(0L))}",
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = VyroCutTypography.EmphasisWeight,
                     )
                     Text(
                         if (sourceReadFailed) {
