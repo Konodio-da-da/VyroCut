@@ -3003,19 +3003,11 @@ private fun VyroCutApp() {
                                     Text("Add at playhead", fontSize = VyroCutTypography.LabelSp.sp)
                                 }
                                 if (selectedTimedEffectSegment != null) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text("Selected effect strength", color = StudioMuted, fontSize = VyroCutTypography.LabelSp.sp)
-                                        Spacer(Modifier.weight(1f))
-                                        Text(
-                                            "${selectedTimedEffectIntensityDraft.toInt()}%",
-                                            color = StudioAccent,
-                                            fontSize = VyroCutTypography.LabelSp.sp,
-                                        )
-                                    }
-                                    Slider(
-                                        value = selectedTimedEffectIntensityDraft.coerceIn(0f, 100f),
-                                        onValueChange = { selectedTimedEffectIntensityDraft = it },
-                                        onValueChangeFinished = {
+                                    SelectedTimedEffectControls(
+                                        intensity = selectedTimedEffectIntensityDraft,
+                                        selectionSummary = "Selected: ${selectedTimedEffectSegment.preset.label} • ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
+                                        onIntensityChange = { selectedTimedEffectIntensityDraft = it },
+                                        onIntensityChangeFinished = {
                                             commitSelectedClipTimedEffectIntensity(
                                                 selectedTimedEffectIntensityDraft.toInt().coerceIn(
                                                     MIN_CREATIVE_EFFECT_INTENSITY,
@@ -3023,26 +3015,8 @@ private fun VyroCutApp() {
                                                 ),
                                             )
                                         },
-                                        valueRange = 0f..100f,
-                                        steps = 99,
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = StudioAccent,
-                                            activeTrackColor = StudioAccent,
-                                        ),
+                                        onRemove = { removeSelectedClipTimedEffectSegment() },
                                     )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            "Selected: ${selectedTimedEffectSegment.preset.label} • ${formatTime(selectedTimedEffectSegment.startMs)} – ${selectedTimedEffectSegment.endMs?.let { formatTime(it) } ?: "clip end"}",
-                                            modifier = Modifier.weight(1f),
-                                            color = StudioMuted,
-                                            fontSize = VyroCutTypography.CaptionSp.sp,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        TextButton(onClick = { removeSelectedClipTimedEffectSegment() }) {
-                                            Text("Remove", fontSize = VyroCutTypography.CaptionSp.sp)
-                                        }
-                                    }
                                 }
                             }
                         }
@@ -6642,6 +6616,58 @@ private fun EditorPreviewMetadata(
             ) {
                 Text(relinkLabel, fontSize = VyroCutTypography.LabelSp.sp)
             }
+        }
+    }
+}
+
+/**
+ * Keeps the selected timed-effect controls out of the editor's large
+ * BoxWithConstraints content lambda so its generated JVM method stays below
+ * the class-file method-size limit.
+ */
+@Composable
+private fun SelectedTimedEffectControls(
+    intensity: Float,
+    selectionSummary: String,
+    onIntensityChange: (Float) -> Unit,
+    onIntensityChangeFinished: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "Selected effect strength",
+            color = StudioMuted,
+            fontSize = VyroCutTypography.LabelSp.sp,
+        )
+        Spacer(Modifier.weight(1f))
+        Text(
+            "${intensity.toInt()}%",
+            color = StudioAccent,
+            fontSize = VyroCutTypography.LabelSp.sp,
+        )
+    }
+    Slider(
+        value = intensity.coerceIn(0f, 100f),
+        onValueChange = onIntensityChange,
+        onValueChangeFinished = onIntensityChangeFinished,
+        valueRange = 0f..100f,
+        steps = 99,
+        colors = SliderDefaults.colors(
+            thumbColor = StudioAccent,
+            activeTrackColor = StudioAccent,
+        ),
+    )
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            selectionSummary,
+            modifier = Modifier.weight(1f),
+            color = StudioMuted,
+            fontSize = VyroCutTypography.CaptionSp.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        TextButton(onClick = onRemove) {
+            Text("Remove", fontSize = VyroCutTypography.CaptionSp.sp)
         }
     }
 }
