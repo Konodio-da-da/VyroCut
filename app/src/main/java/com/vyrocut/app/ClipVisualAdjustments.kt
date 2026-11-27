@@ -150,6 +150,11 @@ private val CLIP_TIMED_CREATIVE_EFFECT_PRESETS = listOf(
 internal fun clipTimedCreativeEffectPresets(): List<ClipCreativeEffectPreset> =
     CLIP_TIMED_CREATIVE_EFFECT_PRESETS
 
+/** True only when a preset has the shared frame-time renderer used by preview and export. */
+internal fun isClipTimedCreativeEffectPresetSupported(
+    preset: ClipCreativeEffectPreset,
+): Boolean = preset in CLIP_TIMED_CREATIVE_EFFECT_PRESETS
+
 /**
  * Removes only the creative look, preserving the clip's manual brightness,
  * contrast, saturation, and hue adjustments.

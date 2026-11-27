@@ -391,13 +391,34 @@ internal fun activeClipTimedVignetteIntensityAtUs(
         ?: 0f
 }
 
-/** Pure effect descriptions for the active intervals; Android/Media3 objects are built elsewhere. */
+/**
+ * Validates the complete persisted track before filtering to presets that have
+ * a frame-time renderer shared by preview and Transformer export.
+ *
+ * Returning null distinguishes invalid project data from a valid track that
+ * currently contains no timed-renderable presets.
+ */
+internal fun supportedClipTimedEffectSegmentsOrNull(
+    segments: List<ClipTimedEffectSegment>,
+    clipDurationMs: Long,
+): List<ClipTimedEffectSegment>? {
+    if (!validateClipTimedEffectSegments(segments, clipDurationMs)) return null
+    return segments.filter { isClipTimedCreativeEffectPresetSupported(it.preset) }
+}
+
+/** Pure effect descriptions for the active, frame-time-renderable intervals. */
 internal fun createClipTimedEffectSpecsAtMs(
     segments: List<ClipTimedEffectSegment>,
     positionMs: Long,
     clipDurationMs: Long,
-): List<ClipVisualEffectSpec> =
-    activeClipTimedEffectSegmentsAtMs(segments, positionMs, clipDurationMs).flatMap { segment ->
+): List<ClipVisualEffectSpec> {
+    val supportedSegments = supportedClipTimedEffectSegmentsOrNull(segments, clipDurationMs)
+        ?: return emptyList()
+    return activeClipTimedEffectSegmentsAtMs(
+        supportedSegments,
+        positionMs,
+        clipDurationMs,
+    ).flatMap { segment ->
         createClipVisualEffectSpecs(
             ClipVisualAdjustments(
                 creativeEffectPreset = segment.preset,
@@ -405,6 +426,7 @@ internal fun createClipTimedEffectSpecsAtMs(
             ),
         )
     }
+}
 
 internal fun decodeClipTimedEffectSegment(
     id: String?,

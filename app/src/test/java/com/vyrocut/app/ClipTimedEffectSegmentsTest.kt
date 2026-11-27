@@ -46,6 +46,48 @@ class ClipTimedEffectSegmentsTest {
     }
 
     @Test
+    fun timedEffectSpecsOnlyExposePresetsWithSharedPreviewAndExportRenderers() {
+        val softFocus = ClipTimedEffectSegment(
+            "soft-focus",
+            ClipCreativeEffectPreset.SOFT_FOCUS,
+            80,
+            0L,
+            2_000L,
+        )
+        val warm = ClipTimedEffectSegment(
+            "warm",
+            ClipCreativeEffectPreset.WARM,
+            50,
+            0L,
+            2_000L,
+        )
+
+        assertFalse(isClipTimedCreativeEffectPresetSupported(ClipCreativeEffectPreset.SOFT_FOCUS))
+        assertTrue(isClipTimedCreativeEffectPresetSupported(ClipCreativeEffectPreset.WARM))
+        assertEquals(emptyList<ClipTimedEffectSegment>(), supportedClipTimedEffectSegmentsOrNull(listOf(softFocus), 2_000L))
+        assertEquals(
+            listOf(warm),
+            supportedClipTimedEffectSegmentsOrNull(listOf(softFocus, warm), 2_000L),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 0.5f)),
+            createClipTimedEffectSpecsAtMs(listOf(softFocus, warm), 1_000L, 2_000L),
+        )
+        assertEquals(
+            emptyList<ClipVisualEffectSpec>(),
+            createClipTimedEffectSpecsAtMs(listOf(softFocus), 1_000L, 2_000L),
+        )
+
+        // Unsupported does not mean unvalidated: invalid clip-local bounds still fail closed.
+        assertNull(
+            supportedClipTimedEffectSegmentsOrNull(
+                listOf(softFocus.copy(endMs = 2_500L)),
+                2_000L,
+            ),
+        )
+    }
+
+    @Test
     fun timedVignetteIntensityUsesClipLocalFrameTimestampAndLastActiveSegmentWins() {
         val segments = listOf(
             ClipTimedEffectSegment("base", ClipCreativeEffectPreset.VIGNETTE, 25, 0L, 5_000L),
