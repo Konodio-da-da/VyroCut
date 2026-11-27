@@ -5650,7 +5650,7 @@ private fun TimelineEditorStrip(
         clipDurationsMs = timelineClipDurationsMs,
         clipWidthsPx = clipWidths,
         gapPx = gap,
-        minimumTickSpacingDp = TIMELINE_RULER_MIN_TICK_SPACING_DP.toFloat(),
+        minimumTickSpacingDp = timelineRulerMinimumTickSpacingDp(density.fontScale),
     )
     val maxRulerLabelCharacters = timelineRulerTicks
         .asSequence()
