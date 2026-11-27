@@ -5815,8 +5815,12 @@ private fun TimelineEditorStrip(
                         Modifier.width(clipWidths[index].dp)
                             .background(if (index == selectedIndex) VyroCutPalette.SurfaceSelected else VyroCutPalette.SurfaceClip, RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp))
                             .border(
-                                width = timelineClipSelectionBorderWidthDp(index == selectedIndex).dp,
-                                color = VyroCutPalette.TimelineSelectionOutline,
+                                width = timelineVideoClipBorderWidthDp(index == selectedIndex).dp,
+                                color = if (index == selectedIndex) {
+                                    VyroCutPalette.TimelineSelectionOutline
+                                } else {
+                                    VyroCutPalette.Outline
+                                },
                                 shape = RoundedCornerShape(TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP.dp),
                             )
                             .padding(VyroCutTimelinePanelMetrics.VideoClipContentPaddingDp.dp)
