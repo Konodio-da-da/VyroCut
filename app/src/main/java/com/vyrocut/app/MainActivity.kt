@@ -2358,20 +2358,16 @@ private fun VyroCutApp() {
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    IconButton(
-                        onClick = { stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS) },
-                        enabled = selectedClip != null && !isResolvingFrameStep,
-                        modifier = Modifier.size(VyroCutEditorChromeMetrics.CompactIconButtonSizeDp.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.SkipPrevious,
-                            contentDescription = "Previous frame",
-                            tint = StudioAccent,
-                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportIconSizeDp.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = {
+                    VyroCutEditorTransportControls(
+                        hasSelectedClip = selectedClip != null,
+                        hasClips = clips.isNotEmpty(),
+                        isResolvingFrameStep = isResolvingFrameStep,
+                        isPlaying = isPlaying,
+                        playbackSpeedLabel = previewPlaybackSpeedLabel(previewPlaybackSpeed),
+                        onPreviousFrame = {
+                            stepPreviewFrame(PreviewFrameStepDirection.PREVIOUS)
+                        },
+                        onSeekBackward = {
                             resolveTimelineSeekTargetAfterDelta(
                                 clipDurationsMs,
                                 timelinePositionMs.toLong(),
@@ -2382,18 +2378,7 @@ private fun VyroCutApp() {
                                 )
                             }
                         },
-                        enabled = clips.isNotEmpty(),
-                        modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekButtonSizeDp.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Back 5 seconds",
-                            tint = StudioAccent,
-                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekIconSizeDp.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = {
+                        onSeekForward = {
                             resolveTimelineSeekTargetAfterDelta(
                                 clipDurationsMs,
                                 timelinePositionMs.toLong(),
@@ -2404,30 +2389,10 @@ private fun VyroCutApp() {
                                 )
                             }
                         },
-                        enabled = clips.isNotEmpty(),
-                        modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekButtonSizeDp.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.ArrowForward,
-                            contentDescription = "Forward 5 seconds",
-                            tint = StudioAccent,
-                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportSeekIconSizeDp.dp),
-                        )
-                    }
-                    IconButton(
-                        onClick = { stepPreviewFrame(PreviewFrameStepDirection.NEXT) },
-                        enabled = selectedClip != null && !isResolvingFrameStep,
-                        modifier = Modifier.size(VyroCutEditorChromeMetrics.CompactIconButtonSizeDp.dp),
-                    ) {
-                        Icon(
-                            Icons.Default.SkipNext,
-                            contentDescription = "Next frame",
-                            tint = StudioAccent,
-                            modifier = Modifier.size(VyroCutEditorChromeMetrics.TransportIconSizeDp.dp),
-                        )
-                    }
-                    TextButton(
-                        onClick = {
+                        onNextFrame = {
+                            stepPreviewFrame(PreviewFrameStepDirection.NEXT)
+                        },
+                        onPlaybackSpeed = {
                             val nextSpeed = nextPreviewPlaybackSpeed(previewPlaybackSpeed)
                             previewPlaybackSpeed = nextSpeed
                             preferences.edit()
@@ -2437,34 +2402,23 @@ private fun VyroCutApp() {
                                 )
                                 .apply()
                         },
-                        enabled = selectedClip != null,
-                        contentPadding = PaddingValues(horizontal = VyroCutEditorChromeMetrics.PlaybackSpeedButtonHorizontalPaddingDp.dp, vertical = 0.dp),
-                    ) {
-                        Text(previewPlaybackSpeedLabel(previewPlaybackSpeed), color = StudioAccent, fontSize = VyroCutTypography.LabelSp.sp)
-                    }
-                    FilledTonalButton(onClick = {
-                        if (player.isPlaying) {
-                            clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
-                                savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+                        onPlayPause = {
+                            if (player.isPlaying) {
+                                clips.getOrNull(player.currentMediaItemIndex)?.let { clip ->
+                                    savePreviewPosition(preferences, activeProjectId, clip, player.currentPosition)
+                                }
+                                player.pause()
+                            } else {
+                                if (
+                                    player.playbackState == Player.STATE_ENDED ||
+                                    isTimelinePositionAtEnd(timelinePositionMs.toLong(), timelineDurationMs)
+                                ) {
+                                    seekPreviewToTimelinePosition(0L)
+                                }
+                                player.play()
                             }
-                            player.pause()
-                        } else {
-                            if (
-                                player.playbackState == Player.STATE_ENDED ||
-                                isTimelinePositionAtEnd(timelinePositionMs.toLong(), timelineDurationMs)
-                            ) {
-                                seekPreviewToTimelinePosition(0L)
-                            }
-                            player.play()
-                        }
-                    }, enabled = selectedClip != null,
-                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = StudioAccent, contentColor = VyroCutPalette.AccentInk)) {
-                        Icon(
-                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            if (isPlaying) "Pause" else "Play",
-                            modifier = Modifier.size(VyroCutEditorChromeMetrics.PlaybackButtonIconSizeDp.dp),
-                        )
-                    }
+                        },
+                    )
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(VyroCutEditorChromeMetrics.ScrubberSectionGapDp.dp)) {
                     Slider(

@@ -121,12 +121,8 @@ internal fun editorLayoutMetrics(
     val stackPreviewMetadata = safeWidth < inlineMetadataMinimumWidth ||
         safeFontScale >= EDITOR_LARGE_FONT_SCALE_THRESHOLD
 
-    val transportControlsFontScaleGrowthDp = (
-        (safeFontScale - 1f).coerceAtLeast(0f) *
-            EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP
-        ).roundToInt().coerceAtLeast(0)
     val transportControlsMinimumWindowWidthDp =
-        EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP + transportControlsFontScaleGrowthDp
+        editorTransportControlsMinimumWindowWidthDp(safeFontScale)
 
     // Keep the three weighted clip actions and the fixed delete target usable.
     // The window threshold includes the editor's horizontal content insets.
@@ -156,6 +152,20 @@ internal fun editorLayoutMetrics(
         scrollClipActionControlsHorizontally = safeWidth < clipActionMinimumWindowWidthDp,
         scrollTransportControlsHorizontally = safeWidth < transportControlsMinimumWindowWidthDp,
     )
+}
+
+/**
+ * Returns the minimum window width for the transport row at the current
+ * accessibility font scale. The same bounded scale is used by the editor
+ * layout calculation and can be regression-tested without Compose rendering.
+ */
+internal fun editorTransportControlsMinimumWindowWidthDp(fontScale: Float): Int {
+    val safeFontScale = safeEditorFontScale(fontScale)
+    val fontScaleGrowthDp = (
+        (safeFontScale - 1f).coerceAtLeast(0f) *
+            EDITOR_TRANSPORT_CONTROLS_FONT_SCALE_WIDTH_GROWTH_DP
+        ).roundToInt().coerceAtLeast(0)
+    return EDITOR_TRANSPORT_CONTROLS_MINIMUM_WINDOW_WIDTH_DP + fontScaleGrowthDp
 }
 
 /**

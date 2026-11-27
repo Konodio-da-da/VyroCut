@@ -176,6 +176,17 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun transportControlMinimumWidthUsesBoundedFontScale() {
+        assertEquals(340, editorTransportControlsMinimumWindowWidthDp(1f))
+        assertEquals(360, editorTransportControlsMinimumWindowWidthDp(1.5f))
+        assertEquals(380, editorTransportControlsMinimumWindowWidthDp(2f))
+        assertEquals(460, editorTransportControlsMinimumWindowWidthDp(4f))
+        assertEquals(460, editorTransportControlsMinimumWindowWidthDp(4.5f))
+        assertEquals(340, editorTransportControlsMinimumWindowWidthDp(Float.NaN))
+        assertEquals(340, editorTransportControlsMinimumWindowWidthDp(0f))
+    }
+
+    @Test
     fun narrowWindowsScrollTransportControlsInsteadOfClippingThem() {
         assertEquals(true, editorLayoutMetrics(640, 339).scrollTransportControlsHorizontally)
         assertEquals(false, editorLayoutMetrics(640, 340).scrollTransportControlsHorizontally)
