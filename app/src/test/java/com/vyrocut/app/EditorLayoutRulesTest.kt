@@ -309,4 +309,25 @@ class EditorLayoutRulesTest {
         assertEquals(expected, editorLayoutMetrics(-1))
         assertEquals(expected.previewHeightDp, editorPreviewHeightDp(-1))
     }
+
+    @Test
+    fun editorHeaderYieldsBrandWordmarkBeforeProjectActionGetsTooNarrow() {
+        assertFalse(editorHeaderShowsBrandTitle(319))
+        assertTrue(editorHeaderShowsBrandTitle(320))
+        assertFalse(editorHeaderShowsBrandTitle(367, fontScale = 1.5f))
+        assertTrue(editorHeaderShowsBrandTitle(368, fontScale = 1.5f))
+        assertFalse(editorHeaderShowsBrandTitle(415, fontScale = 2f))
+        assertTrue(editorHeaderShowsBrandTitle(416, fontScale = 2f))
+    }
+
+    @Test
+    fun editorHeaderUsesSafeWidthAndFontScaleBounds() {
+        assertEquals(
+            editorHeaderShowsBrandTitle(EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP),
+            editorHeaderShowsBrandTitle(0),
+        )
+        assertEquals(editorHeaderShowsBrandTitle(320), editorHeaderShowsBrandTitle(320, Float.NaN))
+        assertEquals(editorHeaderShowsBrandTitle(320, 2f), editorHeaderShowsBrandTitle(320, 2.5f))
+        assertTrue(editorHeaderShowsBrandTitle(416, Float.POSITIVE_INFINITY))
+    }
 }
