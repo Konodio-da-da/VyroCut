@@ -442,7 +442,7 @@ class TimelineVisualMetricsTest {
             timelineLaneDisplayLabel("STICKER", 88, 1f),
             timelineLaneDisplayLabel("STICKER", 88, Float.POSITIVE_INFINITY),
         )
-        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 88, Float.MAX_VALUE))
+        assertEquals("STK", timelineLaneDisplayLabel("STICKER", 88, Float.MAX_VALUE))
     }
 
     @Test
