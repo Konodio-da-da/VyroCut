@@ -342,10 +342,16 @@ class ClipStickerOverlayTest {
     fun builtInVectorStickerPackHasUniqueStableIdsAndDrawableResources() {
         val assets = ClipStickerAsset.values().toList()
 
-        assertEquals(6, assets.size)
+        assertEquals(10, assets.size)
+        assertEquals(
+            listOf("star", "heart", "sparkle", "bolt", "crown", "flower", "clapper", "camera", "fire", "like"),
+            assets.map { it.id },
+        )
         assertEquals(assets.size, assets.map { it.id }.toSet().size)
+        assertEquals(assets.size, assets.map { it.drawableResId }.toSet().size)
         assets.forEach { asset ->
             assertTrue(isValidClipStickerAssetId(asset.id))
+            assertTrue(asset.label.isNotBlank())
             assertTrue(asset.drawableResId > 0)
             assertTrue(isValidClipStickerOverlaySymbol(asset.fallbackSymbol))
             assertEquals(asset, ClipStickerAsset.fromId(asset.id))

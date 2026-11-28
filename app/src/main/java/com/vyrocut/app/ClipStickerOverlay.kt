@@ -45,7 +45,11 @@ internal enum class ClipStickerAsset(
     SPARKLE("sparkle", "Sparkle", "✨", R.drawable.vyro_sticker_sparkle),
     BOLT("bolt", "Bolt", "⚡", R.drawable.vyro_sticker_bolt),
     CROWN("crown", "Crown", "👑", R.drawable.vyro_sticker_crown),
-    FLOWER("flower", "Flower", "🌼", R.drawable.vyro_sticker_flower);
+    FLOWER("flower", "Flower", "🌼", R.drawable.vyro_sticker_flower),
+    CLAPPER("clapper", "Clapper", "🎬", R.drawable.vyro_sticker_clapper),
+    CAMERA("camera", "Camera", "📷", R.drawable.vyro_sticker_camera),
+    FIRE("fire", "Fire", "🔥", R.drawable.vyro_sticker_fire),
+    LIKE("like", "Like", "👍", R.drawable.vyro_sticker_like);
 
     companion object {
         fun fromId(id: String?): ClipStickerAsset? =
