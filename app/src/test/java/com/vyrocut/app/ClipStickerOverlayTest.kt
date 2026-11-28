@@ -181,7 +181,7 @@ class ClipStickerOverlayTest {
         assertEquals(3_999L, clipStickerStartAtPlayheadMs(5_000L, 1_000L, 4_000L))
         assertEquals(3_999L, clipStickerStartAtPlayheadMs(Long.MAX_VALUE, 1_000L, 4_000L))
 
-        val sticker = decodeClipStickerOverlay("✨", startMs = 750L)
+        val sticker = ClipStickerOverlay("✨", startMs = 750L, endMs = 4_000L)
         assertNotNull(sticker)
         assertFalse(isClipStickerOverlayVisibleAtMs(sticker!!, 749L))
         assertTrue(isClipStickerOverlayVisibleAtMs(sticker, 750L))
