@@ -36,6 +36,7 @@ internal fun StickerOverlaysPanel(
     onRemoveSticker: (Int) -> Unit,
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
+    onOpacityChange: (Int, Float) -> Unit,
     onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Column(
@@ -88,6 +89,7 @@ internal fun StickerOverlaysPanel(
                 onRemoveSticker = onRemoveSticker,
                 onScaleChange = onScaleChange,
                 onRotationChange = onRotationChange,
+                onOpacityChange = onOpacityChange,
                 onTimingChange = onTimingChange,
             )
             Text(
@@ -205,6 +207,7 @@ private fun StickerLayersEditor(
     onRemoveSticker: (Int) -> Unit,
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
+    onOpacityChange: (Int, Float) -> Unit,
     onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Text(
@@ -235,6 +238,7 @@ private fun StickerLayersEditor(
                 onRemove = { onRemoveSticker(index) },
                 onScaleChange = { scale -> onScaleChange(index, scale) },
                 onRotationChange = { degrees -> onRotationChange(index, degrees) },
+                onOpacityChange = { opacity -> onOpacityChange(index, opacity) },
                 onTimingChange = { startMs, endMs ->
                     onTimingChange(index, startMs, endMs)
                 },
@@ -255,6 +259,7 @@ private fun StickerLayerEditor(
     onRemove: () -> Unit,
     onScaleChange: (Float) -> Unit,
     onRotationChange: (Float) -> Unit,
+    onOpacityChange: (Float) -> Unit,
     onTimingChange: (Long?, Long?) -> Unit,
 ) {
     val safeDurationMs = clipDurationMs.coerceAtLeast(1L)
@@ -287,6 +292,9 @@ private fun StickerLayerEditor(
     }
     var rotationDraft by remember(clipId, sticker) {
         mutableFloatStateOf(sticker.rotationDegrees.toFloat())
+    }
+    var opacityDraft by remember(clipId, sticker) {
+        mutableFloatStateOf(sticker.opacity)
     }
 
     Column(
@@ -401,6 +409,26 @@ private fun StickerLayerEditor(
             valueRange = MIN_CLIP_STICKER_ROTATION_DEGREES.toFloat()..MAX_CLIP_STICKER_ROTATION_DEGREES.toFloat(),
             steps = 71,
             onValueChangeFinished = { onRotationChange(rotationDraft) },
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "OPACITY ${String.format(Locale.US, "%.0f", opacityDraft * 100f)}%",
+                color = VyroCutPalette.TextMuted,
+                fontSize = VyroCutTypography.ToolLabelSp.sp,
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "0% – 100%",
+                color = VyroCutPalette.TextMuted,
+                fontSize = VyroCutTypography.ToolLabelSp.sp,
+            )
+        }
+        Slider(
+            value = opacityDraft.coerceIn(MIN_CLIP_STICKER_OPACITY, MAX_CLIP_STICKER_OPACITY),
+            onValueChange = { opacityDraft = it },
+            valueRange = MIN_CLIP_STICKER_OPACITY..MAX_CLIP_STICKER_OPACITY,
+            steps = 19,
+            onValueChangeFinished = { onOpacityChange(opacityDraft) },
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(

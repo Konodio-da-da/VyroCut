@@ -23,6 +23,8 @@ internal const val MIN_CLIP_STICKER_SCALE = 0.5f
 internal const val MAX_CLIP_STICKER_SCALE = 2f
 internal const val MIN_CLIP_STICKER_ROTATION_DEGREES = -180
 internal const val MAX_CLIP_STICKER_ROTATION_DEGREES = 180
+internal const val MIN_CLIP_STICKER_OPACITY = 0f
+internal const val MAX_CLIP_STICKER_OPACITY = 1f
 internal const val MAX_CLIP_STICKER_BITMAP_DIMENSION_PX = 1_920
 
 internal enum class ClipStickerPosition {
@@ -74,6 +76,8 @@ internal data class ClipStickerOverlay(
     val assetId: String? = null,
     /** Clockwise rotation applied around the sticker's canvas position. */
     val rotationDegrees: Int = 0,
+    /** Opacity from fully transparent (0) to fully opaque (1). */
+    val opacity: Float = 1f,
 ) {
     init {
         require(isValidClipStickerOverlaySymbol(symbol)) {
@@ -91,6 +95,9 @@ internal data class ClipStickerOverlay(
         require(isValidClipStickerOverlayRotation(rotationDegrees)) {
             "Sticker rotation must be between -180 and 180 degrees"
         }
+        require(isValidClipStickerOverlayOpacity(opacity)) {
+            "Sticker opacity must be between 0 and 1"
+        }
     }
 }
 
@@ -106,6 +113,18 @@ internal fun isValidClipStickerOverlayScale(scale: Float): Boolean =
 
 internal fun isValidClipStickerOverlayRotation(rotationDegrees: Int): Boolean =
     rotationDegrees in MIN_CLIP_STICKER_ROTATION_DEGREES..MAX_CLIP_STICKER_ROTATION_DEGREES
+
+internal fun isValidClipStickerOverlayOpacity(opacity: Float): Boolean =
+    opacity.isFinite() && opacity in MIN_CLIP_STICKER_OPACITY..MAX_CLIP_STICKER_OPACITY
+
+internal fun clipStickerOpacityAlpha(opacity: Float): Int? =
+    if (isValidClipStickerOverlayOpacity(opacity)) (opacity * 255f).roundToInt().coerceIn(0, 255) else null
+
+private fun multiplyStickerArgbAlpha(color: Int, opacityAlpha: Int): Int {
+    val originalAlpha = (color ushr 24) and 0xFF
+    val nextAlpha = (originalAlpha * opacityAlpha + 127) / 255
+    return (color and 0x00FFFFFF) or (nextAlpha shl 24)
+}
 
 /** Rejects stale layer taps after a sticker is removed or the clip changes. */
 internal fun resolveClipStickerLayerSelection(
@@ -173,6 +192,16 @@ internal fun updateClipStickerOverlayRotation(
             MIN_CLIP_STICKER_ROTATION_DEGREES,
             MAX_CLIP_STICKER_ROTATION_DEGREES,
         ),
+    )
+}
+
+internal fun updateClipStickerOverlayOpacity(
+    overlay: ClipStickerOverlay,
+    requestedOpacity: Float,
+): ClipStickerOverlay? {
+    if (!requestedOpacity.isFinite()) return null
+    return overlay.copy(
+        opacity = requestedOpacity.coerceIn(MIN_CLIP_STICKER_OPACITY, MAX_CLIP_STICKER_OPACITY),
     )
 }
 
@@ -332,6 +361,7 @@ internal fun decodeClipStickerOverlay(
     endMs: Long? = null,
     assetId: String? = null,
     rotationDegrees: Int = 0,
+    opacity: Float = 1f,
 ): ClipStickerOverlay? {
     val normalized = raw?.trim() ?: return null
     val normalizedAssetId = assetId?.trim()?.takeIf { it.isNotEmpty() }
@@ -339,7 +369,8 @@ internal fun decodeClipStickerOverlay(
         !isValidClipStickerOverlayScale(scale) ||
         !isValidClipStickerOverlayTiming(startMs, endMs) ||
         !isValidClipStickerAssetId(normalizedAssetId) ||
-        !isValidClipStickerOverlayRotation(rotationDegrees)
+        !isValidClipStickerOverlayRotation(rotationDegrees) ||
+        !isValidClipStickerOverlayOpacity(opacity)
     ) return null
     val decodedPosition = if (position == null) {
         ClipStickerPosition.BOTTOM_RIGHT
@@ -354,6 +385,7 @@ internal fun decodeClipStickerOverlay(
         endMs = endMs,
         assetId = normalizedAssetId,
         rotationDegrees = rotationDegrees,
+        opacity = opacity,
     )
 }
 
@@ -450,10 +482,12 @@ private class ClipStickerBitmapOverlay(
         )
         val stickerAsset = ClipStickerAsset.fromId(overlay.assetId)
         val drawable = stickerAsset?.let { context.getDrawable(it.drawableResId)?.mutate() }
+        val opacityAlpha = checkNotNull(clipStickerOpacityAlpha(overlay.opacity))
         canvas.save()
         canvas.rotate(overlay.rotationDegrees.toFloat(), geometry.centerXPx, geometry.centerYPx)
         if (drawable != null) {
             val assetSizePx = geometry.textSizePx.roundToInt().coerceAtLeast(1)
+            drawable.alpha = opacityAlpha
             drawable.setBounds(0, 0, assetSizePx, assetSizePx)
             canvas.translate(
                 geometry.centerXPx - assetSizePx / 2f,
@@ -464,12 +498,16 @@ private class ClipStickerBitmapOverlay(
             // Unknown future asset IDs intentionally fall back to the persisted Unicode symbol.
             val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
                 color = VyroCutPalette.MediaOverlayText.toArgb()
+                alpha = opacityAlpha
                 textSize = geometry.textSizePx
                 setShadowLayer(
                     (geometry.textSizePx * 0.06f).coerceAtLeast(2f),
                     0f,
                     (geometry.textSizePx * 0.025f).coerceAtLeast(1f),
-                    VyroCutPalette.StickerFallbackTextShadow.toArgb(),
+                    multiplyStickerArgbAlpha(
+                        VyroCutPalette.StickerFallbackTextShadow.toArgb(),
+                        opacityAlpha,
+                    ),
                 )
             }
             val layoutWidth = (geometry.textSizePx * 2.4f).roundToInt().coerceAtLeast(1)

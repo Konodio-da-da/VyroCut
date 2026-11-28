@@ -96,6 +96,71 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerOpacityDefaultsToOpaqueAndRejectsInvalidValues() {
+        assertEquals(1f, decodeClipStickerOverlay("🔥")?.opacity ?: -1f, 0f)
+        assertTrue(isValidClipStickerOverlayOpacity(0f))
+        assertTrue(isValidClipStickerOverlayOpacity(0.5f))
+        assertTrue(isValidClipStickerOverlayOpacity(1f))
+        assertFalse(isValidClipStickerOverlayOpacity(-0.01f))
+        assertFalse(isValidClipStickerOverlayOpacity(1.01f))
+        assertFalse(isValidClipStickerOverlayOpacity(Float.NaN))
+        assertFalse(isValidClipStickerOverlayOpacity(Float.POSITIVE_INFINITY))
+        assertNull(decodeClipStickerOverlay("🔥", opacity = Float.NaN))
+        assertNull(decodeClipStickerOverlay("🔥", opacity = 1.1f))
+    }
+
+    @Test
+    fun stickerOpacityUpdatesClampFiniteValuesAndRejectNonFiniteValues() {
+        val sticker = ClipStickerOverlay(
+            symbol = "✨",
+            scale = 1.4f,
+            position = ClipStickerPosition.TOP_LEFT,
+            startMs = 250L,
+            endMs = 2_000L,
+            assetId = "sparkle",
+            rotationDegrees = 35,
+        )
+        assertEquals(sticker.copy(opacity = 0.35f), updateClipStickerOverlayOpacity(sticker, 0.35f))
+        assertEquals(sticker.copy(opacity = 0f), updateClipStickerOverlayOpacity(sticker, -1f))
+        assertEquals(sticker.copy(opacity = 1f), updateClipStickerOverlayOpacity(sticker, 2f))
+        assertNull(updateClipStickerOverlayOpacity(sticker, Float.NaN))
+        assertNull(updateClipStickerOverlayOpacity(sticker, Float.POSITIVE_INFINITY))
+        assertNull(updateClipStickerOverlayOpacity(sticker, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
+    fun stickerOpacityMapsToEightBitAlphaWithSafeBoundaries() {
+        assertEquals(0, clipStickerOpacityAlpha(0f))
+        assertEquals(128, clipStickerOpacityAlpha(0.5f))
+        assertEquals(255, clipStickerOpacityAlpha(1f))
+        assertNull(clipStickerOpacityAlpha(Float.NaN))
+        assertNull(clipStickerOpacityAlpha(-0.1f))
+    }
+
+    @Test
+    fun stickerOpacitySurvivesSplitAndSourceTrimRebasing() {
+        val sticker = ClipStickerOverlay(
+            symbol = "🔥",
+            startMs = 500L,
+            endMs = 2_500L,
+            assetId = "fire",
+            opacity = 0.4f,
+        )
+        val (left, right) = splitClipStickerOverlayAt(sticker, 1_500L, 3_000L)
+        assertEquals(0.4f, left?.opacity ?: -1f, 0f)
+        assertEquals(0.4f, right?.opacity ?: -1f, 0f)
+
+        val rebased = rebaseClipStickerOverlayForTrim(
+            overlay = sticker,
+            oldSourceStartMs = 0L,
+            oldSourceEndMs = 3_000L,
+            newSourceStartMs = 250L,
+            newSourceEndMs = 3_000L,
+        )
+        assertEquals(0.4f, rebased?.opacity ?: -1f, 0f)
+    }
+
+    @Test
     fun stickerRotationSurvivesSplitAndSourceTrimRebasing() {
         val sticker = ClipStickerOverlay(
             symbol = "⭐",

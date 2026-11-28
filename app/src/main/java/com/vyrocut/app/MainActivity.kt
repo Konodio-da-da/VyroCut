@@ -1891,6 +1891,17 @@ private fun VyroCutApp() {
             "Sticker rotation updated",
         )
     }
+    fun updateSelectedClipStickerOpacity(overlayIndex: Int, opacity: Float) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val sticker = clip.allStickerOverlays.getOrNull(overlayIndex) ?: return
+        val updated = updateClipStickerOverlayOpacity(sticker, opacity) ?: return
+        if (updated == sticker) return
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
+            "Sticker opacity updated",
+        )
+    }
     fun openTrimDialog(clip: EditClip) {
         if (clip.uri in missingMediaUris || clip.durationMs < MIN_CLIP_DURATION_MS) return
         trimTargetClipId = clip.id
@@ -3381,6 +3392,9 @@ private fun VyroCutApp() {
                         onRotationChange = { index, degrees ->
                             updateSelectedClipStickerRotation(index, degrees)
                         },
+                        onOpacityChange = { index, opacity ->
+                            updateSelectedClipStickerOpacity(index, opacity)
+                        },
                         onTimingChange = { index, startMs, endMs ->
                             updateSelectedClipStickerTiming(index, startMs, endMs)
                         },
@@ -4810,6 +4824,7 @@ internal fun encodeProject(clips: List<EditClip>): String {
                     overlay.assetId?.let { put("assetId", it) }
                     put("scale", overlay.scale.toDouble())
                     if (overlay.rotationDegrees != 0) put("rotationDegrees", overlay.rotationDegrees)
+                    if (overlay.opacity != 1f) put("opacity", overlay.opacity.toDouble())
                     put("position", overlay.position.name)
                     put("startMs", overlay.startMs)
                     overlay.endMs?.let { put("endMs", it) }
@@ -5104,6 +5119,11 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                                 overlayJson.optInt("rotationDegrees", Int.MIN_VALUE)
                             } else {
                                 0
+                            },
+                            opacity = if (overlayJson.has("opacity")) {
+                                overlayJson.optDouble("opacity", Double.NaN).toFloat()
+                            } else {
+                                1f
                             },
                         ) ?: error("A clip has an invalid sticker overlay")
                         add(overlay)
