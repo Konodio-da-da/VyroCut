@@ -1,5 +1,61 @@
 package com.vyrocut.app
 
+/**
+ * Returns true only when a source exposes an actual audio MIME track.
+ * Document providers can return a duration for video containers selected
+ * through the audio picker, so duration metadata alone is not sufficient.
+ */
+internal fun hasAudioTrackMimeType(mimeTypes: Iterable<String?>): Boolean =
+    mimeTypes.any { mimeType ->
+        mimeType?.trim()?.let {
+            it.startsWith("audio/", ignoreCase = true) && it.substringAfter('/').isNotBlank()
+        } == true
+    }
+
+/** Returns each source URI once, preserving first-use order for deterministic metadata checks. */
+internal fun distinctExportSourceUris(sourceUris: Iterable<String>): List<String> =
+    sourceUris.distinct()
+
+internal data class ExportCanvasSize(
+    val widthPx: Int,
+    val heightPx: Int,
+) {
+    init {
+        require(widthPx > 0 && heightPx > 0)
+    }
+}
+
+internal enum class ExportResolutionPreset(
+    val id: String,
+    val label: String,
+    val shortEdgePx: Int,
+) {
+    HD_720(id = "720p", label = "720p", shortEdgePx = 720),
+    FULL_HD_1080(id = "1080p", label = "1080p", shortEdgePx = 1_080);
+
+    companion object {
+        fun fromId(value: String?): ExportResolutionPreset =
+            values().firstOrNull { it.id == value } ?: FULL_HD_1080
+    }
+}
+
+/**
+ * Uses a fixed landscape, square, or portrait frame at the selected short-edge
+ * resolution. Keeping the short edge fixed preserves the existing canvas ratio
+ * while allowing export quality to be selected independently of the preview.
+ */
+internal fun exportCanvasSizeForPreset(
+    preset: String,
+    resolution: ExportResolutionPreset = ExportResolutionPreset.FULL_HD_1080,
+): ExportCanvasSize {
+    val shortEdge = resolution.shortEdgePx
+    return when (preset) {
+        "16:9" -> ExportCanvasSize(widthPx = shortEdge * 16 / 9, heightPx = shortEdge)
+        "1:1" -> ExportCanvasSize(widthPx = shortEdge, heightPx = shortEdge)
+        else -> ExportCanvasSize(widthPx = shortEdge, heightPx = shortEdge * 16 / 9)
+    }
+}
+
 internal data class ExportClipRequirement(
     val id: String,
     val uri: String,
@@ -11,6 +67,9 @@ internal data class ExportClipRequirement(
 internal data class ExportSourceMetadata(
     val durationMs: Long?,
     val hasVideoTrack: Boolean,
+    val videoWidthPx: Int? = null,
+    val videoHeightPx: Int? = null,
+    val videoRotationDegrees: Int = 0,
 )
 
 /**
@@ -21,6 +80,7 @@ internal data class ExportSourceMetadata(
 internal fun validateExportPreflight(
     clips: List<ExportClipRequirement>,
     sources: Map<String, ExportSourceMetadata>,
+    requireVideoDimensions: Boolean = false,
 ): String? {
     if (clips.isEmpty()) return "The project has no clips to export"
 
@@ -40,6 +100,11 @@ internal fun validateExportPreflight(
         val sourceDurationMs = source.durationMs?.takeIf { it > 0L }
             ?: return "Could not read the duration of $label's source video"
         if (!source.hasVideoTrack) return "$label's source has no readable video track"
+        if (requireVideoDimensions &&
+            ((source.videoWidthPx ?: 0) <= 0 || (source.videoHeightPx ?: 0) <= 0)
+        ) {
+            return "$label's video dimensions are unavailable for the selected canvas background"
+        }
         if (clip.sourceEndMs > sourceDurationMs) {
             return "$label's trim extends beyond its source video"
         }

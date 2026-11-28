@@ -1,0 +1,457 @@
+package com.vyrocut.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class TimelineVisualMetricsTest {
+    @Test
+    fun defaultTimelineMetricsUseClearerTypographyAndBaselineHeights() {
+        val metrics = timelineReadabilityMetrics(1f)
+
+        assertEquals(11, TIMELINE_TRACK_LABEL_FONT_SP)
+        assertEquals(10, TIMELINE_TRACK_DETAIL_FONT_SP)
+        assertEquals(10, TIMELINE_RULER_LABEL_FONT_SP)
+        assertEquals(11, TIMELINE_CLIP_LABEL_FONT_SP)
+        assertEquals(10, TIMELINE_CLIP_META_FONT_SP)
+        assertEquals(TIMELINE_RULER_HEIGHT_DP, metrics.rulerHeightDp)
+        assertEquals(TIMELINE_VIDEO_TRACK_HEIGHT_DP, metrics.videoTrackHeightDp)
+        assertEquals(TIMELINE_TEXT_ROW_HEIGHT_DP, metrics.textRowHeightDp)
+        assertEquals(TIMELINE_STICKER_ROW_HEIGHT_DP, metrics.stickerRowHeightDp)
+        assertEquals(TIMELINE_SOURCE_TRACK_HEIGHT_DP, metrics.sourceTrackHeightDp)
+        assertEquals(TIMELINE_SOURCE_WAVEFORM_HEIGHT_DP, metrics.sourceWaveformHeightDp)
+        assertEquals(TIMELINE_AUDIO_LANE_HEIGHT_DP, metrics.audioLaneHeightDp)
+        assertEquals(TIMELINE_AUDIO_WAVEFORM_HEIGHT_DP, metrics.audioWaveformHeightDp)
+    }
+
+    @Test
+    fun sharedAccessibilityFontScalePolicyCapsResponsiveSurfacesAtFourTimes() {
+        assertEquals(4f, VyroCutAccessibilityMetrics.MaxSupportedFontScale, 0f)
+        assertEquals(
+            VyroCutAccessibilityMetrics.MaxSupportedFontScale,
+            VyroCutControlMetrics.ToolDockMaxFontScale,
+            0f,
+        )
+        assertEquals(
+            VyroCutAccessibilityMetrics.MaxSupportedFontScale,
+            VyroCutEditorLayoutMetrics.HeaderBrandTitleMaxFontScale,
+            0f,
+        )
+    }
+
+    @Test
+    fun rulerLabelSpacingAccountsForTimecodeWidthAndSystemFontScale() {
+        assertEquals(39, timelineRulerLabelMinimumSpacingDp(5, 1f))
+        assertEquals(55, timelineRulerLabelMinimumSpacingDp(5, 1.5f))
+        assertEquals(70, timelineRulerLabelMinimumSpacingDp(5, 2f))
+        assertEquals(132, timelineRulerLabelMinimumSpacingDp(5, 4f))
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 4f),
+            timelineRulerLabelMinimumSpacingDp(5, 4.5f),
+        )
+    }
+
+    @Test
+    fun rulerTickSpacingScalesWithAccessibilityFontScaleAndCapsAtFourTimes() {
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(1f), 0f)
+        assertEquals(12f, timelineRulerMinimumTickSpacingDp(1.5f), 0f)
+        assertEquals(16f, timelineRulerMinimumTickSpacingDp(2f), 0f)
+        assertEquals(32f, timelineRulerMinimumTickSpacingDp(4f), 0f)
+        assertEquals(
+            timelineRulerMinimumTickSpacingDp(4f),
+            timelineRulerMinimumTickSpacingDp(4.5f),
+            0f,
+        )
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(Float.NaN), 0f)
+        assertEquals(8f, timelineRulerMinimumTickSpacingDp(0f), 0f)
+    }
+
+    @Test
+    fun rulerLabelSpacingBoundsMalformedCharacterCountsAndFontScales() {
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(1, 1f),
+            timelineRulerLabelMinimumSpacingDp(0, Float.NaN),
+        )
+        assertEquals(405, timelineRulerLabelMinimumSpacingDp(100, 2f))
+        assertEquals(802, timelineRulerLabelMinimumSpacingDp(100, 4f))
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 4f),
+            timelineRulerLabelMinimumSpacingDp(5, Float.MAX_VALUE),
+        )
+        assertEquals(
+            timelineRulerLabelMinimumSpacingDp(5, 1f),
+            timelineRulerLabelMinimumSpacingDp(5, Float.NEGATIVE_INFINITY),
+        )
+    }
+
+    @Test
+    fun trackHeaderBadgesUseCompactMetricsWithoutExtraVerticalPadding() {
+        assertEquals(6, TIMELINE_TRACK_HEADER_BADGE_HORIZONTAL_PADDING_DP)
+        assertEquals(4, TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP)
+        assertEquals(5, TIMELINE_TRACK_HEADER_DOT_SIZE_DP)
+        assertEquals(4, TIMELINE_TRACK_HEADER_DOT_GAP_DP)
+        assertEquals(8, TIMELINE_TRACK_HEADER_DETAIL_GAP_DP)
+        assertEquals(11, TIMELINE_TRACK_LABEL_FONT_SP)
+        assertTrue(TIMELINE_TRACK_HEADER_DOT_SIZE_DP < TIMELINE_TRACK_LABEL_FONT_SP)
+    }
+
+    @Test
+    fun majorAndMinorRulerTicksHaveAVisibleVisualHierarchy() {
+        val major = timelineRulerTickVisualMetrics(isMajor = true)
+        val minor = timelineRulerTickVisualMetrics(isMajor = false)
+
+        assertEquals(2, major.widthDp)
+        assertEquals(10, major.heightDp)
+        assertEquals(1, minor.widthDp)
+        assertEquals(5, minor.heightDp)
+        assertTrue(major.widthDp > minor.widthDp)
+        assertTrue(major.heightDp > minor.heightDp)
+    }
+
+    @Test
+    fun rulerLabelWidthIncludesPillPaddingAndRespectsFontScale() {
+        assertEquals(37, timelineRulerLabelWidthDp(5, 1f))
+        assertEquals(53, timelineRulerLabelWidthDp(5, 1.5f))
+        assertEquals(68, timelineRulerLabelWidthDp(5, 2f))
+        assertEquals(130, timelineRulerLabelWidthDp(5, 4f))
+        assertEquals(
+            timelineRulerLabelWidthDp(5, 4f),
+            timelineRulerLabelWidthDp(5, 4.5f),
+        )
+    }
+
+    @Test
+    fun rulerLabelsStayInsideTimelineContentAtBothEdges() {
+        val first = timelineRulerLabelPlacement(0f, 40, 200f)
+        val middle = timelineRulerLabelPlacement(100f, 40, 200f)
+        val last = timelineRulerLabelPlacement(200f, 40, 200f)
+
+        assertEquals(0f, first.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.START, first.alignment)
+        assertEquals(80f, middle.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.CENTER, middle.alignment)
+        assertEquals(160f, last.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.END, last.alignment)
+    }
+
+    @Test
+    fun rulerLabelPlacementUsesSafeBoundsForMalformedGeometry() {
+        val placement = timelineRulerLabelPlacement(Float.NaN, 0, Float.NaN)
+
+        assertEquals(0f, placement.offsetDp, 0f)
+        assertEquals(TimelineRulerLabelAlignment.START, placement.alignment)
+    }
+
+    @Test
+    fun playheadOutlineAndCapStayCenteredOnTheNeedle() {
+        val metrics = timelinePlayheadVisualMetrics()
+        val geometry = timelinePlayheadGeometry(48f)
+        val lineCenter = geometry.lineLeftDp + metrics.lineWidthDp / 2f
+
+        assertEquals(2, metrics.lineWidthDp)
+        assertEquals(4, metrics.outlineWidthDp)
+        assertEquals(14, metrics.capWidthDp)
+        assertEquals(9, metrics.capHeightDp)
+        assertEquals(lineCenter, geometry.outlineLeftDp + metrics.outlineWidthDp / 2f, 0.001f)
+        assertEquals(lineCenter, geometry.capLeftDp + metrics.capWidthDp / 2f, 0.001f)
+    }
+
+    @Test
+    fun malformedPlayheadOffsetsFallBackToTheTimelineOrigin() {
+        assertEquals(0f, timelinePlayheadGeometry(Float.NaN).lineLeftDp, 0f)
+        assertEquals(0f, timelinePlayheadGeometry(Float.POSITIVE_INFINITY).lineLeftDp, 0f)
+        assertEquals(-1f, timelinePlayheadGeometry(Float.NEGATIVE_INFINITY).outlineLeftDp, 0f)
+    }
+
+    @Test
+    fun selectedClipGetsAnOutlineWhileUnselectedClipsDoNot() {
+        assertEquals(TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP, timelineClipSelectionBorderWidthDp(true))
+        assertEquals(0, timelineClipSelectionBorderWidthDp(false))
+    }
+
+    @Test
+    fun videoClipBoundariesRemainVisibleAndSelectionRemainsStronger() {
+        assertEquals(1, TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP)
+        assertEquals(TIMELINE_VIDEO_CLIP_BOUNDARY_BORDER_WIDTH_DP, timelineVideoClipBorderWidthDp(false))
+        assertEquals(TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP, timelineVideoClipBorderWidthDp(true))
+        assertTrue(timelineVideoClipBorderWidthDp(true) > timelineVideoClipBorderWidthDp(false))
+    }
+
+    @Test
+    fun audioClipSelectionOutlineFollowsTheSelectedStableId() {
+        assertEquals(
+            TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP,
+            timelineAudioClipSelectionBorderWidthDp("audio-1", "audio-1"),
+        )
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("audio-1", "audio-2"))
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("audio-1", null))
+        assertEquals(0, timelineAudioClipSelectionBorderWidthDp("", ""))
+    }
+
+    @Test
+    fun overlaySelectionOutlineRequiresMatchingClipAndLayer() {
+        assertEquals(
+            TIMELINE_SELECTED_CLIP_BORDER_WIDTH_DP,
+            timelineOverlaySelectionBorderWidthDp(1, 0, 1, 0),
+        )
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(0, 0, 1, 0))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(1, 1, 1, 0))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(1, 0, 1, -1))
+        assertEquals(0, timelineOverlaySelectionBorderWidthDp(-1, 0, -1, 0))
+    }
+
+    @Test
+    fun timedEffectSelectionBorderUsesCentralDesignToken() {
+        assertEquals(1, TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP)
+        assertEquals(
+            TIMED_EFFECT_SELECTED_BORDER_WIDTH_DP,
+            timelineTimedEffectSelectionBorderWidthDp(true),
+        )
+        assertEquals(0, timelineTimedEffectSelectionBorderWidthDp(false))
+    }
+
+    @Test
+    fun timedEffectLabelsReserveTrimHandleSpaceOnlyWhileSelected() {
+        assertEquals(48f, timelineTimedEffectLabelHorizontalInsetDp(true, 48f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(false, 48f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, Float.NaN), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, Float.POSITIVE_INFINITY), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, -1f), 0f)
+        assertEquals(0f, timelineTimedEffectLabelHorizontalInsetDp(true, 0f), 0f)
+    }
+
+    @Test
+    fun largerSystemFontScaleExpandsRowsAndWaveformsTogether() {
+        val baseline = timelineReadabilityMetrics(1f)
+        val large = timelineReadabilityMetrics(1.5f)
+
+        assertTrue(large.rulerHeightDp > baseline.rulerHeightDp)
+        assertTrue(large.videoTrackHeightDp > baseline.videoTrackHeightDp)
+        assertTrue(large.textRowHeightDp > baseline.textRowHeightDp)
+        assertTrue(large.stickerRowHeightDp > baseline.stickerRowHeightDp)
+        assertTrue(large.sourceTrackHeightDp > baseline.sourceTrackHeightDp)
+        assertTrue(large.sourceWaveformHeightDp > baseline.sourceWaveformHeightDp)
+        assertTrue(large.audioLaneHeightDp > baseline.audioLaneHeightDp)
+        assertTrue(large.audioWaveformHeightDp > baseline.audioWaveformHeightDp)
+    }
+
+    @Test
+    fun fourTimesFontScaleExpandsEveryTimelineRowAndWaveform() {
+        val twoTimes = timelineReadabilityMetrics(2f)
+        val fourTimes = timelineReadabilityMetrics(4f)
+
+        assertTrue(fourTimes.rulerHeightDp > twoTimes.rulerHeightDp)
+        assertTrue(fourTimes.videoTrackHeightDp > twoTimes.videoTrackHeightDp)
+        assertTrue(fourTimes.textRowHeightDp > twoTimes.textRowHeightDp)
+        assertTrue(fourTimes.stickerRowHeightDp > twoTimes.stickerRowHeightDp)
+        assertTrue(fourTimes.sourceTrackHeightDp > twoTimes.sourceTrackHeightDp)
+        assertTrue(fourTimes.sourceWaveformHeightDp > twoTimes.sourceWaveformHeightDp)
+        assertTrue(fourTimes.audioLaneHeightDp > twoTimes.audioLaneHeightDp)
+        assertTrue(fourTimes.audioWaveformHeightDp > twoTimes.audioWaveformHeightDp)
+    }
+
+    @Test
+    fun videoTrackKeepsThumbnailFixedWhileScalingOnlyItsLabel() {
+        assertEquals(TIMELINE_VIDEO_TRACK_HEIGHT_DP, timelineReadabilityMetrics(1f).videoTrackHeightDp)
+        assertEquals(77, timelineReadabilityMetrics(1.5f).videoTrackHeightDp)
+        assertEquals(84, timelineReadabilityMetrics(2f).videoTrackHeightDp)
+        assertEquals(114, timelineReadabilityMetrics(4f).videoTrackHeightDp)
+    }
+
+    @Test
+    fun invalidOrSmallerThanDefaultFontScaleUsesReadableBaseline() {
+        val baseline = timelineReadabilityMetrics(1f)
+
+        assertEquals(baseline, timelineReadabilityMetrics(Float.NaN))
+        assertEquals(baseline, timelineReadabilityMetrics(Float.POSITIVE_INFINITY))
+        assertEquals(baseline, timelineReadabilityMetrics(0f))
+        assertEquals(baseline, timelineReadabilityMetrics(0.85f))
+    }
+
+    @Test
+    fun extremeFontScaleIsBoundedAtFourTimes() {
+        val fourTimes = timelineReadabilityMetrics(4f)
+        assertEquals(fourTimes, timelineReadabilityMetrics(4.5f))
+        assertEquals(fourTimes, timelineReadabilityMetrics(Float.MAX_VALUE))
+        assertTrue(fourTimes.rulerHeightDp > timelineReadabilityMetrics(2f).rulerHeightDp)
+        assertTrue(fourTimes.videoTrackHeightDp > timelineReadabilityMetrics(2f).videoTrackHeightDp)
+        assertTrue(fourTimes.audioLaneHeightDp > timelineReadabilityMetrics(2f).audioLaneHeightDp)
+    }
+
+    @Test
+    fun textTrackHeightUsesOneRowForEmptyOrInvalidLayerCounts() {
+        assertEquals(TIMELINE_TEXT_ROW_HEIGHT_DP, timelineTextTrackHeightDp(0))
+        assertEquals(TIMELINE_TEXT_ROW_HEIGHT_DP, timelineTextTrackHeightDp(-2))
+    }
+
+    @Test
+    fun stickerTrackHeightUsesOneRowForEmptyOrInvalidLayerCounts() {
+        assertEquals(TIMELINE_STICKER_ROW_HEIGHT_DP, timelineStickerTrackHeightDp(0))
+        assertEquals(TIMELINE_STICKER_ROW_HEIGHT_DP, timelineStickerTrackHeightDp(-2))
+    }
+
+    @Test
+    fun stickerTrackHeightScalesAndRespectsOverlayLimit() {
+        assertEquals(TIMELINE_STICKER_ROW_HEIGHT_DP, timelineStickerTrackHeightDp(1))
+        assertEquals(2 * TIMELINE_STICKER_ROW_HEIGHT_DP, timelineStickerTrackHeightDp(2))
+        assertEquals(
+            MAX_CLIP_STICKER_OVERLAYS * TIMELINE_STICKER_ROW_HEIGHT_DP,
+            timelineStickerTrackHeightDp(MAX_CLIP_STICKER_OVERLAYS + 2),
+        )
+        assertEquals(3 * 36, timelineStickerTrackHeightDp(3, 36))
+    }
+
+    @Test
+    fun textTrackHeightScalesAndRespectsOverlayLimit() {
+        assertEquals(TIMELINE_TEXT_ROW_HEIGHT_DP, timelineTextTrackHeightDp(1))
+        assertEquals(2 * TIMELINE_TEXT_ROW_HEIGHT_DP, timelineTextTrackHeightDp(2))
+        assertEquals(
+            MAX_CLIP_TEXT_OVERLAYS * TIMELINE_TEXT_ROW_HEIGHT_DP,
+            timelineTextTrackHeightDp(MAX_CLIP_TEXT_OVERLAYS + 2),
+        )
+        assertEquals(3 * 34, timelineTextTrackHeightDp(3, 34))
+    }
+
+    @Test
+    fun customTrackRowHeightCannotOverflowIntegerBounds() {
+        assertEquals(Int.MAX_VALUE, timelineTextTrackHeightDp(MAX_CLIP_TEXT_OVERLAYS, Int.MAX_VALUE))
+    }
+    @Test
+    fun timelineShapeMetricsPreserveExistingVisualRadii() {
+        assertEquals(1, TIMELINE_RULER_TICK_CORNER_RADIUS_DP)
+        assertEquals(2, TIMELINE_PLAYHEAD_CAP_INNER_CORNER_RADIUS_DP)
+        assertEquals(2, TIMELINE_MEDIA_BADGE_CORNER_RADIUS_DP)
+        assertEquals(3, TIMELINE_PLAYHEAD_CAP_OUTER_CORNER_RADIUS_DP)
+        assertEquals(4, TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP)
+        assertEquals(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP, TIMELINE_TRACK_HEADER_CORNER_RADIUS_DP)
+        assertEquals(5, TIMELINE_VIDEO_CLIP_CORNER_RADIUS_DP)
+    }
+
+    @Test
+    fun timelineTypographyUsesSharedDesignSystemTokens() {
+        assertEquals(VyroCutTypography.LabelSp, TIMELINE_TRACK_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_TRACK_DETAIL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_RULER_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.LabelSp, TIMELINE_CLIP_LABEL_FONT_SP)
+        assertEquals(VyroCutTypography.CaptionSp, TIMELINE_CLIP_META_FONT_SP)
+        assertEquals(VyroCutTypography.TimelineStickerSymbolSp, TIMELINE_STICKER_SYMBOL_FONT_SP)
+        assertEquals(0.62f, VyroCutTimelineVisualMetrics.LaneLabelGlyphWidthFactor, 0f)
+        assertEquals(1.3f, VyroCutTypography.TimelineSectionLetterSpacingSp, 0f)
+    }
+
+    @Test
+    fun trailingTrackHintYieldsSpaceToTrackDetailOnCompactTimelines() {
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(319.9f, 1f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 1f))
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(639.9f, 2f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(640f, 2f))
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(1279.9f, 4f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(1280f, 4f))
+        assertEquals(
+            timelineTrackHeaderShowsTrailingDetail(1280f, 4f),
+            timelineTrackHeaderShowsTrailingDetail(1280f, 4.5f),
+        )
+        assertEquals(false, timelineTrackHeaderShowsTrailingDetail(Float.NaN, 1f))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, Float.NaN))
+        assertEquals(true, timelineTrackHeaderShowsTrailingDetail(320f, 0.8f))
+    }
+
+    @Test
+    fun narrowTrackHeadersStackDescriptionsAndScaleTheInlineThreshold() {
+        assertEquals(168, TIMELINE_TRACK_HEADER_INLINE_MINIMUM_WIDTH_DP)
+        assertEquals(true, timelineTrackHeaderStacksDetail(167.9f, 1f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, 1f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(335.9f, 2f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(336f, 2f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(671.9f, 4f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(672f, 4f))
+        assertEquals(true, timelineTrackHeaderStacksDetail(Float.NaN, 1f))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, Float.NaN))
+        assertEquals(false, timelineTrackHeaderStacksDetail(168f, 0.8f))
+    }
+
+
+    @Test
+    fun laneGutterAdaptsToViewportWidthAndSystemFontScale() {
+        assertEquals(72, timelineLaneGutterWidthDp(360f, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(320f, 1f))
+        assertEquals(60, timelineLaneGutterWidthDp(240f, 1f))
+        assertEquals(50, timelineLaneGutterWidthDp(200f, 1f))
+        assertEquals(80, timelineLaneGutterWidthDp(320f, 1.5f))
+        assertEquals(88, timelineLaneGutterWidthDp(360f, 2f))
+        assertEquals(88, timelineLaneGutterWidthDp(360f, 4f))
+        assertEquals(
+            timelineLaneGutterWidthDp(360f, 4f),
+            timelineLaneGutterWidthDp(360f, 4.5f),
+        )
+    }
+
+    @Test
+    fun narrowSplitScreenGutterNeverConsumesMoreThanOneQuarterOfTheViewport() {
+        listOf(160f, 180f, 200f, 240f, 255f, 256f).forEach { viewportWidthDp ->
+            val gutterWidthDp = timelineLaneGutterWidthDp(viewportWidthDp, fontScale = 4f)
+            val viewportBudgetDp = (viewportWidthDp * TIMELINE_LANE_GUTTER_VIEWPORT_FRACTION).toInt()
+
+            assertTrue(
+                "Gutter $gutterWidthDp dp must stay within the 25% budget for $viewportWidthDp dp",
+                gutterWidthDp <= viewportBudgetDp,
+            )
+            assertTrue(gutterWidthDp > 0)
+        }
+    }
+
+    @Test
+    fun laneLabelsEstimateAgainstTheActualNarrowGutterWidth() {
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 50, 1f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 50, 2f))
+        assertEquals("S", timelineLaneDisplayLabel("STICKER", 50, 4f))
+    }
+
+    @Test
+    fun laneGutterUsesSafeDefaultsForMalformedViewportAndFontScale() {
+        assertEquals(72, timelineLaneGutterWidthDp(Float.NaN, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(Float.POSITIVE_INFINITY, 1f))
+        assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NaN))
+        assertEquals(72, timelineLaneGutterWidthDp(360f, Float.NEGATIVE_INFINITY))
+    }
+
+    @Test
+    fun laneLabelsAbbreviateOnlyWhenTheGutterCannotFitTheirEstimatedWidth() {
+        assertEquals("STICKER", timelineLaneDisplayLabel("STICKER", 88, 1.5f))
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 88, 2f))
+        assertEquals("VIDEO", timelineLaneDisplayLabel("VIDEO", 88, 2f))
+        assertEquals("VID", timelineLaneDisplayLabel("VIDEO", 88, 4f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 64, 4f))
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 50, 1f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 50, 2f))
+        assertEquals("S", timelineLaneDisplayLabel("STICKER", 50, 4f))
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 4f),
+            timelineLaneDisplayLabel("STICKER", 88, 4.5f),
+        )
+    }
+
+    @Test
+    fun laneLabelCompactionUsesSafeDefaultsForInvalidInputs() {
+        assertEquals("", timelineLaneDisplayLabel("  ", 88, 1f))
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 1f),
+            timelineLaneDisplayLabel("STICKER", 88, Float.NaN),
+        )
+        assertEquals(
+            timelineLaneDisplayLabel("STICKER", 88, 1f),
+            timelineLaneDisplayLabel("STICKER", 88, Float.POSITIVE_INFINITY),
+        )
+        assertEquals("STK", timelineLaneDisplayLabel("STICKER", 88, Float.MAX_VALUE))
+    }
+
+    @Test
+    fun trackHeadersCounterScrollAgainstTheSharedTimelineOffset() {
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(0), 0f)
+        assertEquals(96f, timelineTrackHeaderPinnedTranslationPx(96), 0f)
+        assertEquals(640f, timelineTrackHeaderPinnedTranslationPx(640), 0f)
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(-1), 0f)
+        assertEquals(0f, timelineTrackHeaderPinnedTranslationPx(Int.MIN_VALUE), 0f)
+    }
+
+}

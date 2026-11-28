@@ -1,0 +1,513 @@
+package com.vyrocut.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class ClipTimedEffectSegmentsTest {
+    @Test
+    fun timedEffectUsesInclusiveStartAndExclusiveEndInMillisecondsAndMicroseconds() {
+        val segment = ClipTimedEffectSegment(
+            id = "fx-vignette",
+            preset = ClipCreativeEffectPreset.VIGNETTE,
+            intensity = 40,
+            startMs = 1_000L,
+            endMs = 2_500L,
+        )
+
+        assertFalse(isClipTimedEffectSegmentActiveAtMs(segment, 999L))
+        assertTrue(isClipTimedEffectSegmentActiveAtMs(segment, 1_000L))
+        assertTrue(isClipTimedEffectSegmentActiveAtMs(segment, 2_499L))
+        assertFalse(isClipTimedEffectSegmentActiveAtMs(segment, 2_500L))
+        assertFalse(isClipTimedEffectSegmentActiveAtUs(segment, -1L))
+        assertTrue(isClipTimedEffectSegmentActiveAtUs(segment, 1_500_000L))
+        assertFalse(isClipTimedEffectSegmentActiveAtUs(segment, 2_500_000L))
+    }
+
+    @Test
+    fun activeEffectSpecsAreResolvedInStableOrderAndRespectZeroIntensity() {
+        val segments = listOf(
+            ClipTimedEffectSegment("b-warm", ClipCreativeEffectPreset.WARM, 25, 0L, 4_000L),
+            ClipTimedEffectSegment("a-vignette", ClipCreativeEffectPreset.VIGNETTE, 40, 0L, 4_000L),
+            ClipTimedEffectSegment("c-sepia", ClipCreativeEffectPreset.SEPIA, 0, 0L, 4_000L),
+        )
+
+        assertEquals(
+            listOf(
+                ClipVisualEffectSpec(ClipVisualEffectType.VIGNETTE, 0.4f),
+                ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 0.25f),
+            ),
+            createClipTimedEffectSpecsAtMs(segments, 1_000L, 5_000L),
+        )
+        assertEquals(emptyList<ClipVisualEffectSpec>(), createClipTimedEffectSpecsAtMs(segments, 4_000L, 5_000L))
+        assertEquals(emptyList<ClipVisualEffectSpec>(), createClipTimedEffectSpecsAtMs(segments, 5_000L, 5_000L))
+    }
+
+    @Test
+    fun timedEffectSpecsOnlyExposePresetsWithSharedPreviewAndExportRenderers() {
+        val softFocus = ClipTimedEffectSegment(
+            "soft-focus",
+            ClipCreativeEffectPreset.SOFT_FOCUS,
+            80,
+            0L,
+            2_000L,
+        )
+        val warm = ClipTimedEffectSegment(
+            "warm",
+            ClipCreativeEffectPreset.WARM,
+            50,
+            0L,
+            2_000L,
+        )
+
+        assertFalse(isClipTimedCreativeEffectPresetSupported(ClipCreativeEffectPreset.SOFT_FOCUS))
+        assertTrue(isClipTimedCreativeEffectPresetSupported(ClipCreativeEffectPreset.WARM))
+        assertEquals(emptyList<ClipTimedEffectSegment>(), supportedClipTimedEffectSegmentsOrNull(listOf(softFocus), 2_000L))
+        assertEquals(
+            listOf(warm),
+            supportedClipTimedEffectSegmentsOrNull(listOf(softFocus, warm), 2_000L),
+        )
+        assertEquals(
+            listOf(ClipVisualEffectSpec(ClipVisualEffectType.WARM_TINT, 0.5f)),
+            createClipTimedEffectSpecsAtMs(listOf(softFocus, warm), 1_000L, 2_000L),
+        )
+        assertEquals(
+            emptyList<ClipVisualEffectSpec>(),
+            createClipTimedEffectSpecsAtMs(listOf(softFocus), 1_000L, 2_000L),
+        )
+
+        // Unsupported does not mean unvalidated: invalid clip-local bounds still fail closed.
+        assertNull(
+            supportedClipTimedEffectSegmentsOrNull(
+                listOf(softFocus.copy(endMs = 2_500L)),
+                2_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun timedVignetteIntensityUsesClipLocalFrameTimestampAndLastActiveSegmentWins() {
+        val segments = listOf(
+            ClipTimedEffectSegment("base", ClipCreativeEffectPreset.VIGNETTE, 25, 0L, 5_000L),
+            ClipTimedEffectSegment("later", ClipCreativeEffectPreset.VIGNETTE, 70, 1_250L, 2_500L),
+            ClipTimedEffectSegment("warm", ClipCreativeEffectPreset.WARM, 90, 1_500L, 4_000L),
+            ClipTimedEffectSegment("disabled", ClipCreativeEffectPreset.VIGNETTE, 0, 3_000L, 3_500L),
+        )
+
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, -1L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 999_999L, 6_000L), 0.0001f)
+        assertEquals(0.70f, activeClipTimedVignetteIntensityAtUs(segments, 1_250_000L, 6_000L), 0.0001f)
+        assertEquals(0.70f, activeClipTimedVignetteIntensityAtUs(segments, 2_499_999L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 2_500_000L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 3_000_000L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 3_500_000L, 6_000L), 0.0001f)
+        assertEquals(0.25f, activeClipTimedVignetteIntensityAtUs(segments, 4_999_999L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 5_000_000L, 6_000L), 0.0001f)
+        assertEquals(0f, activeClipTimedVignetteIntensityAtUs(segments, 6_000_000L, 6_000L), 0.0001f)
+    }
+
+    @Test
+    fun timedVignetteIntensitySubtractsTheOwningClipProjectTimelineStart() {
+        val segments = listOf(
+            ClipTimedEffectSegment("later-clip-vignette", ClipCreativeEffectPreset.VIGNETTE, 40, 500L, 1_500L),
+        )
+
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 9_999_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_499_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0.4f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_500_000L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0.4f,
+            activeClipTimedVignetteIntensityAtUs(segments, 11_499_999L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 11_500_000L, 2_000L, 10_000L),
+            0.0001f,
+        )
+        assertEquals(
+            0f,
+            activeClipTimedVignetteIntensityAtUs(segments, 10_500_000L, 2_000L, Long.MAX_VALUE),
+            0.0001f,
+        )
+    }
+
+    @Test
+    fun splitPreservesIntervalsAcrossBothVideoHalvesAndKeepsClipEndSentinel() {
+        val segments = listOf(
+            ClipTimedEffectSegment("before", ClipCreativeEffectPreset.VIGNETTE, 40, 0L, 2_000L),
+            ClipTimedEffectSegment("cross", ClipCreativeEffectPreset.WARM, 60, 1_000L, 6_000L),
+            ClipTimedEffectSegment("after", ClipCreativeEffectPreset.SEPIA, 75, 4_000L, null),
+        )
+
+        val (left, right) = splitClipTimedEffectSegmentsAt(
+            segments = segments,
+            splitPositionMs = 3_000L,
+            clipDurationMs = 8_000L,
+        )
+
+        assertEquals(
+            listOf(
+                segments[0],
+                segments[1].copy(endMs = 3_000L),
+            ),
+            left,
+        )
+        assertEquals(
+            listOf(
+                segments[1].copy(startMs = 0L, endMs = 3_000L),
+                segments[2].copy(startMs = 1_000L, endMs = null),
+            ),
+            right,
+        )
+    }
+
+    @Test
+    fun trimRebasesOnlyTheRetainedSourceIntersectionAndPreservesFullClipEnd() {
+        val segments = listOf(
+            ClipTimedEffectSegment("head", ClipCreativeEffectPreset.VIGNETTE, 40, 0L, 5_000L),
+            ClipTimedEffectSegment("tail", ClipCreativeEffectPreset.SEPIA, 75, 7_000L, 10_000L),
+            ClipTimedEffectSegment("whole", ClipCreativeEffectPreset.WARM, 20, 0L, null),
+            ClipTimedEffectSegment("outside", ClipCreativeEffectPreset.COOL, 50, 1_000L, 2_000L),
+        )
+
+        assertEquals(
+            listOf(
+                segments[0].copy(startMs = 0L, endMs = 2_000L),
+                segments[1].copy(startMs = 4_000L, endMs = 5_000L),
+                segments[2].copy(startMs = 0L, endMs = null),
+            ),
+            rebaseClipTimedEffectSegmentsForTrim(
+                segments = segments,
+                oldSourceStartMs = 1_000L,
+                oldSourceEndMs = 11_000L,
+                newSourceStartMs = 4_000L,
+                newSourceEndMs = 9_000L,
+            ),
+        )
+    }
+
+    @Test
+    fun invalidIntervalsIdsPresetsIntensityAndClipBoundsAreRejected() {
+        assertFalse(isValidClipTimedEffectSegmentId(""))
+        assertFalse(isValidClipTimedEffectSegmentId("bad/id"))
+        assertFalse(isValidClipTimedEffectSegmentTiming(-1L, 1_000L))
+        assertFalse(isValidClipTimedEffectSegmentTiming(1_000L, 1_000L))
+        assertTrue(isValidClipTimedEffectSegmentTiming(0L, null))
+
+        assertNull(decodeClipTimedEffectSegment("fx", "future-effect", 50, 0L, 1_000L))
+        assertNull(decodeClipTimedEffectSegment("fx", "original", 50, 0L, 1_000L))
+        assertNull(decodeClipTimedEffectSegment("fx", "vignette", 101, 0L, 1_000L))
+        assertNull(decodeClipTimedEffectSegment("fx", "vignette", 50, -1L, 1_000L))
+
+        val segment = ClipTimedEffectSegment("fx", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, 1_000L)
+        assertTrue(validateClipTimedEffectSegments(listOf(segment), 1_000L))
+        assertFalse(validateClipTimedEffectSegments(listOf(segment), 999L))
+        assertFalse(validateClipTimedEffectSegments(listOf(segment, segment), 1_000L))
+        assertFalse(validateClipTimedEffectSegments((0..MAX_CLIP_TIMED_EFFECT_SEGMENTS).map { index ->
+            ClipTimedEffectSegment("fx-$index", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, 1_000L)
+        }, 1_000L))
+        assertFalse(validateClipTimedEffectSegments(listOf(segment), 0L))
+    }
+
+    @Test
+    fun timelineBoundsMapClipLocalIntervalToTrackWidth() {
+        val segment = ClipTimedEffectSegment(
+            "fx-vignette",
+            ClipCreativeEffectPreset.VIGNETTE,
+            40,
+            2_000L,
+            7_000L,
+        )
+
+        val bounds = calculateClipTimedEffectSegmentTimelineBounds(100f, 10_000L, segment)
+
+        assertEquals(20f, bounds!!.startOffsetPx, 0.001f)
+        assertEquals(50f, bounds.widthPx, 0.001f)
+        assertNull(calculateClipTimedEffectSegmentTimelineBounds(Float.NaN, 10_000L, segment))
+        assertNull(calculateClipTimedEffectSegmentTimelineBounds(100f, 0L, segment))
+    }
+
+    @Test
+    fun projectAndVersionFifteenBackupRoundTripTimedSegmentsAndKeepLegacyClipsCompatible() {
+        val segment = ClipTimedEffectSegment(
+            id = "fx-vignette",
+            preset = ClipCreativeEffectPreset.VIGNETTE,
+            intensity = 65,
+            startMs = 1_250L,
+            endMs = 4_750L,
+        )
+        val clip = EditClip(
+            id = "video",
+            uri = "content://media/video",
+            name = "Timed effects",
+            sourceStartMs = 0L,
+            sourceEndMs = 6_000L,
+            timedEffectSegments = listOf(segment),
+        )
+
+        assertEquals(listOf(clip), decodeProjectStrict(encodeProject(listOf(clip))))
+        val backup = encodeProjectBackup("Timed effects", listOf(clip), ProjectCanvasSettings())
+        assertEquals(15, org.json.JSONObject(backup).getInt("version"))
+        assertEquals(listOf(segment), decodeProjectBackup(backup).clips.single().timedEffectSegments)
+
+        val legacyBackup = """{
+            "format":"vyrocut-project",
+            "version":15,
+            "projectName":"Legacy timed effects",
+            "clips":[{"id":"legacy","uri":"content://media/legacy","name":"Legacy","start":0,"end":5000}],
+            "canvasSettings":"VYROCUT_CANVAS_V1|9:16|BLACK",
+            "audioTracks":[]
+        }"""
+        assertEquals(
+            emptyList<ClipTimedEffectSegment>(),
+            decodeProjectBackup(legacyBackup).clips.single().timedEffectSegments,
+        )
+
+        val snapshot = ProjectEditSnapshot(listOf(clip), emptyList())
+        assertEquals(snapshot, decodeProjectEditSnapshot(encodeProjectEditSnapshot(snapshot)))
+    }
+
+    @Test
+    fun malformedTimedEffectSegmentPayloadRejectsTheProjectInsteadOfSilentlyDroppingIt() {
+        val malformed = """[{
+            "id":"video",
+            "uri":"content://media/video",
+            "name":"Invalid timed effect",
+            "start":0,
+            "end":5000,
+            "timedEffectSegments":[{"id":"fx","presetId":"future-effect","intensity":50,"startMs":0,"endMs":1000}]
+        }]"""
+
+        assertNull(decodeProjectStrict(malformed))
+    }
+
+    @Test
+    fun appendingTimedEffectsRequiresUniqueIdsValidClipBoundsAndAvailableCapacity() {
+        val existing = listOf(
+            ClipTimedEffectSegment("existing", ClipCreativeEffectPreset.VIGNETTE, 35, 0L, 2_000L),
+        )
+        val added = ClipTimedEffectSegment(
+            "new",
+            ClipCreativeEffectPreset.VIGNETTE,
+            70,
+            2_000L,
+            null,
+        )
+
+        assertEquals(listOf(existing.single(), added), appendClipTimedEffectSegment(existing, 5_000L, added))
+        assertEquals(listOf(existing.single()), existing)
+        assertNull(appendClipTimedEffectSegment(existing, 5_000L, added.copy(id = "existing")))
+        assertNull(
+            appendClipTimedEffectSegment(
+                existing,
+                2_500L,
+                added.copy(endMs = 6_000L),
+            ),
+        )
+
+        val full = (0 until MAX_CLIP_TIMED_EFFECT_SEGMENTS).map { index ->
+            ClipTimedEffectSegment("full-$index", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, null)
+        }
+        assertNull(
+            appendClipTimedEffectSegment(
+                full,
+                5_000L,
+                ClipTimedEffectSegment("overflow", ClipCreativeEffectPreset.VIGNETTE, 50, 0L, null),
+            ),
+        )
+        assertNull(appendClipTimedEffectSegment(existing, 0L, added))
+    }
+
+    @Test
+    fun movingTimedEffectSegmentsPreservesBoundedDurationAndClipEndSentinel() {
+        val bounded = ClipTimedEffectSegment(
+            "bounded",
+            ClipCreativeEffectPreset.VIGNETTE,
+            65,
+            1_000L,
+            3_000L,
+        )
+        val openEnded = ClipTimedEffectSegment(
+            "open-ended",
+            ClipCreativeEffectPreset.WARM,
+            40,
+            1_000L,
+            null,
+        )
+        val segments = listOf(bounded, openEnded)
+
+        assertEquals(
+            bounded.copy(startMs = 2_000L, endMs = 4_000L),
+            editClipTimedEffectSegment(
+                segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 1_000L,
+            )?.first(),
+        )
+        assertEquals(
+            bounded.copy(startMs = 0L, endMs = 2_000L),
+            editClipTimedEffectSegment(
+                segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, -5_000L,
+            )?.first(),
+        )
+        assertEquals(
+            openEnded.copy(startMs = 1_500L),
+            editClipTimedEffectSegment(
+                segments, openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 500L,
+            )?.last(),
+        )
+        assertEquals(segments, editClipTimedEffectSegment(
+            segments, bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 0L,
+        ))
+    }
+
+    @Test
+    fun trimmingTimedEffectEdgesClampsToClipAndKeepsOpenEndWhenAtClipOut() {
+        val bounded = ClipTimedEffectSegment(
+            "bounded",
+            ClipCreativeEffectPreset.VIGNETTE,
+            65,
+            1_000L,
+            3_000L,
+        )
+        val openEnded = ClipTimedEffectSegment(
+            "open-ended",
+            ClipCreativeEffectPreset.WARM,
+            40,
+            1_000L,
+            null,
+        )
+
+        assertEquals(
+            bounded.copy(startMs = 1_500L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, 500L,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(startMs = 2_900L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, Long.MAX_VALUE,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 2_500L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -500L,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 5_000L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, Long.MAX_VALUE,
+            )?.single(),
+        )
+        assertEquals(
+            bounded.copy(endMs = 1_100L),
+            editClipTimedEffectSegment(
+                listOf(bounded), bounded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -5_000L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded.copy(startMs = 1_200L),
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_START, 200L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded.copy(endMs = 4_000L),
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, -1_000L,
+            )?.single(),
+        )
+        assertEquals(
+            openEnded,
+            editClipTimedEffectSegment(
+                listOf(openEnded), openEnded.id, 5_000L, ClipTimedEffectSegmentEditMode.TRIM_END, 1_000L,
+            )?.single(),
+        )
+        assertNull(editClipTimedEffectSegment(
+            listOf(bounded), "missing", 5_000L, ClipTimedEffectSegmentEditMode.MOVE, 1_000L,
+        ))
+        assertEquals(100L, MIN_CLIP_TIMED_EFFECT_SEGMENT_EDIT_DURATION_MS)
+    }
+
+    @Test
+    fun timelineDragPixelsConvertToBoundedClipLocalMilliseconds() {
+        assertEquals(2_500L, calculateClipTimedEffectDragDeltaMs(25f, 100f, 10_000L))
+        assertEquals(-2_500L, calculateClipTimedEffectDragDeltaMs(-25f, 100f, 10_000L))
+        assertEquals(10_000L, calculateClipTimedEffectDragDeltaMs(200f, 100f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(Float.NaN, 100f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(1f, 0f, 10_000L))
+        assertNull(calculateClipTimedEffectDragDeltaMs(1f, 100f, 0L))
+    }
+    @Test
+    fun updatingTimedEffectIntensityPreservesPresetIntervalAndOtherSegments() {
+        val selected = ClipTimedEffectSegment(
+            "selected",
+            ClipCreativeEffectPreset.VIGNETTE,
+            45,
+            1_000L,
+            3_000L,
+        )
+        val other = ClipTimedEffectSegment(
+            "other",
+            ClipCreativeEffectPreset.WARM,
+            70,
+            3_000L,
+            null,
+        )
+        val original = listOf(selected, other)
+
+        val updated = updateClipTimedEffectSegmentIntensity(
+            segments = original,
+            segmentId = selected.id,
+            clipDurationMs = 5_000L,
+            intensity = 0,
+        )
+
+        assertEquals(listOf(selected.copy(intensity = 0), other), updated)
+        assertEquals(45, original.first().intensity)
+        assertEquals(
+            original,
+            updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, 45),
+        )
+    }
+
+    @Test
+    fun timedEffectIntensityUpdatesRejectMissingSegmentsInvalidTracksAndOutOfRangeValues() {
+        val selected = ClipTimedEffectSegment(
+            "selected",
+            ClipCreativeEffectPreset.VIGNETTE,
+            45,
+            1_000L,
+            3_000L,
+        )
+        val original = listOf(selected)
+
+        assertNull(updateClipTimedEffectSegmentIntensity(original, "missing", 5_000L, 50))
+        assertNull(updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, -1))
+        assertNull(updateClipTimedEffectSegmentIntensity(original, selected.id, 5_000L, 101))
+        assertNull(
+            updateClipTimedEffectSegmentIntensity(
+                listOf(selected.copy(endMs = 6_000L)),
+                selected.id,
+                5_000L,
+                50,
+            ),
+        )
+    }
+}

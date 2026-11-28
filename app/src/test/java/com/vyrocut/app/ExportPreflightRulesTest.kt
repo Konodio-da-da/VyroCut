@@ -1,11 +1,18 @@
 package com.vyrocut.app
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExportPreflightRulesTest {
-    private val source = ExportSourceMetadata(durationMs = 12_000L, hasVideoTrack = true)
+    private val source = ExportSourceMetadata(
+        durationMs = 12_000L,
+        hasVideoTrack = true,
+        videoWidthPx = 1_920,
+        videoHeightPx = 1_080,
+    )
     private val clip = ExportClipRequirement(
         id = "clip-a",
         uri = "content://media/source-a",
@@ -81,6 +88,31 @@ class ExportPreflightRulesTest {
     }
 
     @Test
+    fun requiresSourceDimensionsOnlyWhenACustomCanvasBackgroundIsSelected() {
+        val sourceWithoutDimensions = source.copy(videoWidthPx = null, videoHeightPx = null)
+        assertNull(validateExportPreflight(listOf(clip), mapOf(clip.uri to sourceWithoutDimensions)))
+        assertEquals(
+            "Source A's video dimensions are unavailable for the selected canvas background",
+            validateExportPreflight(
+                listOf(clip),
+                mapOf(clip.uri to sourceWithoutDimensions),
+                requireVideoDimensions = true,
+            ),
+        )
+    }
+
+    @Test
+    fun acceptsReadableSourceDimensionsForCustomCanvasBackgrounds() {
+        assertNull(
+            validateExportPreflight(
+                listOf(clip),
+                mapOf(clip.uri to source),
+                requireVideoDimensions = true,
+            ),
+        )
+    }
+
+    @Test
     fun rejectsSourcesWithoutVideoTracks() {
         assertEquals(
             "Source A's source has no readable video track",
@@ -113,5 +145,31 @@ class ExportPreflightRulesTest {
                 mapOf(clip.uri to ExportSourceMetadata(Long.MAX_VALUE, true)),
             ),
         )
+    }
+
+    @Test
+    fun exportSourceUrisAreDeduplicatedInFirstUseOrder() {
+        assertEquals(
+            listOf("content://video/a", "content://audio/b", "content://video/c"),
+            distinctExportSourceUris(
+                listOf(
+                    "content://video/a",
+                    "content://audio/b",
+                    "content://video/a",
+                    "content://video/c",
+                    "content://audio/b",
+                ),
+            ),
+        )
+        assertTrue(distinctExportSourceUris(emptyList()).isEmpty())
+    }
+
+    @Test
+    fun recognizesRealAudioTrackMimeTypesAndRejectsVideoOnlySources() {
+        assertTrue(hasAudioTrackMimeType(listOf("video/avc", "audio/mp4")))
+        assertTrue(hasAudioTrackMimeType(listOf(" AUDIO/AAC ")))
+        assertFalse(hasAudioTrackMimeType(listOf("video/mp4", "application/octet-stream", null)))
+        assertFalse(hasAudioTrackMimeType(listOf("audio/")))
+        assertFalse(hasAudioTrackMimeType(emptyList()))
     }
 }

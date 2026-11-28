@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#131313", "outline-variant": "#3b4a44", "surface-container-highest": "#353534", "outline": "#84948d", "surface-container-high": "#2a2a2a", "tertiary-fixed-dim": "#ffb4aa", "surface-tint": "#00e0b2", "surface-container-low": "#1c1b1b", "on-surface-variant": "#b9cac2", "on-primary-fixed-variant": "#00513e", "on-primary-fixed": "#002117", "inverse-on-surface": "#313030", "on-primary": "#00382a", "tertiary": "#ffe4e0", "on-secondary-container": "#00616d", "on-primary-container": "#00634d", "tertiary-fixed": "#ffdad5", "surface-dim": "#131313", "primary": "#8affd8", "on-tertiary": "#690004", "on-secondary-fixed": "#001f24", "inverse-surface": "#e5e2e1", "surface-variant": "#353534", "primary-fixed": "#42fecc", "on-tertiary-fixed-variant": "#930007", "error": "#ffb4ab", "secondary": "#bdf4ff", "inverse-primary": "#006b54", "on-error": "#690005", "on-background": "#e5e2e1", "tertiary-container": "#ffbeb6", "on-secondary-fixed-variant": "#004f58", "secondary-container": "#00e3fd", "on-error-container": "#ffdad6", "secondary-fixed": "#9cf0ff", "on-tertiary-container": "#b2000c", "on-secondary": "#00363d", "error-container": "#93000a", "surface-bright": "#393939", "primary-fixed-dim": "#00e0b2", "on-tertiary-fixed": "#410001", "surface-container-lowest": "#0e0e0e", "surface-container": "#201f1f", "on-surface": "#e5e2e1", "surface": "#131313", "primary-container": "#0fe8b8", "secondary-fixed-dim": "#00daf3" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "gutter-desktop": "1rem", "space-sm": "0.5rem", "space-lg": "1rem", "space-xl": "1.5rem", "margin-desktop": "1.5rem", "margin": "0.75rem", "space-xs": "0.25rem", "gutter": "0.5rem", "space-md": "0.75rem" }, "fontFamily": { "label-md": ["Inter"], "title-md": ["Inter"], "headline-lg": ["Inter"], "timecode-sm": ["JetBrains Mono"], "body-sm": ["Inter"], "display-lg": ["Inter"], "label-xs": ["Inter"], "timecode-lg": ["JetBrains Mono"], "headline-sm": ["Inter"], "body-md": ["Inter"] }, "fontSize": { "label-md": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "title-md": ["15px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "timecode-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "500" }], "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }], "display-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "label-xs": ["9px", { "lineHeight": "12px", "letterSpacing": "0.04em", "fontWeight": "600" }], "timecode-lg": ["16px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500" }], "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md text-body-md flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-14 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center gap-space-xs"><button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[22px]">settings</span></button><button class="px-space-xs py-0.5 rounded-full bg-surface-container-high text-primary flex items-center gap-1 font-label-xs text-label-xs"><span class="material-symbols-outlined text-[13px]">cloud_done</span><span>PRO</span></button></div><div class="flex-1 flex items-center justify-center px-space-xs"><div class="w-full max-w-[200px] h-9 rounded-full bg-surface-container-high px-space-md flex items-center gap-space-xs text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">search</span><span class="font-label-md text-label-md truncate">Projects</span></div></div><div class="flex items-center gap-space-xs"><button class="w-11 h-11 flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-[20px]">photo_camera</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-20 bg-surface"><div class="flex flex-col w-full px-margin space-y-space-md">
+<!-- Top Utilities Strip -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-space-xs">
+<button aria-label="Help and Tutorials" class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</button>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-primary font-label-md text-label-md">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="tracking-wide">PRO PASS</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<button aria-label="Notifications &amp; Sync" class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">cloud_sync</span>
+</button>
+<button aria-label="Settings" class="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors active:scale-95">
+<span class="material-symbols-outlined text-[20px]">tune</span>
+</button>
+</div>
+</div>
+<!-- Hero Primary CTA: New Project -->
+<div class="relative group cursor-pointer overflow-hidden rounded-xl bg-surface-container-low p-space-lg transition-transform active:scale-[0.99] shadow-md">
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+<div class="relative z-10 flex flex-col items-center justify-center py-6 text-center space-y-3">
+<div class="w-16 h-16 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-90">
+<span class="material-symbols-outlined text-[34px] font-bold">add</span>
+</div>
+<div class="space-y-0.5">
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">New project</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Tap to import clips, audios, or canvas presets</p>
+</div>
+</div>
+</div>
+<!-- Quick Shortcut Carousel -->
+<div class="w-full overflow-x-auto pb-1 -mx-margin px-margin">
+<div class="flex items-center gap-space-sm min-w-max">
+<!-- Shortcut 1 -->
+<button class="flex flex-col items-center justify-center w-[72px] h-[76px] rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95 space-y-1.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">videocam</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Camera</span>
+</button>
+<!-- Shortcut 2 -->
+<button class="flex flex-col items-center justify-center w-[72px] h-[76px] rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95 space-y-1.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[20px]">face_retouching_natural</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Retouch</span>
+</button>
+<!-- Shortcut 3 -->
+<button class="flex flex-col items-center justify-center w-[72px] h-[76px] rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95 space-y-1.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-primary-fixed">
+<span class="material-symbols-outlined text-[20px]">auto_fix_high</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">AutoCut</span>
+</button>
+<!-- Shortcut 4 -->
+<button class="flex flex-col items-center justify-center w-[72px] h-[76px] rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95 space-y-1.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[20px]">record_voice_over</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Prompter</span>
+</button>
+<!-- Shortcut 5 -->
+<button class="flex flex-col items-center justify-center w-[72px] h-[76px] rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-colors active:scale-95 space-y-1.5">
+<div class="w-9 h-9 rounded-full bg-surface-container-high flex items-center justify-center text-secondary-fixed">
+<span class="material-symbols-outlined text-[20px]">closed_caption</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">Captions</span>
+</button>
+</div>
+</div>
+<!-- Cloud Storage Bar -->
+<div class="rounded-xl bg-surface-container-low p-space-md flex flex-col space-y-2 shadow-sm">
+<div class="flex items-center justify-between text-on-surface">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">cloud_upload</span>
+<span class="font-title-md text-title-md">Cloud space</span>
+</div>
+<div class="flex items-center gap-1 font-timecode-sm text-timecode-sm text-on-surface-variant">
+<span class="text-on-surface font-medium">1.2 GB</span>
+<span>/</span>
+<span>5.0 GB free</span>
+</div>
+</div>
+<!-- Visual Progress Track -->
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 24%;"></div>
+</div>
+<div class="flex items-center justify-between pt-0.5">
+<span class="font-label-xs text-label-xs text-on-surface-variant">Auto-sync draft saves enabled</span>
+<button class="font-label-xs text-label-xs text-primary font-semibold flex items-center gap-0.5 hover:underline">
+<span>Upgrade</span>
+<span class="material-symbols-outlined text-[13px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Projects Header & Action -->
+<div class="flex items-center justify-between pt-space-xs">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Projects</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container-high font-timecode-sm text-timecode-sm text-on-surface-variant">4</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title="Manage drafts">
+<span class="material-symbols-outlined text-[18px]">checklist</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors" title="Filter &amp; sort">
+<span class="material-symbols-outlined text-[18px]">swap_vert</span>
+</button>
+</div>
+</div>
+<!-- Project Drafts List -->
+<div class="space-y-space-sm pb-space-lg">
+<!-- Draft Item 1 -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-24 h-16 rounded-lg overflow-hidden bg-surface-container-highest flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Cinematic moody street photography during golden hour in a neon Tokyo alleyway with wet asphalt reflections, film grain, and anamorphic lens blur." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ-cMXy4QOm_4ct0FyGwhCqIELjpRnanttPwITb93BdbECEXwEjwIYTDxSVgvc-iZYRXWmK3oT4AW9gOdNp34kklEtpQNH7G4OW-3lVw4B2nfs1bAWgOO9pWvjIvXWuVSRqYAZXmcA_Me3X5CkJE2XFWCa3dzdAjH3LYibaK_GKlXZujm9zQgPw9Rm32DBE72SwgtgUnyuloW4Wv1bpJBHc0m1inPjmPSnJGiMQ58H"/>
+<div class="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-surface-container-lowest/80 backdrop-blur-sm font-timecode-sm text-timecode-sm text-on-surface">
+            00:28
+          </div>
+</div>
+<div class="min-w-0 flex flex-col justify-center space-y-0.5">
+<h4 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Street Reel 01</h4>
+<div class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
+<span>Today 14:20</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-timecode-sm text-timecode-sm">142 MB</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button aria-label="Draft actions" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface active:scale-95">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Draft Item 2 -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-24 h-16 rounded-lg overflow-hidden bg-surface-container-highest flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Majestic Iceland volcanic glacier waterfall with dramatic overcast sky, deep emerald green moss and black basalt rock formations, high definition wide drone landscape." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwil8ObAtcFBKxWIX23omur7jAhGEUJ8z8cwbHqFKukrwT5q8aBW4eCSX4LdKrl1I4Y6BVCvM2Pkfg25UtItNhsUSsmk2_TPdxMZhAwVRHIptTG5I0sOUFBq9i3020a38mE3KLv_Vt8-vGX7jxlCLHmMbINk1zwdZ7C-KM1hb_q4JQflUGlSdZxhHUGJzhBEy14ueTmVlmUSqMfey-969L8TFp8h7s5RPy40BBXWVj"/>
+<div class="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-surface-container-lowest/80 backdrop-blur-sm font-timecode-sm text-timecode-sm text-on-surface">
+            01:15
+          </div>
+</div>
+<div class="min-w-0 flex flex-col justify-center space-y-0.5">
+<h4 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Iceland Trip Vlog</h4>
+<div class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
+<span>Yesterday</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-timecode-sm text-timecode-sm">380 MB</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button aria-label="Draft actions" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface active:scale-95">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Draft Item 3 -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-24 h-16 rounded-lg overflow-hidden bg-surface-container-highest flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="Dynamic fitness dancer in a minimalist concrete studio with dramatic soft box side lighting, caught mid-motion leap, sharp athletic action frame." src="https://lh3.googleusercontent.com/aida-public/AB6AXuByBSXWR2LPELLP_KzemtGnnQI8rcwi5SuIFyYgkt-zmIxeY2ARw3RPFZzjkMGU9s4WMuk4Z8K51-JuFXc9KJEu_4PxOZc8SnirDs1AGyhnGMyNKLiA-duqMwXhVOQhNTx73N4WkQjwyFSHfwKJbdEDqz2fI1SAeAmJq2sKCoro7UCTbunbDxcc-R1avVmhA6uQ5i8wASn3xht9iccUh4m0WTqB_5s0ytJy3rQ8MMst"/>
+<div class="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-surface-container-lowest/80 backdrop-blur-sm font-timecode-sm text-timecode-sm text-on-surface">
+            00:15
+          </div>
+</div>
+<div class="min-w-0 flex flex-col justify-center space-y-0.5">
+<h4 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Dance Routine Choreo</h4>
+<div class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
+<span>3 days ago</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-timecode-sm text-timecode-sm">95 MB</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button aria-label="Draft actions" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface active:scale-95">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Draft Item 4 -->
+<div class="flex items-center justify-between p-space-sm rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors group cursor-pointer">
+<div class="flex items-center gap-space-md min-w-0">
+<div class="relative w-24 h-16 rounded-lg overflow-hidden bg-surface-container-high flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-[28px] text-on-surface-variant">mic</span>
+<div class="absolute bottom-1 right-1 px-1 py-0.2 rounded bg-surface-container-lowest/80 backdrop-blur-sm font-timecode-sm text-timecode-sm text-on-surface">
+            00:45
+          </div>
+</div>
+<div class="min-w-0 flex flex-col justify-center space-y-0.5">
+<h4 class="font-title-md text-title-md text-on-surface truncate group-hover:text-primary transition-colors">Podcast Teaser Snippet</h4>
+<div class="flex items-center gap-2 font-body-sm text-body-sm text-on-surface-variant">
+<span>5 days ago</span>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<span class="font-timecode-sm text-timecode-sm">54 MB</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-1 flex-shrink-0">
+<button aria-label="Draft actions" class="w-8 h-8 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface active:scale-95">
+<span class="material-symbols-outlined text-[20px]">more_horiz</span>
+</button>
+</div>
+</div>
+</div>
+<!-- End of Projects Subtle State Indicator -->
+<div class="flex flex-col items-center justify-center py-4 space-y-1">
+<div class="w-6 h-1 rounded-full bg-surface-container-highest"></div>
+<span class="font-label-xs text-label-xs text-on-surface-variant">Synced with CapCut Space</span>
+</div>
+</div></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-1px_12px_rgba(0,0,0,0.5)]" data-active-classes="text-primary-container font-medium"><div class="flex justify-around items-center h-16 px-gutter"><a aria-current="page" class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 transition-colors text-primary-container font-medium" data-path="projects" href="#"><span class="material-symbols-outlined text-[22px]">content_cut</span><span class="font-label-xs text-label-xs">Edit</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-colors" data-path="templates" href="#"><span class="material-symbols-outlined text-[22px]">dashboard_customize</span><span class="font-label-xs text-label-xs">Templates</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-colors" data-path="inbox" href="#"><span class="material-symbols-outlined text-[22px]">notifications</span><span class="font-label-xs text-label-xs">Inbox</span></a><a class="flex flex-col items-center justify-center gap-0.5 min-w-[56px] h-12 text-on-surface-variant hover:text-on-surface transition-colors" data-path="profile" href="#"><span class="material-symbols-outlined text-[22px]">account_circle</span><span class="font-label-xs text-label-xs">Me</span></a></div></nav></body></html>
