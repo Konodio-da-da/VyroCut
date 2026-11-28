@@ -424,8 +424,14 @@ class ProjectPersistenceRulesTest {
         val legacyEncoded = encodeProject(listOf(legacyClip))
         assertFalse(legacyEncoded.contains("\"assetId\""))
         assertFalse(legacyEncoded.contains("\"rotationDegrees\""))
-        assertFalse(legacyEncoded.contains("\"fadeInMs\""))
-        assertFalse(legacyEncoded.contains("\"fadeOutMs\""))
+        // Clip-level audio fades use the same JSON keys, so inspect the sticker
+        // object rather than searching the complete project document.
+        val legacyStickerJson = org.json.JSONArray(legacyEncoded)
+            .getJSONObject(0)
+            .getJSONArray("stickerOverlays")
+            .getJSONObject(0)
+        assertFalse(legacyStickerJson.has("fadeInMs"))
+        assertFalse(legacyStickerJson.has("fadeOutMs"))
         assertEquals(0L, decodeProjectStrict(legacyEncoded)?.single()?.allStickerOverlays?.single()?.fadeInMs)
         assertEquals(0L, decodeProjectStrict(legacyEncoded)?.single()?.allStickerOverlays?.single()?.fadeOutMs)
         assertEquals(listOf(legacyClip), decodeProjectStrict(legacyEncoded))
