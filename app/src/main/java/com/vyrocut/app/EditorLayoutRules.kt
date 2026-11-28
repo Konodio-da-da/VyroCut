@@ -169,10 +169,10 @@ internal fun editorTransportControlsMinimumWindowWidthDp(fontScale: Float): Int 
 }
 
 /**
- * Keeps the project title action readable in compact windows. The brand
- * wordmark yields space before the project action is forced below its
- * minimum useful width. Font-scale growth follows the shared 4x
- * accessibility range.
+ * Keeps the project title readable in compact windows. The back button
+ * collapses to its chevron before its text competes with the project action;
+ * the Compose button retains a full semantic description. Font-scale growth
+ * follows the shared 4x accessibility range.
  */
 internal fun editorHeaderShowsProjectNavigationLabel(
     windowWidthDp: Int,
@@ -190,6 +190,12 @@ internal fun editorHeaderShowsProjectNavigationLabel(
     return safeWidth >= requiredWidth
 }
 
+/**
+ * Keeps the project title action readable in compact windows. The brand
+ * wordmark yields space before the project action is forced below its
+ * minimum useful width. Font-scale growth follows the shared 4x
+ * accessibility range.
+ */
 internal fun editorHeaderShowsBrandTitle(
     windowWidthDp: Int,
     fontScale: Float = 1f,
