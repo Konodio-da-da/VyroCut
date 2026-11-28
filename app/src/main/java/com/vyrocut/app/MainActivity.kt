@@ -1657,8 +1657,14 @@ private fun VyroCutApp() {
             return
         }
         val clipStartMs = calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L)
-        val localStartMs = (timelinePositionMs.toLong() - clipStartMs)
-            .coerceIn(0L, clip.durationMs - 1L)
+        val localStartMs = clipLocalStartAtProjectPlayheadMs(
+            projectPlayheadMs = timelinePositionMs.toLong(),
+            clipTimelineStartMs = clipStartMs,
+            clipDurationMs = clip.durationMs,
+        ) ?: run {
+            exportMessage = "Select a clip with a valid duration before adding an effect."
+            return
+        }
         val segment = ClipTimedEffectSegment(
             id = java.util.UUID.randomUUID().toString(),
             preset = timedEffectPresetDraft,

@@ -381,6 +381,18 @@ class TimelineMathTest {
     }
 
     @Test
+    fun mapsProjectPlayheadToClipLocalStartForTimedLayers() {
+        assertEquals(0L, clipLocalStartAtProjectPlayheadMs(900L, 1_000L, 4_000L))
+        assertEquals(0L, clipLocalStartAtProjectPlayheadMs(1_000L, 1_000L, 4_000L))
+        assertEquals(750L, clipLocalStartAtProjectPlayheadMs(1_750L, 1_000L, 4_000L))
+        assertEquals(3_999L, clipLocalStartAtProjectPlayheadMs(5_000L, 1_000L, 4_000L))
+        assertEquals(3_999L, clipLocalStartAtProjectPlayheadMs(Long.MAX_VALUE, 1_000L, 4_000L))
+        assertEquals(0L, clipLocalStartAtProjectPlayheadMs(Long.MIN_VALUE, 0L, 4_000L))
+        assertNull(clipLocalStartAtProjectPlayheadMs(0L, -1L, 4_000L))
+        assertNull(clipLocalStartAtProjectPlayheadMs(0L, 0L, 0L))
+    }
+
+    @Test
     fun clampsPlayerPositionToCurrentClipDuration() {
         assertEquals(
             3_000L,

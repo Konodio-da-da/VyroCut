@@ -271,14 +271,11 @@ internal fun clipStickerStartAtPlayheadMs(
     projectPlayheadMs: Long,
     clipTimelineStartMs: Long,
     clipDurationMs: Long,
-): Long? {
-    if (clipTimelineStartMs < 0L || clipDurationMs <= 0L) return null
-    return if (projectPlayheadMs <= clipTimelineStartMs) {
-        0L
-    } else {
-        (projectPlayheadMs - clipTimelineStartMs).coerceAtMost(clipDurationMs - 1L)
-    }
-}
+): Long? = clipLocalStartAtProjectPlayheadMs(
+    projectPlayheadMs = projectPlayheadMs,
+    clipTimelineStartMs = clipTimelineStartMs,
+    clipDurationMs = clipDurationMs,
+)
 
 /**
  * Normalized clip-local timing and the non-crossing ranges for the IN/OUT controls.

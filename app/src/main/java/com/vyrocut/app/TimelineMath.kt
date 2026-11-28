@@ -79,6 +79,24 @@ internal fun calculateTimelinePositionMs(
 }
 
 /**
+ * Maps the project playhead to a valid clip-local start for timed overlays and effects.
+ * A playhead before the clip maps to zero; one at or beyond the clip end maps to
+ * the last playable millisecond. Invalid clip bounds fail closed.
+ */
+internal fun clipLocalStartAtProjectPlayheadMs(
+    projectPlayheadMs: Long,
+    clipTimelineStartMs: Long,
+    clipDurationMs: Long,
+): Long? {
+    if (clipTimelineStartMs < 0L || clipDurationMs <= 0L) return null
+    return if (projectPlayheadMs <= clipTimelineStartMs) {
+        0L
+    } else {
+        (projectPlayheadMs - clipTimelineStartMs).coerceAtMost(clipDurationMs - 1L)
+    }
+}
+
+/**
  * Resolves an absolute timeline seek position into a playlist item and a clip-relative position.
  * Exact internal boundaries select the following clip. The project end selects the final
  * playable clip's last millisecond so a drag to the end does not jump back to its beginning.
