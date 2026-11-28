@@ -1815,16 +1815,26 @@ private fun VyroCutApp() {
             exportMessage = "A clip can contain up to $MAX_CLIP_STICKER_OVERLAYS stickers."
             return
         }
+        val clipTimelineStartMs = calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L)
+        val stickerStartMs = clipStickerStartAtPlayheadMs(
+            projectPlayheadMs = timelinePositionMs.toLong(),
+            clipTimelineStartMs = clipTimelineStartMs,
+            clipDurationMs = clip.durationMs,
+        ) ?: run {
+            exportMessage = "Select a clip with a valid duration before adding a sticker."
+            return
+        }
         val overlay = decodeClipStickerOverlay(
             raw = symbol,
             position = selectedStickerPosition.name,
+            startMs = stickerStartMs,
             assetId = assetId,
         ) ?: return
         val addedIndex = clip.allStickerOverlays.size
         commitSelectedClipStickerOverlays(
             clip,
             clip.allStickerOverlays + overlay,
-            "Sticker added to this clip",
+            "Sticker added from playhead to clip end",
         )
         selectedStickerLayerIndex = addedIndex
     }

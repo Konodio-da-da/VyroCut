@@ -263,6 +263,24 @@ internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boole
     startMs >= 0L && (endMs == null || endMs > startMs)
 
 /**
+ * Places a newly added sticker at the current project playhead within its
+ * owning clip. A playhead outside the selected clip is clamped to the nearest
+ * valid clip-local millisecond; an empty clip or invalid timeline origin fails closed.
+ */
+internal fun clipStickerStartAtPlayheadMs(
+    projectPlayheadMs: Long,
+    clipTimelineStartMs: Long,
+    clipDurationMs: Long,
+): Long? {
+    if (clipTimelineStartMs < 0L || clipDurationMs <= 0L) return null
+    return if (projectPlayheadMs <= clipTimelineStartMs) {
+        0L
+    } else {
+        (projectPlayheadMs - clipTimelineStartMs).coerceAtMost(clipDurationMs - 1L)
+    }
+}
+
+/**
  * Normalized clip-local timing and the non-crossing ranges for the IN/OUT controls.
  * The IN handle can move only up to one millisecond before OUT; OUT can move
  * only from one millisecond after IN through the clip end.

@@ -68,7 +68,7 @@ internal fun StickerOverlaysPanel(
             )
         } else {
             Text(
-                "Choose a position, then tap a built-in vector sticker or emoji to add it to this clip.",
+                "Choose a position, then tap a built-in vector sticker or emoji to add it from the playhead to the clip end.",
                 color = VyroCutPalette.TextMuted,
                 fontSize = VyroCutTypography.CaptionSp.sp,
             )

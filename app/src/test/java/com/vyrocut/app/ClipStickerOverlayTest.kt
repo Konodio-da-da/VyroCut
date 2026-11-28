@@ -174,6 +174,30 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun newStickersStartAtTheProjectPlayheadWithinTheSelectedClip() {
+        assertEquals(0L, clipStickerStartAtPlayheadMs(900L, 1_000L, 4_000L))
+        assertEquals(750L, clipStickerStartAtPlayheadMs(1_750L, 1_000L, 4_000L))
+        assertEquals(3_999L, clipStickerStartAtPlayheadMs(5_000L, 1_000L, 4_000L))
+        assertEquals(3_999L, clipStickerStartAtPlayheadMs(Long.MAX_VALUE, 1_000L, 4_000L))
+
+        val sticker = decodeClipStickerOverlay("✨", startMs = 750L)
+        assertNotNull(sticker)
+        assertFalse(isClipStickerOverlayVisibleAtMs(sticker!!, 749L))
+        assertTrue(isClipStickerOverlayVisibleAtMs(sticker, 750L))
+        assertTrue(isClipStickerOverlayVisibleAtMs(sticker, 3_999L))
+        assertFalse(isClipStickerOverlayVisibleAtMs(sticker, 4_000L))
+    }
+
+    @Test
+    fun stickerPlayheadPlacementRejectsInvalidClipsAndClampsNegativePlayheads() {
+        assertEquals(0L, clipStickerStartAtPlayheadMs(-1L, 0L, 4_000L))
+        assertEquals(0L, clipStickerStartAtPlayheadMs(Long.MAX_VALUE, Long.MAX_VALUE, 4_000L))
+        assertNull(clipStickerStartAtPlayheadMs(0L, -1L, 4_000L))
+        assertNull(clipStickerStartAtPlayheadMs(0L, 0L, 0L))
+        assertNull(clipStickerStartAtPlayheadMs(0L, 0L, -1L))
+    }
+
+    @Test
     fun stickerFadeUpdatesClampToTheVisibleClipLocalInterval() {
         val sticker = ClipStickerOverlay("✨", startMs = 500L, endMs = 2_500L)
 
