@@ -402,7 +402,9 @@ internal fun timelineTrackHeaderPinnedTranslationPx(scrollOffsetPx: Int): Float 
 /**
  * Resolves a compact fixed lane-label gutter that grows modestly with system
  * font scale while preserving at least three quarters of the viewport for
- * the time axis. Invalid geometry falls back to the default 360 dp viewport.
+ * the time axis. On very narrow split-screen windows, the preferred minimum
+ * yields to that viewport budget so the time axis remains usable.
+ * Invalid geometry falls back to the default 360 dp viewport.
  */
 internal fun timelineLaneGutterWidthDp(viewportWidthDp: Float, fontScale: Float): Int {
     val safeViewportWidth = viewportWidthDp
@@ -414,10 +416,11 @@ internal fun timelineLaneGutterWidthDp(viewportWidthDp: Float, fontScale: Float)
     ).toInt()
     val viewportMaximum = (safeViewportWidth * TIMELINE_LANE_GUTTER_VIEWPORT_FRACTION)
         .toInt()
-        .coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
+        .coerceAtLeast(1)
+    val minimumWidth = minOf(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP, viewportMaximum)
     val maximumWidth = minOf(TIMELINE_LANE_GUTTER_MAX_WIDTH_DP, viewportMaximum)
-        .coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
-    return scaledWidth.coerceIn(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP, maximumWidth)
+        .coerceAtLeast(minimumWidth)
+    return scaledWidth.coerceIn(minimumWidth, maximumWidth)
 }
 
 /**
@@ -432,7 +435,10 @@ internal fun timelineLaneDisplayLabel(
     val safeLabel = label.trim()
     if (safeLabel.isEmpty()) return ""
 
-    val safeGutterWidth = gutterWidthDp.coerceAtLeast(TIMELINE_LANE_GUTTER_MIN_WIDTH_DP)
+    // The viewport may force the gutter below its preferred 64 dp minimum.
+    // Estimate against the actual width so the visible abbreviation matches the
+    // space Compose really has, rather than assuming the preferred width.
+    val safeGutterWidth = gutterWidthDp.coerceAtLeast(1)
     val safeFontScale = safeTimelineFontScale(fontScale)
     val availableTextWidthDp = (
         safeGutterWidth -
@@ -460,9 +466,14 @@ internal fun timelineLaneDisplayLabel(
         "SFX" -> "SFX"
         else -> safeLabel.take(3)
     }
-    return if (estimatedTextWidthDp(compactLabel) <= availableTextWidthDp) {
-        compactLabel
-    } else {
-        compactLabel.take(2)
-    }
+    if (estimatedTextWidthDp(compactLabel) <= availableTextWidthDp) return compactLabel
+
+    // Use every character that fits the real gutter. At high font scales this
+    // can be one character; the lane's Compose contentDescription retains the
+    // complete label for accessibility services.
+    val estimatedGlyphWidthDp = estimatedTextWidthDp("M").coerceAtLeast(1.0)
+    val maximumCharacters = (availableTextWidthDp / estimatedGlyphWidthDp)
+        .toInt()
+        .coerceAtLeast(1)
+    return compactLabel.take(maximumCharacters.coerceAtMost(compactLabel.length))
 }
