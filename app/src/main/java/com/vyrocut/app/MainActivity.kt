@@ -2253,6 +2253,9 @@ private fun VyroCutApp() {
 
     VyroCutTheme {
         Surface(Modifier.fillMaxSize(), color = StudioBackground) {
+            // Keep the surface drawing behind system bars while all interactive
+            // content stays inside the Android 15+ safe drawing region.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
             if (showHome) {
                 VyroCutProjectsHome(
                     projects = projects.map { it.id to it.name },
@@ -4741,6 +4744,7 @@ private fun VyroCutApp() {
                 }
             }
                 }
+            }
             }
         }
     }
