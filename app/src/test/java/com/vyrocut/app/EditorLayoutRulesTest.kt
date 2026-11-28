@@ -16,7 +16,8 @@ class EditorLayoutRulesTest {
             windowWidthDp = 360,
         )
 
-        assertEquals(114, metrics.previewHeightDp)
+        // Preview sizing uses integer dp division (568 / 5 = 113).
+        assertEquals(113, metrics.previewHeightDp)
         assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, metrics.sectionSpacingDp)
         assertTrue(metrics.stackPreviewMetadataAboveTransportControls)
     }
