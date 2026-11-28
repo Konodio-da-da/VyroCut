@@ -35,6 +35,16 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun timedEffectTimelineColorsReuseTheSecondaryAccentWithoutChangingOpacity() {
+        assertEquals(VyroCutPalette.AccentSecondary, VyroCutPalette.TimelineTimedEffectAccent)
+        assertEquals(
+            VyroCutPalette.TimelineTimedEffectAccent.copy(alpha = 0.22f),
+            VyroCutPalette.TimelineTimedEffectFill,
+        )
+        assertEquals(VyroCutPalette.TimelineTimedEffectAccent, VyroCutPalette.TimelineTimedEffectTrimHandle)
+    }
+
+    @Test
     fun semanticCanvasAndMediaColorsStayCentralized() {
         assertEquals(Color.Black, VyroCutPalette.CanvasBlack)
         assertEquals(Color.White, VyroCutPalette.CanvasWhite)

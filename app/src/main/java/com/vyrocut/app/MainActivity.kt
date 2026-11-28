@@ -6224,7 +6224,7 @@ private fun TimelineEditorStrip(
         val effectTrackHeight = VyroCutTimelineVisualMetrics.TimedEffectTrackHeightDp.dp
         TimelineLaneRow(
             label = "EFFECT",
-            accentColor = VyroCutPalette.AccentSecondary,
+            accentColor = VyroCutPalette.TimelineTimedEffectAccent,
             scrollOffsetPx = { timelineScroll.value },
             gutterWidth = laneGutterWidth,
             contentWidth = totalWidth,
@@ -6265,7 +6265,7 @@ private fun TimelineEditorStrip(
                                             .width(effectBounds.widthPx.dp)
                                             .fillMaxHeight()
                                             .background(
-                                                VyroCutPalette.AccentSecondary.copy(alpha = 0.22f),
+                                                VyroCutPalette.TimelineTimedEffectFill,
                                                 RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                             )
                                             .border(
@@ -6293,7 +6293,7 @@ private fun TimelineEditorStrip(
                                                         handleHitWidthDp = handleHitWidthDp,
                                                     ).dp,
                                                 ),
-                                            color = VyroCutPalette.AccentSecondary,
+                                            color = VyroCutPalette.TimelineTimedEffectAccent,
                                             fontSize = TIMELINE_CLIP_META_FONT_SP.sp,
                                             maxLines = 1,
                                             softWrap = false,
@@ -6318,7 +6318,7 @@ private fun TimelineEditorStrip(
                                                     Modifier.width(TIMED_EFFECT_TRIM_HANDLE_WIDTH_DP.dp)
                                                         .fillMaxHeight(TIMED_EFFECT_TRIM_HANDLE_HEIGHT_FRACTION)
                                                         .background(
-                                                            VyroCutPalette.AccentSecondary,
+                                                            VyroCutPalette.TimelineTimedEffectTrimHandle,
                                                             RoundedCornerShape(TIMED_EFFECT_TRIM_HANDLE_CORNER_RADIUS_DP.dp),
                                                         ),
                                                 )
@@ -6341,7 +6341,7 @@ private fun TimelineEditorStrip(
                                                     Modifier.width(TIMED_EFFECT_TRIM_HANDLE_WIDTH_DP.dp)
                                                         .fillMaxHeight(TIMED_EFFECT_TRIM_HANDLE_HEIGHT_FRACTION)
                                                         .background(
-                                                            VyroCutPalette.AccentSecondary,
+                                                            VyroCutPalette.TimelineTimedEffectTrimHandle,
                                                             RoundedCornerShape(TIMED_EFFECT_TRIM_HANDLE_CORNER_RADIUS_DP.dp),
                                                         ),
                                                 )

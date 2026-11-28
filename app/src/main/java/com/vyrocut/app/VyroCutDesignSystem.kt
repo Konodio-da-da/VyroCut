@@ -38,6 +38,10 @@ internal object VyroCutPalette {
     // Brighter than the generic outline while remaining below active selection.
     val TimelineClipBoundary = Color(0xFF586E65)
     val TimelineFadeRamp = Accent.copy(alpha = 0.28f)
+    // Timed-effect timeline colors stay semantic while preserving the current cyan treatment.
+    val TimelineTimedEffectAccent = AccentSecondary
+    val TimelineTimedEffectFill = TimelineTimedEffectAccent.copy(alpha = 0.22f)
+    val TimelineTimedEffectTrimHandle = TimelineTimedEffectAccent
     val HeroGradientStart = Color(0xFF202725)
     val HeroGradientEnd = Color(0xFF171918)
     val ThumbnailGradientStart = Color(0xFF34443E)
