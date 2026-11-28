@@ -375,7 +375,8 @@ class TimelineVisualMetricsTest {
     fun laneGutterAdaptsToViewportWidthAndSystemFontScale() {
         assertEquals(72, timelineLaneGutterWidthDp(360f, 1f))
         assertEquals(72, timelineLaneGutterWidthDp(320f, 1f))
-        assertEquals(64, timelineLaneGutterWidthDp(240f, 1f))
+        assertEquals(60, timelineLaneGutterWidthDp(240f, 1f))
+        assertEquals(50, timelineLaneGutterWidthDp(200f, 1f))
         assertEquals(80, timelineLaneGutterWidthDp(320f, 1.5f))
         assertEquals(88, timelineLaneGutterWidthDp(360f, 2f))
         assertEquals(88, timelineLaneGutterWidthDp(360f, 4f))
@@ -383,6 +384,27 @@ class TimelineVisualMetricsTest {
             timelineLaneGutterWidthDp(360f, 4f),
             timelineLaneGutterWidthDp(360f, 4.5f),
         )
+    }
+
+    @Test
+    fun narrowSplitScreenGutterNeverConsumesMoreThanOneQuarterOfTheViewport() {
+        listOf(160f, 180f, 200f, 240f, 255f, 256f).forEach { viewportWidthDp ->
+            val gutterWidthDp = timelineLaneGutterWidthDp(viewportWidthDp, fontScale = 4f)
+            val viewportBudgetDp = (viewportWidthDp * TIMELINE_LANE_GUTTER_VIEWPORT_FRACTION).toInt()
+
+            assertTrue(
+                "Gutter $gutterWidthDp dp must stay within the 25% budget for $viewportWidthDp dp",
+                gutterWidthDp <= viewportBudgetDp,
+            )
+            assertTrue(gutterWidthDp > 0)
+        }
+    }
+
+    @Test
+    fun laneLabelsEstimateAgainstTheActualNarrowGutterWidth() {
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 50, 1f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 50, 2f))
+        assertEquals("S", timelineLaneDisplayLabel("STICKER", 50, 4f))
     }
 
     @Test
@@ -400,6 +422,9 @@ class TimelineVisualMetricsTest {
         assertEquals("VIDEO", timelineLaneDisplayLabel("VIDEO", 88, 2f))
         assertEquals("VID", timelineLaneDisplayLabel("VIDEO", 88, 4f))
         assertEquals("ST", timelineLaneDisplayLabel("STICKER", 64, 4f))
+        assertEquals("STKR", timelineLaneDisplayLabel("STICKER", 50, 1f))
+        assertEquals("ST", timelineLaneDisplayLabel("STICKER", 50, 2f))
+        assertEquals("S", timelineLaneDisplayLabel("STICKER", 50, 4f))
         assertEquals(
             timelineLaneDisplayLabel("STICKER", 88, 4f),
             timelineLaneDisplayLabel("STICKER", 88, 4.5f),
