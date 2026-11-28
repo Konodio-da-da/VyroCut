@@ -523,6 +523,41 @@ internal fun calculateClipStickerOverlayTimelineBounds(
     )
 }
 
+/** Fade ramp widths in the sticker row, expressed in the same units as trackWidthPx. */
+internal data class ClipStickerOverlayFadeTimelineMetrics(
+    val fadeInWidthPx: Float,
+    val fadeOutWidthPx: Float,
+)
+
+/**
+ * Maps each clip-local fade duration to a portion of its visible sticker segment.
+ * The two ramps may overlap; the renderer combines overlapping fades by taking
+ * the lower alpha, so the timeline keeps both requested durations visible.
+ */
+internal fun calculateClipStickerOverlayFadeTimelineMetrics(
+    trackWidthPx: Float,
+    clipDurationMs: Long,
+    overlay: ClipStickerOverlay,
+): ClipStickerOverlayFadeTimelineMetrics? {
+    val bounds = calculateClipStickerOverlayTimelineBounds(trackWidthPx, clipDurationMs, overlay)
+        ?: return null
+    val startMs = overlay.startMs.coerceIn(0L, clipDurationMs)
+    val endMs = (overlay.endMs ?: clipDurationMs).coerceIn(0L, clipDurationMs)
+    val intervalDurationMs = (endMs - startMs).takeIf { it > 0L } ?: return null
+
+    fun rampWidth(durationMs: Long): Float =
+        (bounds.widthPx * (
+            durationMs.coerceAtMost(intervalDurationMs).toDouble() /
+                intervalDurationMs.toDouble()
+            ).toFloat()
+        ).coerceIn(0f, bounds.widthPx)
+
+    return ClipStickerOverlayFadeTimelineMetrics(
+        fadeInWidthPx = rampWidth(overlay.fadeInMs),
+        fadeOutWidthPx = rampWidth(overlay.fadeOutMs),
+    )
+}
+
 internal data class ClipStickerOverlayBitmapSize(val widthPx: Int, val heightPx: Int)
 
 internal fun calculateClipStickerOverlayBitmapSize(

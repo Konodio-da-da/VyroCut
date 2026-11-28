@@ -54,6 +54,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.asImageBitmap
@@ -6142,15 +6143,18 @@ private fun TimelineEditorStrip(
                                         clipDurationMs = clip.durationMs,
                                         overlay = overlay,
                                     )
+                                    val fadeMetrics = calculateClipStickerOverlayFadeTimelineMetrics(
+                                        trackWidthPx = clipWidths[index],
+                                        clipDurationMs = clip.durationMs,
+                                        overlay = overlay,
+                                    )
                                     bounds?.let { segment ->
                                         Box(
                                             Modifier.offset(x = segment.startOffsetPx.dp)
                                                 .width(segment.widthPx.dp)
                                                 .fillMaxHeight()
-                                                .background(
-                                                    VyroCutPalette.SurfaceSelectedTimeline,
-                                                    RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
-                                                )
+                                                .clip(RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp))
+                                                .background(VyroCutPalette.SurfaceSelectedTimeline)
                                                 .border(
                                                     width = timelineOverlaySelectionBorderWidthDp(
                                                         clipIndex = index,
@@ -6161,15 +6165,49 @@ private fun TimelineEditorStrip(
                                                     color = VyroCutPalette.TimelineSelectionOutline,
                                                     shape = RoundedCornerShape(TIMELINE_TRACK_SEGMENT_CORNER_RADIUS_DP.dp),
                                                 )
-                                                .clickable { onSelectSticker(index, layerIndex) }
-                                                .padding(horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp),
+                                                .clickable { onSelectSticker(index, layerIndex) },
                                             contentAlignment = Alignment.CenterStart,
                                         ) {
+                                            fadeMetrics?.let { fades ->
+                                                if (fades.fadeInWidthPx > 0f) {
+                                                    Box(
+                                                        Modifier.align(Alignment.CenterStart)
+                                                            .width(fades.fadeInWidthPx.dp)
+                                                            .fillMaxHeight()
+                                                            .background(
+                                                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                                                    colors = listOf(
+                                                                        VyroCutPalette.TimelineFadeRamp.copy(alpha = 0f),
+                                                                        VyroCutPalette.TimelineFadeRamp,
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                    )
+                                                }
+                                                if (fades.fadeOutWidthPx > 0f) {
+                                                    Box(
+                                                        Modifier.align(Alignment.CenterEnd)
+                                                            .width(fades.fadeOutWidthPx.dp)
+                                                            .fillMaxHeight()
+                                                            .background(
+                                                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                                                    colors = listOf(
+                                                                        VyroCutPalette.TimelineFadeRamp,
+                                                                        VyroCutPalette.TimelineFadeRamp.copy(alpha = 0f),
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                    )
+                                                }
+                                            }
                                             Text(
                                                 overlay.symbol,
                                                 color = StudioAccent,
                                                 fontSize = TIMELINE_STICKER_SYMBOL_FONT_SP.sp,
                                                 maxLines = 1,
+                                                modifier = Modifier.padding(
+                                                    horizontal = VyroCutTimelinePanelMetrics.StickerSegmentHorizontalPaddingDp.dp,
+                                                ),
                                             )
                                         }
                                     }

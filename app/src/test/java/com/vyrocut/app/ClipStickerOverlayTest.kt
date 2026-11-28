@@ -463,6 +463,63 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerFadeTimelineMetricsMapClipLocalDurationsIntoVisibleSegmentWidths() {
+        val metrics = calculateClipStickerOverlayFadeTimelineMetrics(
+            trackWidthPx = 200f,
+            clipDurationMs = 8_000L,
+            overlay = ClipStickerOverlay(
+                "⭐",
+                startMs = 1_000L,
+                endMs = 5_000L,
+                fadeInMs = 1_000L,
+                fadeOutMs = 2_000L,
+            ),
+        )
+
+        assertEquals(25f, metrics!!.fadeInWidthPx, 0.001f)
+        assertEquals(50f, metrics.fadeOutWidthPx, 0.001f)
+    }
+
+    @Test
+    fun openEndedStickerFadeTimelineMetricsUseClipEndAndAllowOverlappingRamps() {
+        val metrics = calculateClipStickerOverlayFadeTimelineMetrics(
+            trackWidthPx = 120f,
+            clipDurationMs = 6_000L,
+            overlay = ClipStickerOverlay(
+                "✨",
+                startMs = 2_000L,
+                fadeInMs = 3_000L,
+                fadeOutMs = 3_000L,
+            ),
+        )
+
+        assertEquals(60f, metrics!!.fadeInWidthPx, 0.001f)
+        assertEquals(60f, metrics.fadeOutWidthPx, 0.001f)
+        assertTrue(metrics.fadeInWidthPx + metrics.fadeOutWidthPx > 80f)
+    }
+
+    @Test
+    fun stickerFadeTimelineMetricsReturnZeroForDisabledFadesAndRejectInvalidGeometry() {
+        val noFade = calculateClipStickerOverlayFadeTimelineMetrics(
+            trackWidthPx = 80f,
+            clipDurationMs = 4_000L,
+            overlay = ClipStickerOverlay("🔥"),
+        )
+
+        assertEquals(0f, noFade!!.fadeInWidthPx, 0f)
+        assertEquals(0f, noFade.fadeOutWidthPx, 0f)
+        assertNull(calculateClipStickerOverlayFadeTimelineMetrics(0f, 4_000L, ClipStickerOverlay("🔥")))
+        assertNull(calculateClipStickerOverlayFadeTimelineMetrics(80f, 0L, ClipStickerOverlay("🔥")))
+        assertNull(
+            calculateClipStickerOverlayFadeTimelineMetrics(
+                80f,
+                4_000L,
+                ClipStickerOverlay("🔥", startMs = 5_000L),
+            ),
+        )
+    }
+
+    @Test
     fun bitmapSizingPreservesAspectRatioAndCapsLongEdge() {
         assertEquals(
             ClipStickerOverlayBitmapSize(1_080, 1_920),

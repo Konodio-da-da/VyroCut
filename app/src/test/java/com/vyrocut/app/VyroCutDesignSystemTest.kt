@@ -31,6 +31,7 @@ class VyroCutDesignSystemTest {
         assertEquals(VyroCutPalette.Accent, VyroCutPalette.TimelinePlayhead)
         assertEquals(VyroCutPalette.AccentSoft, VyroCutPalette.TimelineSelectionOutline)
         assertEquals(VyroCutPalette.Background, VyroCutPalette.TimelinePlayheadOutline)
+        assertEquals(VyroCutPalette.Accent.copy(alpha = 0.28f), VyroCutPalette.TimelineFadeRamp)
     }
 
     @Test

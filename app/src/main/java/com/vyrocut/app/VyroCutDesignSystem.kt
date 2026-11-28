@@ -37,6 +37,7 @@ internal object VyroCutPalette {
     val TimelineSelectionOutline = AccentSoft
     // Brighter than the generic outline while remaining below active selection.
     val TimelineClipBoundary = Color(0xFF586E65)
+    val TimelineFadeRamp = Accent.copy(alpha = 0.28f)
     val HeroGradientStart = Color(0xFF202725)
     val HeroGradientEnd = Color(0xFF171918)
     val ThumbnailGradientStart = Color(0xFF34443E)
