@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Project navigation and save actions for the editor workspace.
@@ -33,8 +35,10 @@ internal fun VyroCutEditorHeader(
     onOpenProjects: () -> Unit,
     onSave: () -> Unit,
 ) {
+    val showProjectsLabel = editorHeaderShowsProjectNavigationLabel(windowWidthDp, fontScale)
     Row(verticalAlignment = Alignment.CenterVertically) {
         TextButton(
+            modifier = Modifier.semantics { contentDescription = "Back to projects" },
             onClick = onNavigateToProjects,
             contentPadding = PaddingValues(
                 horizontal = VyroCutEditorChromeMetrics.ProjectNavigationButtonHorizontalPaddingDp.dp,
@@ -42,7 +46,7 @@ internal fun VyroCutEditorHeader(
             ),
         ) {
             Text(
-                "‹ Projects",
+                if (showProjectsLabel) "‹ Projects" else "‹",
                 color = VyroCutPalette.Accent,
                 fontSize = VyroCutTypography.SmallBodySp.sp,
             )
