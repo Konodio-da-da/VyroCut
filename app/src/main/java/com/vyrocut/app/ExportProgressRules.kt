@@ -1,5 +1,7 @@
 package com.vyrocut.app
 
+import kotlin.math.roundToLong
+
 internal enum class ExportUiStage(val label: String) {
     IDLE("Ready"),
     PREPARING("Preparing export"),
@@ -168,6 +170,27 @@ internal fun exportShareFailureMessage(reason: ExportShareFailureReason): String
         "Android denied access to the saved MP4. Export again, then retry sharing."
 }
 
+
+/**
+ * Estimates remaining render time from the current Media3 percentage and time
+ * spent in the rendering phase. Preparation and verification are excluded.
+ * The estimate is intentionally hidden before measurable progress (1–98%).
+ */
+internal fun estimateExportRemainingTimeMs(
+    reportedPercent: Int?,
+    elapsedRenderMs: Long,
+): Long? {
+    val percent = reportedPercent?.takeIf { it in 1..98 } ?: return null
+    val elapsed = elapsedRenderMs.coerceAtLeast(0L)
+    if (elapsed == 0L) return null
+
+    val estimate = elapsed.toDouble() * (100 - percent).toDouble() / percent.toDouble()
+    return if (!estimate.isFinite() || estimate >= Long.MAX_VALUE.toDouble()) {
+        Long.MAX_VALUE
+    } else {
+        estimate.roundToLong().coerceAtLeast(0L)
+    }
+}
 
 /**
  * Formats monotonic elapsed export time without implying a completion estimate.

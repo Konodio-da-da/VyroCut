@@ -211,6 +211,25 @@ class ExportProgressRulesTest {
     }
 
     @Test
+    fun remainingRenderEstimateUsesOnlyValidIntermediateProgress() {
+        assertNull(estimateExportRemainingTimeMs(null, 30_000L))
+        assertNull(estimateExportRemainingTimeMs(0, 30_000L))
+        assertNull(estimateExportRemainingTimeMs(99, 30_000L))
+        assertNull(estimateExportRemainingTimeMs(100, 30_000L))
+        assertNull(estimateExportRemainingTimeMs(25, 0L))
+        assertNull(estimateExportRemainingTimeMs(25, -1L))
+
+        assertEquals(90_000L, estimateExportRemainingTimeMs(25, 30_000L))
+        assertEquals(120_000L, estimateExportRemainingTimeMs(50, 120_000L))
+        assertEquals(204L, estimateExportRemainingTimeMs(98, 10_000L))
+    }
+
+    @Test
+    fun remainingRenderEstimateSaturatesInsteadOfOverflowing() {
+        assertEquals(Long.MAX_VALUE, estimateExportRemainingTimeMs(1, Long.MAX_VALUE))
+    }
+
+    @Test
     fun elapsedTimeFormatsMinutesHoursAndClampsNegativeValues() {
         assertEquals("00:00", formatExportElapsedTime(-1L))
         assertEquals("00:00", formatExportElapsedTime(999L))

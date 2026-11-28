@@ -442,20 +442,34 @@ private fun VyroCutApp() {
     var completedExportSummary by remember { mutableStateOf<ExportCompletionSummary?>(null) }
     var exportStartedAtElapsedRealtimeMs by remember { mutableStateOf(0L) }
     var exportElapsedMs by remember { mutableStateOf(0L) }
-    LaunchedEffect(isExporting, exportStartedAtElapsedRealtimeMs) {
+    var exportRenderingStartedAtElapsedRealtimeMs by remember { mutableStateOf(0L) }
+    var exportRenderingElapsedMs by remember { mutableStateOf(0L) }
+    LaunchedEffect(
+        isExporting,
+        exportStartedAtElapsedRealtimeMs,
+        exportRenderingStartedAtElapsedRealtimeMs,
+    ) {
         if (exportStartedAtElapsedRealtimeMs <= 0L) {
             exportElapsedMs = 0L
+            exportRenderingElapsedMs = 0L
             return@LaunchedEffect
+        }
+        fun updateElapsedTimes() {
+            val now = SystemClock.elapsedRealtime()
+            exportElapsedMs = (now - exportStartedAtElapsedRealtimeMs).coerceAtLeast(0L)
+            exportRenderingElapsedMs = if (exportRenderingStartedAtElapsedRealtimeMs > 0L) {
+                (now - exportRenderingStartedAtElapsedRealtimeMs).coerceAtLeast(0L)
+            } else {
+                0L
+            }
         }
         if (isExporting) {
             while (true) {
-                exportElapsedMs = (SystemClock.elapsedRealtime() - exportStartedAtElapsedRealtimeMs)
-                    .coerceAtLeast(0L)
+                updateElapsedTimes()
                 delay(1_000L)
             }
         } else {
-            exportElapsedMs = (SystemClock.elapsedRealtime() - exportStartedAtElapsedRealtimeMs)
-                .coerceAtLeast(0L)
+            updateElapsedTimes()
         }
     }
     var relinkTargetClipId by remember { mutableStateOf<String?>(null) }
@@ -3775,6 +3789,8 @@ private fun VyroCutApp() {
                                 activeExportCancellationToken = exportCancellationToken
                                 exportStartedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
                                 exportElapsedMs = 0L
+                                exportRenderingStartedAtElapsedRealtimeMs = 0L
+                                exportRenderingElapsedMs = 0L
                                 isExporting = true
                                 exportUiStage = ExportUiStage.PREPARING
                                 exportProgressPercent = null
@@ -4217,6 +4233,8 @@ private fun VyroCutApp() {
                                     exportMessage = "Rendering MP4…"
                                     runCatching { transformer.start(composition, outputFile.absolutePath) }
                                         .onSuccess {
+                                            exportRenderingStartedAtElapsedRealtimeMs = SystemClock.elapsedRealtime()
+                                            exportRenderingElapsedMs = 0L
                                             exportScope.launch exportProgress@ {
                                                 val progressHolder = ProgressHolder()
                                                 while (
@@ -4363,6 +4381,18 @@ private fun VyroCutApp() {
                                 color = StudioMuted,
                                 fontSize = VyroCutTypography.CaptionSp.sp,
                             )
+                        }
+                        if (exportUiStage == ExportUiStage.RENDERING) {
+                            estimateExportRemainingTimeMs(
+                                reportedPercent = exportProgressPercent,
+                                elapsedRenderMs = exportRenderingElapsedMs,
+                            )?.let { remainingMs ->
+                                Text(
+                                    "Approx. render time left ${formatExportElapsedTime(remainingMs)}",
+                                    color = StudioMuted,
+                                    fontSize = VyroCutTypography.CaptionSp.sp,
+                                )
+                            }
                         }
                     }
                 }
