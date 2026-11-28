@@ -1,3 +1,8 @@
+## Timed-effect timeline palette consolidation — 28 November 2026
+- Centralized the timed-effect track accent, translucent segment fill, and trim-handle color as semantic `VyroCutPalette` tokens. The timeline renderer now consumes those tokens instead of referencing the generic secondary accent and an inline alpha value.
+- Existing colors are preserved: the same secondary cyan accent and 22% segment-fill alpha remain in use. No timeline geometry, effect timing, selection rules, Media3 effect rendering, project persistence, playback, export, or MediaStore behavior changed.
+- Added a JVM design-system regression test to lock the semantic token relationships. Android compilation and unit-test validation for the updated branch remains pending; visual appearance still requires device validation.
+
 ## Current export codec-diagnostics milestone — 24 November 2026
 - Export failure classification now distinguishes explicit encoder failures, decoder failures, and generic MediaCodec/codec failures instead of treating the substring `codec` inside `decoder` as proof of an encoder problem.
 - Verification-stage decode failures are reported as invalid output; the classifier still avoids exposing provider exception text, source URIs, or private file paths.
