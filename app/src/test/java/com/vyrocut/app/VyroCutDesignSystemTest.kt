@@ -256,6 +256,16 @@ class VyroCutDesignSystemTest {
     }
 
     @Test
+    fun panelTypographyTokensPreserveSharedSemanticRoles() {
+        assertEquals(1f, VyroCutTypography.PanelHeaderLetterSpacingSp, 0f)
+        assertEquals(0.8f, VyroCutTypography.PanelCategoryLetterSpacingSp, 0f)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.HeaderFontSizeSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.HelperFontSizeSp)
+        assertEquals(VyroCutTypography.ToolLabelSp, VyroCutTextPanelMetrics.CaptionFontSizeSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.ChipLabelFontSizeSp)
+    }
+
+    @Test
     fun effectsPanelMetricsPreserveExistingLayoutDimensions() {
         assertEquals(
             listOf(10, 9, 6, 6, 0),
@@ -267,8 +277,8 @@ class VyroCutDesignSystemTest {
                 VyroCutEffectsPanelMetrics.ResetButtonVerticalPaddingDp,
             ),
         )
-        assertEquals(1f, VyroCutEffectsPanelMetrics.HeaderLetterSpacingSp, 0f)
-        assertEquals(0.8f, VyroCutEffectsPanelMetrics.CategoryLetterSpacingSp, 0f)
+        assertEquals(VyroCutTypography.PanelHeaderLetterSpacingSp, VyroCutEffectsPanelMetrics.HeaderLetterSpacingSp)
+        assertEquals(VyroCutTypography.PanelCategoryLetterSpacingSp, VyroCutEffectsPanelMetrics.CategoryLetterSpacingSp)
         assertEquals(12, VyroCutShapes.MediumCornerDp)
         assertEquals(8, VyroCutSpacing.SmallDp)
         assertEquals(10, VyroCutTypography.CaptionSp)
@@ -287,7 +297,7 @@ class VyroCutDesignSystemTest {
                 VyroCutVisualPanelMetrics.ResetButtonVerticalPaddingDp,
             ),
         )
-        assertEquals(1f, VyroCutVisualPanelMetrics.HeaderLetterSpacingSp, 0f)
+        assertEquals(VyroCutTypography.PanelHeaderLetterSpacingSp, VyroCutVisualPanelMetrics.HeaderLetterSpacingSp)
         assertEquals(VyroCutShapes.MediumCornerDp, 12)
         assertEquals(VyroCutSpacing.SmallDp, 8)
         assertEquals(VyroCutTypography.LabelSp, 11)
@@ -321,11 +331,11 @@ class VyroCutDesignSystemTest {
             ),
         )
         assertEquals(10, VyroCutShapes.CompactPanelCornerDp)
-        assertEquals(10, VyroCutTextPanelMetrics.HeaderFontSizeSp)
-        assertEquals(1f, VyroCutTextPanelMetrics.HeaderLetterSpacingSp, 0f)
-        assertEquals(10, VyroCutTextPanelMetrics.HelperFontSizeSp)
-        assertEquals(9, VyroCutTextPanelMetrics.CaptionFontSizeSp)
-        assertEquals(10, VyroCutTextPanelMetrics.ChipLabelFontSizeSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.HeaderFontSizeSp)
+        assertEquals(VyroCutTypography.PanelHeaderLetterSpacingSp, VyroCutTextPanelMetrics.HeaderLetterSpacingSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.HelperFontSizeSp)
+        assertEquals(VyroCutTypography.ToolLabelSp, VyroCutTextPanelMetrics.CaptionFontSizeSp)
+        assertEquals(VyroCutTypography.CaptionSp, VyroCutTextPanelMetrics.ChipLabelFontSizeSp)
         assertEquals(8, VyroCutSpacing.SmallDp)
     }
 
@@ -372,7 +382,7 @@ class VyroCutDesignSystemTest {
             ),
         )
         assertEquals(6, VyroCutAudioPanelMetrics.ClipCardCornerDp)
-        assertEquals(1f, VyroCutAudioPanelMetrics.HeaderLetterSpacingSp, 0f)
+        assertEquals(VyroCutTypography.PanelHeaderLetterSpacingSp, VyroCutAudioPanelMetrics.HeaderLetterSpacingSp)
         assertEquals(10, VyroCutShapes.CompactPanelCornerDp)
         assertEquals(8, VyroCutSpacing.SmallDp)
         assertEquals(8, VyroCutTypography.BadgeSp)

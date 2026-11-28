@@ -111,6 +111,8 @@ internal object VyroCutTypography {
     const val HeroTitleSp = 23
     const val TimelineStickerSymbolSp = 14
     const val TimelineSectionLetterSpacingSp = 1.3f
+    const val PanelHeaderLetterSpacingSp = 1f
+    const val PanelCategoryLetterSpacingSp = 0.8f
 }
 
 /** One bounded accessibility font-scale policy shared by responsive editor surfaces. */
@@ -266,8 +268,8 @@ internal object VyroCutEffectsPanelMetrics {
     const val AddActionIconSizeDp = 16
     const val ResetButtonHorizontalPaddingDp = 6
     const val ResetButtonVerticalPaddingDp = 0
-    const val HeaderLetterSpacingSp = 1f
-    const val CategoryLetterSpacingSp = 0.8f
+    const val HeaderLetterSpacingSp = VyroCutTypography.PanelHeaderLetterSpacingSp
+    const val CategoryLetterSpacingSp = VyroCutTypography.PanelCategoryLetterSpacingSp
 }
 
 /**
@@ -278,7 +280,7 @@ internal object VyroCutVisualPanelMetrics {
     const val HorizontalPaddingDp = 10
     const val VerticalPaddingDp = 7
     const val SectionGapDp = 10
-    const val HeaderLetterSpacingSp = 1f
+    const val HeaderLetterSpacingSp = VyroCutTypography.PanelHeaderLetterSpacingSp
     const val ResetButtonHorizontalPaddingDp = 6
     const val ResetButtonVerticalPaddingDp = 0
 }
@@ -301,12 +303,12 @@ internal object VyroCutTextPanelMetrics {
     const val HorizontalPaddingDp = 10
     const val VerticalPaddingDp = 8
     const val SectionGapDp = 7
-    const val HeaderFontSizeSp = 10
-    const val HeaderLetterSpacingSp = 1f
-    const val HelperFontSizeSp = 10
-    const val CaptionFontSizeSp = 9
+    const val HeaderFontSizeSp = VyroCutTypography.CaptionSp
+    const val HeaderLetterSpacingSp = VyroCutTypography.PanelHeaderLetterSpacingSp
+    const val HelperFontSizeSp = VyroCutTypography.CaptionSp
+    const val CaptionFontSizeSp = VyroCutTypography.ToolLabelSp
     const val ChipGapDp = 6
-    const val ChipLabelFontSizeSp = 10
+    const val ChipLabelFontSizeSp = VyroCutTypography.CaptionSp
 }
 
 /**
@@ -342,7 +344,7 @@ internal object VyroCutAudioPanelMetrics {
     const val ClipVolumeSectionGapDp = 5
     const val MuteButtonHorizontalPaddingDp = 6
     const val ActionButtonHorizontalPaddingDp = 4
-    const val HeaderLetterSpacingSp = 1f
+    const val HeaderLetterSpacingSp = VyroCutTypography.PanelHeaderLetterSpacingSp
 }
 
 /**
