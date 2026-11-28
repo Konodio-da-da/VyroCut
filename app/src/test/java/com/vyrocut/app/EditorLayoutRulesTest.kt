@@ -352,6 +352,25 @@ class EditorLayoutRulesTest {
     }
 
     @Test
+    fun editorHeaderCompactsBackLabelBeforeProjectNameLosesRoom() {
+        assertFalse(editorHeaderShowsProjectNavigationLabel(359))
+        assertTrue(editorHeaderShowsProjectNavigationLabel(360))
+        assertFalse(editorHeaderShowsProjectNavigationLabel(375, fontScale = 1.5f))
+        assertTrue(editorHeaderShowsProjectNavigationLabel(376, fontScale = 1.5f))
+        assertFalse(editorHeaderShowsProjectNavigationLabel(391, fontScale = 2f))
+        assertTrue(editorHeaderShowsProjectNavigationLabel(392, fontScale = 2f))
+    }
+
+    @Test
+    fun editorHeaderBackLabelUsesSafeWidthAndFontScaleBounds() {
+        val fallback = editorHeaderShowsProjectNavigationLabel(EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP)
+        assertEquals(fallback, editorHeaderShowsProjectNavigationLabel(0))
+        assertEquals(fallback, editorHeaderShowsProjectNavigationLabel(-1))
+        assertEquals(editorHeaderShowsProjectNavigationLabel(360), editorHeaderShowsProjectNavigationLabel(360, Float.NaN))
+        assertEquals(editorHeaderShowsProjectNavigationLabel(456, 4f), editorHeaderShowsProjectNavigationLabel(456, 4.5f))
+    }
+
+    @Test
     fun editorHeaderYieldsBrandWordmarkBeforeProjectActionGetsTooNarrow() {
         assertFalse(editorHeaderShowsBrandTitle(319))
         assertTrue(editorHeaderShowsBrandTitle(320))
