@@ -14,6 +14,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -37,6 +38,8 @@ internal fun StickerOverlaysPanel(
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
     onOpacityChange: (Int, Float) -> Unit,
+    onFadeInChange: (Int, Long) -> Unit,
+    onFadeOutChange: (Int, Long) -> Unit,
     onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Column(
@@ -90,6 +93,8 @@ internal fun StickerOverlaysPanel(
                 onScaleChange = onScaleChange,
                 onRotationChange = onRotationChange,
                 onOpacityChange = onOpacityChange,
+                onFadeInChange = onFadeInChange,
+                onFadeOutChange = onFadeOutChange,
                 onTimingChange = onTimingChange,
             )
             Text(
@@ -208,6 +213,8 @@ private fun StickerLayersEditor(
     onScaleChange: (Int, Float) -> Unit,
     onRotationChange: (Int, Float) -> Unit,
     onOpacityChange: (Int, Float) -> Unit,
+    onFadeInChange: (Int, Long) -> Unit,
+    onFadeOutChange: (Int, Long) -> Unit,
     onTimingChange: (Int, Long?, Long?) -> Unit,
 ) {
     Text(
@@ -239,6 +246,8 @@ private fun StickerLayersEditor(
                 onScaleChange = { scale -> onScaleChange(index, scale) },
                 onRotationChange = { degrees -> onRotationChange(index, degrees) },
                 onOpacityChange = { opacity -> onOpacityChange(index, opacity) },
+                onFadeInChange = { durationMs -> onFadeInChange(index, durationMs) },
+                onFadeOutChange = { durationMs -> onFadeOutChange(index, durationMs) },
                 onTimingChange = { startMs, endMs ->
                     onTimingChange(index, startMs, endMs)
                 },
@@ -260,6 +269,8 @@ private fun StickerLayerEditor(
     onScaleChange: (Float) -> Unit,
     onRotationChange: (Float) -> Unit,
     onOpacityChange: (Float) -> Unit,
+    onFadeInChange: (Long) -> Unit,
+    onFadeOutChange: (Long) -> Unit,
     onTimingChange: (Long?, Long?) -> Unit,
 ) {
     val safeDurationMs = clipDurationMs.coerceAtLeast(1L)
@@ -295,6 +306,15 @@ private fun StickerLayerEditor(
     }
     var opacityDraft by remember(clipId, sticker) {
         mutableFloatStateOf(sticker.opacity)
+    }
+    var fadeInDraft by remember(clipId, sticker) {
+        mutableFloatStateOf(sticker.fadeInMs / 1_000f)
+    }
+    var fadeOutDraft by remember(clipId, sticker) {
+        mutableFloatStateOf(sticker.fadeOutMs / 1_000f)
+    }
+    var showFadeControls by remember(clipId) {
+        mutableStateOf(false)
     }
 
     Column(
@@ -430,6 +450,70 @@ private fun StickerLayerEditor(
             steps = 19,
             onValueChangeFinished = { onOpacityChange(opacityDraft) },
         )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "FADE IN / OUT",
+                color = VyroCutPalette.TextMuted,
+                fontSize = VyroCutTypography.ToolLabelSp.sp,
+                fontWeight = VyroCutTypography.StrongWeight,
+            )
+            Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = { showFadeControls = !showFadeControls },
+                contentPadding = PaddingValues(
+                    horizontal = VyroCutStickerPanelMetrics.RemoveButtonHorizontalPaddingDp.dp,
+                    vertical = 0.dp,
+                ),
+            ) {
+                Text(
+                    if (showFadeControls) "Hide" else "Adjust",
+                    color = VyroCutPalette.TextPrimary,
+                    fontSize = VyroCutTypography.CaptionSp.sp,
+                )
+            }
+        }
+        if (showFadeControls) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "IN ${String.format(Locale.US, "%.1f", fadeInDraft)}s",
+                    color = VyroCutPalette.TextMuted,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "0.0s – ${String.format(Locale.US, "%.1f", MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f)}s",
+                    color = VyroCutPalette.TextMuted,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
+                )
+            }
+            Slider(
+                value = fadeInDraft.coerceIn(0f, MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f),
+                onValueChange = { fadeInDraft = it },
+                valueRange = 0f..(MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f),
+                steps = 29,
+                onValueChangeFinished = { onFadeInChange((fadeInDraft * 1_000f).toLong()) },
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "OUT ${String.format(Locale.US, "%.1f", fadeOutDraft)}s",
+                    color = VyroCutPalette.TextMuted,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "0.0s – ${String.format(Locale.US, "%.1f", MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f)}s",
+                    color = VyroCutPalette.TextMuted,
+                    fontSize = VyroCutTypography.ToolLabelSp.sp,
+                )
+            }
+            Slider(
+                value = fadeOutDraft.coerceIn(0f, MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f),
+                onValueChange = { fadeOutDraft = it },
+                valueRange = 0f..(MAX_CLIP_STICKER_FADE_DURATION_MS / 1_000f),
+                steps = 29,
+                onValueChangeFinished = { onFadeOutChange((fadeOutDraft * 1_000f).toLong()) },
+            )
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 "IN ${String.format(Locale.US, "%.1f", startSeconds)}s",

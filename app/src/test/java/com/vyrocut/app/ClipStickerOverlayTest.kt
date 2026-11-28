@@ -161,6 +161,93 @@ class ClipStickerOverlayTest {
     }
 
     @Test
+    fun stickerFadeDurationsDefaultToZeroAndRejectInvalidValues() {
+        val legacy = decodeClipStickerOverlay("✨")
+        assertEquals(0L, legacy?.fadeInMs)
+        assertEquals(0L, legacy?.fadeOutMs)
+        assertTrue(isValidClipStickerOverlayFadeDurations(0L, 0L))
+        assertTrue(isValidClipStickerOverlayFadeDurations(1_500L, 3_000L))
+        assertFalse(isValidClipStickerOverlayFadeDurations(-1L, 0L))
+        assertFalse(isValidClipStickerOverlayFadeDurations(0L, 3_001L))
+        assertNull(decodeClipStickerOverlay("✨", fadeInMs = -1L))
+        assertNull(decodeClipStickerOverlay("✨", fadeOutMs = 3_001L))
+    }
+
+    @Test
+    fun stickerFadeUpdatesClampToTheVisibleClipLocalInterval() {
+        val sticker = ClipStickerOverlay("✨", startMs = 500L, endMs = 2_500L)
+
+        assertEquals(
+            sticker.copy(fadeInMs = 2_000L),
+            updateClipStickerOverlayFadeIn(sticker, 5_000L, 5_000L),
+        )
+        assertEquals(
+            sticker.copy(fadeOutMs = 1_250L),
+            updateClipStickerOverlayFadeOut(sticker, 5_000L, 1_250L),
+        )
+        assertEquals(sticker, updateClipStickerOverlayFadeIn(sticker, 5_000L, -1L))
+        assertEquals(null, updateClipStickerOverlayFadeOut(sticker, 0L, 500L))
+    }
+
+    @Test
+    fun stickerFadeAlphaUsesClipLocalTimeAndCombinesBothRamps() {
+        val sticker = ClipStickerOverlay(
+            symbol = "✨",
+            startMs = 1_000L,
+            endMs = 5_000L,
+            fadeInMs = 1_000L,
+            fadeOutMs = 1_000L,
+        )
+
+        assertEquals(0f, clipStickerFadeAlphaScale(sticker, 999L, 6_000L), 0f)
+        assertEquals(0f, clipStickerFadeAlphaScale(sticker, 1_000L, 6_000L), 0f)
+        assertEquals(0.5f, clipStickerFadeAlphaScale(sticker, 1_500L, 6_000L), 0.0001f)
+        assertEquals(1f, clipStickerFadeAlphaScale(sticker, 2_000L, 6_000L), 0.0001f)
+        assertEquals(1f, clipStickerFadeAlphaScale(sticker, 4_000L, 6_000L), 0.0001f)
+        assertEquals(0.5f, clipStickerFadeAlphaScale(sticker, 4_500L, 6_000L), 0.0001f)
+        assertEquals(0f, clipStickerFadeAlphaScale(sticker, 5_000L, 6_000L), 0f)
+        assertEquals(0f, clipStickerFadeAlphaScale(sticker, 4_000L, 0L), 0f)
+
+        val overlapping = sticker.copy(startMs = 0L, endMs = 1_000L, fadeInMs = 800L, fadeOutMs = 800L)
+        assertEquals(0.625f, clipStickerFadeAlphaScale(overlapping, 500L, 1_000L), 0.0001f)
+    }
+
+    @Test
+    fun openEndedStickerFadeOutUsesTheOwningClipDuration() {
+        val sticker = ClipStickerOverlay("🔥", fadeOutMs = 1_000L)
+
+        assertEquals(1f, clipStickerFadeAlphaScale(sticker, 1_000L, 2_000L), 0.0001f)
+        assertEquals(0.5f, clipStickerFadeAlphaScale(sticker, 1_500L, 2_000L), 0.0001f)
+        assertEquals(0f, clipStickerFadeAlphaScale(sticker, 2_000L, 2_000L), 0f)
+    }
+
+    @Test
+    fun stickerFadeSettingsSurviveSplitAndSourceTrimRebasing() {
+        val sticker = ClipStickerOverlay(
+            symbol = "🔥",
+            startMs = 500L,
+            endMs = 2_500L,
+            fadeInMs = 400L,
+            fadeOutMs = 600L,
+        )
+        val (left, right) = splitClipStickerOverlayAt(sticker, 1_500L, 3_000L)
+        assertEquals(400L, left?.fadeInMs)
+        assertEquals(600L, left?.fadeOutMs)
+        assertEquals(400L, right?.fadeInMs)
+        assertEquals(600L, right?.fadeOutMs)
+
+        val rebased = rebaseClipStickerOverlayForTrim(
+            overlay = sticker,
+            oldSourceStartMs = 0L,
+            oldSourceEndMs = 3_000L,
+            newSourceStartMs = 250L,
+            newSourceEndMs = 3_000L,
+        )
+        assertEquals(400L, rebased?.fadeInMs)
+        assertEquals(600L, rebased?.fadeOutMs)
+    }
+
+    @Test
     fun stickerRotationSurvivesSplitAndSourceTrimRebasing() {
         val sticker = ClipStickerOverlay(
             symbol = "⭐",

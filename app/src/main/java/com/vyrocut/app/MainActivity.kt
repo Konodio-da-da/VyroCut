@@ -724,7 +724,7 @@ private fun VyroCutApp() {
                         calculateTimelinePositionMs(clipDurationsMs, restoreTarget.clipIndex, 0L),
                     ) +
                     createClipTextOverlayEffects(restoredClip.allTextOverlays) +
-                    createClipStickerOverlayEffects(restoredClip.allStickerOverlays, context),
+                    createClipStickerOverlayEffects(restoredClip.allStickerOverlays, context, restoredClip.durationMs),
             )
             player.setVolume(
                 clipAudioPlaybackGain(
@@ -1239,7 +1239,7 @@ private fun VyroCutApp() {
                         position.timelinePositionMs - position.clipPositionMs,
                     ) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
-                    createClipStickerOverlayEffects(clip.allStickerOverlays, context),
+                    createClipStickerOverlayEffects(clip.allStickerOverlays, context, clip.durationMs),
             )
             player.setVolume(
                 clipAudioPlaybackGain(
@@ -1644,7 +1644,7 @@ private fun VyroCutApp() {
                         calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
                     ) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
-                    createClipStickerOverlayEffects(clip.allStickerOverlays, context),
+                    createClipStickerOverlayEffects(clip.allStickerOverlays, context, clip.durationMs),
             )
         }
         exportMessage = "Clip visual effects updated"
@@ -1707,7 +1707,7 @@ private fun VyroCutApp() {
                         calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
                     ) +
                     createClipTextOverlayEffects(clip.allTextOverlays) +
-                    createClipStickerOverlayEffects(clip.allStickerOverlays, context),
+                    createClipStickerOverlayEffects(clip.allStickerOverlays, context, clip.durationMs),
             )
         }
         exportMessage = "Timed effect strength updated"
@@ -1803,7 +1803,7 @@ private fun VyroCutApp() {
                         calculateTimelinePositionMs(clipDurationsMs, selectedIndex, 0L),
                     ) +
                     createClipTextOverlayEffects(updatedClip.allTextOverlays) +
-                    createClipStickerOverlayEffects(updatedClip.allStickerOverlays, context),
+                    createClipStickerOverlayEffects(updatedClip.allStickerOverlays, context, updatedClip.durationMs),
             )
         }
         exportMessage = message
@@ -1914,6 +1914,28 @@ private fun VyroCutApp() {
             clip,
             clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
             "Sticker opacity updated",
+        )
+    }
+    fun updateSelectedClipStickerFadeIn(overlayIndex: Int, durationMs: Long) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val sticker = clip.allStickerOverlays.getOrNull(overlayIndex) ?: return
+        val updated = updateClipStickerOverlayFadeIn(sticker, clip.durationMs, durationMs) ?: return
+        if (updated == sticker) return
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
+            "Sticker fade-in updated",
+        )
+    }
+    fun updateSelectedClipStickerFadeOut(overlayIndex: Int, durationMs: Long) {
+        val clip = clips.getOrNull(selectedIndex) ?: return
+        val sticker = clip.allStickerOverlays.getOrNull(overlayIndex) ?: return
+        val updated = updateClipStickerOverlayFadeOut(sticker, clip.durationMs, durationMs) ?: return
+        if (updated == sticker) return
+        commitSelectedClipStickerOverlays(
+            clip,
+            clip.allStickerOverlays.toMutableList().apply { this[overlayIndex] = updated },
+            "Sticker fade-out updated",
         )
     }
     fun openTrimDialog(clip: EditClip) {
@@ -3409,6 +3431,12 @@ private fun VyroCutApp() {
                         onOpacityChange = { index, opacity ->
                             updateSelectedClipStickerOpacity(index, opacity)
                         },
+                        onFadeInChange = { index, durationMs ->
+                            updateSelectedClipStickerFadeIn(index, durationMs)
+                        },
+                        onFadeOutChange = { index, durationMs ->
+                            updateSelectedClipStickerFadeOut(index, durationMs)
+                        },
                         onTimingChange = { index, startMs, endMs ->
                             updateSelectedClipStickerTiming(index, startMs, endMs)
                         },
@@ -4017,7 +4045,7 @@ private fun VyroCutApp() {
                                                 )?.let(videoEffects::add)
                                             }
                                             videoEffects += createClipTextOverlayEffects(clip.allTextOverlays)
-                                            videoEffects += createClipStickerOverlayEffects(clip.allStickerOverlays, context)
+                                            videoEffects += createClipStickerOverlayEffects(clip.allStickerOverlays, context, clip.durationMs)
                                             EditedMediaItem.Builder(source)
                                                 .setEffects(
                                                     Effects(
@@ -4855,6 +4883,8 @@ internal fun encodeProject(clips: List<EditClip>): String {
                     put("scale", overlay.scale.toDouble())
                     if (overlay.rotationDegrees != 0) put("rotationDegrees", overlay.rotationDegrees)
                     if (overlay.opacity != 1f) put("opacity", overlay.opacity.toDouble())
+                    if (overlay.fadeInMs != 0L) put("fadeInMs", overlay.fadeInMs)
+                    if (overlay.fadeOutMs != 0L) put("fadeOutMs", overlay.fadeOutMs)
                     put("position", overlay.position.name)
                     put("startMs", overlay.startMs)
                     overlay.endMs?.let { put("endMs", it) }
@@ -5154,6 +5184,16 @@ internal fun decodeProjectStrict(raw: String): List<EditClip>? = runCatching {
                                 overlayJson.optDouble("opacity", Double.NaN).toFloat()
                             } else {
                                 1f
+                            },
+                            fadeInMs = if (overlayJson.has("fadeInMs")) {
+                                overlayJson.optLong("fadeInMs", Long.MIN_VALUE)
+                            } else {
+                                0L
+                            },
+                            fadeOutMs = if (overlayJson.has("fadeOutMs")) {
+                                overlayJson.optLong("fadeOutMs", Long.MIN_VALUE)
+                            } else {
+                                0L
                             },
                         ) ?: error("A clip has an invalid sticker overlay")
                         add(overlay)

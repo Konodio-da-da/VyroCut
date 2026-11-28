@@ -603,14 +603,32 @@ class ProjectClipAudioPersistenceTest {
             sourceStartMs = 0L,
             sourceEndMs = 8_000L,
             stickerOverlays = listOf(
-                ClipStickerOverlay("🔥", 0.8f, ClipStickerPosition.TOP_LEFT, 500L, 3_000L),
-                ClipStickerOverlay("✨", 1.25f, ClipStickerPosition.BOTTOM_RIGHT, 3_000L, null),
+                ClipStickerOverlay(
+                    "🔥",
+                    0.8f,
+                    ClipStickerPosition.TOP_LEFT,
+                    500L,
+                    3_000L,
+                    fadeInMs = 450L,
+                    fadeOutMs = 650L,
+                ),
+                ClipStickerOverlay(
+                    "✨",
+                    1.25f,
+                    ClipStickerPosition.BOTTOM_RIGHT,
+                    3_000L,
+                    null,
+                    fadeOutMs = 900L,
+                ),
             ),
         )
 
         val projectJson = encodeProject(listOf(original))
         val projectArray = org.json.JSONArray(projectJson)
         assertEquals(2, projectArray.getJSONObject(0).getJSONArray("stickerOverlays").length())
+        val encodedSticker = projectArray.getJSONObject(0).getJSONArray("stickerOverlays").getJSONObject(0)
+        assertEquals(450L, encodedSticker.getLong("fadeInMs"))
+        assertEquals(650L, encodedSticker.getLong("fadeOutMs"))
         assertEquals(listOf(original), decodeProjectStrict(projectJson))
 
         val backup = encodeProjectBackup("Sticker project", listOf(original), ProjectCanvasSettings())

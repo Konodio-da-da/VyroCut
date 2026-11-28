@@ -13,6 +13,7 @@ import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.OverlaySettings
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -25,6 +26,8 @@ internal const val MIN_CLIP_STICKER_ROTATION_DEGREES = -180
 internal const val MAX_CLIP_STICKER_ROTATION_DEGREES = 180
 internal const val MIN_CLIP_STICKER_OPACITY = 0f
 internal const val MAX_CLIP_STICKER_OPACITY = 1f
+internal const val MIN_CLIP_STICKER_FADE_DURATION_MS = 0L
+internal const val MAX_CLIP_STICKER_FADE_DURATION_MS = 3_000L
 internal const val MAX_CLIP_STICKER_BITMAP_DIMENSION_PX = 1_920
 
 internal enum class ClipStickerPosition {
@@ -78,6 +81,10 @@ internal data class ClipStickerOverlay(
     val rotationDegrees: Int = 0,
     /** Opacity from fully transparent (0) to fully opaque (1). */
     val opacity: Float = 1f,
+    /** Clip-local linear fade-in duration in milliseconds. */
+    val fadeInMs: Long = 0L,
+    /** Clip-local linear fade-out duration in milliseconds. */
+    val fadeOutMs: Long = 0L,
 ) {
     init {
         require(isValidClipStickerOverlaySymbol(symbol)) {
@@ -98,6 +105,9 @@ internal data class ClipStickerOverlay(
         require(isValidClipStickerOverlayOpacity(opacity)) {
             "Sticker opacity must be between 0 and 1"
         }
+        require(isValidClipStickerOverlayFadeDurations(fadeInMs, fadeOutMs)) {
+            "Sticker fade durations must be between 0 and $MAX_CLIP_STICKER_FADE_DURATION_MS milliseconds"
+        }
     }
 }
 
@@ -116,6 +126,13 @@ internal fun isValidClipStickerOverlayRotation(rotationDegrees: Int): Boolean =
 
 internal fun isValidClipStickerOverlayOpacity(opacity: Float): Boolean =
     opacity.isFinite() && opacity in MIN_CLIP_STICKER_OPACITY..MAX_CLIP_STICKER_OPACITY
+
+internal fun isValidClipStickerOverlayFadeDuration(durationMs: Long): Boolean =
+    durationMs in MIN_CLIP_STICKER_FADE_DURATION_MS..MAX_CLIP_STICKER_FADE_DURATION_MS
+
+internal fun isValidClipStickerOverlayFadeDurations(fadeInMs: Long, fadeOutMs: Long): Boolean =
+    isValidClipStickerOverlayFadeDuration(fadeInMs) &&
+        isValidClipStickerOverlayFadeDuration(fadeOutMs)
 
 internal fun clipStickerOpacityAlpha(opacity: Float): Int? =
     if (isValidClipStickerOverlayOpacity(opacity)) (opacity * 255f).roundToInt().coerceIn(0, 255) else null
@@ -205,6 +222,43 @@ internal fun updateClipStickerOverlayOpacity(
     )
 }
 
+private fun clipStickerOverlayDurationMs(
+    overlay: ClipStickerOverlay,
+    clipDurationMs: Long,
+): Long? {
+    if (clipDurationMs <= 0L) return null
+    val effectiveEndMs = (overlay.endMs ?: clipDurationMs).coerceAtMost(clipDurationMs)
+    return (effectiveEndMs - overlay.startMs).takeIf { it > 0L }
+}
+
+internal fun updateClipStickerOverlayFadeIn(
+    overlay: ClipStickerOverlay,
+    clipDurationMs: Long,
+    requestedFadeInMs: Long,
+): ClipStickerOverlay? {
+    val durationMs = clipStickerOverlayDurationMs(overlay, clipDurationMs) ?: return null
+    return overlay.copy(
+        fadeInMs = requestedFadeInMs.coerceIn(
+            MIN_CLIP_STICKER_FADE_DURATION_MS,
+            min(MAX_CLIP_STICKER_FADE_DURATION_MS, durationMs),
+        ),
+    )
+}
+
+internal fun updateClipStickerOverlayFadeOut(
+    overlay: ClipStickerOverlay,
+    clipDurationMs: Long,
+    requestedFadeOutMs: Long,
+): ClipStickerOverlay? {
+    val durationMs = clipStickerOverlayDurationMs(overlay, clipDurationMs) ?: return null
+    return overlay.copy(
+        fadeOutMs = requestedFadeOutMs.coerceIn(
+            MIN_CLIP_STICKER_FADE_DURATION_MS,
+            min(MAX_CLIP_STICKER_FADE_DURATION_MS, durationMs),
+        ),
+    )
+}
+
 internal fun isValidClipStickerOverlayTiming(startMs: Long, endMs: Long?): Boolean =
     startMs >= 0L && (endMs == null || endMs > startMs)
 
@@ -251,9 +305,12 @@ internal fun updateClipStickerOverlayTiming(
         requestedStartMs = requestedStartMs,
         requestedEndMs = requestedEndMs,
     ) ?: return null
+    val intervalDurationMs = bounds.endMs - bounds.startMs
     return overlay.copy(
         startMs = bounds.startMs,
         endMs = bounds.endMs.takeIf { it < clipDurationMs },
+        fadeInMs = overlay.fadeInMs.coerceAtMost(intervalDurationMs),
+        fadeOutMs = overlay.fadeOutMs.coerceAtMost(intervalDurationMs),
     )
 }
 
@@ -262,6 +319,37 @@ internal fun isClipStickerOverlayVisibleAtMs(overlay: ClipStickerOverlay, positi
 
 internal fun isClipStickerOverlayVisibleAtUs(overlay: ClipStickerOverlay, presentationTimeUs: Long): Boolean =
     presentationTimeUs >= 0L && isClipStickerOverlayVisibleAtMs(overlay, presentationTimeUs / 1_000L)
+
+/**
+ * Returns the clip-local alpha multiplier for a sticker's fade envelope.
+ * Overlapping fades use the lower of their two linear ramps; a zero-duration
+ * fade is fully opaque on that side. The clip duration resolves an open-ended
+ * sticker OUT point without changing the persisted clip-local interval.
+ */
+internal fun clipStickerFadeAlphaScale(
+    overlay: ClipStickerOverlay,
+    positionMs: Long,
+    clipDurationMs: Long,
+): Float {
+    if (clipDurationMs <= 0L || positionMs < 0L) return 0f
+    val endMs = (overlay.endMs ?: clipDurationMs).coerceAtMost(clipDurationMs)
+    if (endMs <= overlay.startMs || positionMs < overlay.startMs || positionMs >= endMs) return 0f
+
+    val intervalDurationMs = endMs - overlay.startMs
+    val fadeInMs = overlay.fadeInMs.coerceAtMost(intervalDurationMs)
+    val fadeOutMs = overlay.fadeOutMs.coerceAtMost(intervalDurationMs)
+    val fadeInScale = if (fadeInMs == 0L) {
+        1f
+    } else {
+        ((positionMs - overlay.startMs).toDouble() / fadeInMs.toDouble()).toFloat().coerceIn(0f, 1f)
+    }
+    val fadeOutScale = if (fadeOutMs == 0L) {
+        1f
+    } else {
+        ((endMs - positionMs).toDouble() / fadeOutMs.toDouble()).toFloat().coerceIn(0f, 1f)
+    }
+    return min(fadeInScale, fadeOutScale)
+}
 
 /** Splits one sticker interval at the same clip-local playhead used to split its video. */
 internal fun splitClipStickerOverlayAt(
@@ -276,10 +364,25 @@ internal fun splitClipStickerOverlayAt(
     if (end <= start) return null to null
 
     val leftEnd = minOf(end, split)
-    val left = if (leftEnd > start) overlay.copy(endMs = leftEnd) else null
+    val leftDurationMs = (leftEnd - start).coerceAtLeast(0L)
+    val left = if (leftDurationMs > 0L) {
+        overlay.copy(
+            endMs = leftEnd,
+            fadeInMs = overlay.fadeInMs.coerceAtMost(leftDurationMs),
+            fadeOutMs = overlay.fadeOutMs.coerceAtMost(leftDurationMs),
+        )
+    } else {
+        null
+    }
     val rightStart = maxOf(start, split)
-    val right = if (end > rightStart) {
-        overlay.copy(startMs = rightStart - split, endMs = end - split)
+    val rightDurationMs = (end - rightStart).coerceAtLeast(0L)
+    val right = if (rightDurationMs > 0L) {
+        overlay.copy(
+            startMs = rightStart - split,
+            endMs = end - split,
+            fadeInMs = overlay.fadeInMs.coerceAtMost(rightDurationMs),
+            fadeOutMs = overlay.fadeOutMs.coerceAtMost(rightDurationMs),
+        )
     } else {
         null
     }
@@ -330,9 +433,12 @@ internal fun rebaseClipStickerOverlayForTrim(
     val intersectionEndMs = minOf(absoluteEndMs, newSourceEndMs)
     if (intersectionEndMs <= intersectionStartMs) return null
 
+    val retainedDurationMs = intersectionEndMs - intersectionStartMs
     return overlay.copy(
         startMs = intersectionStartMs - newSourceStartMs,
         endMs = intersectionEndMs - newSourceStartMs,
+        fadeInMs = overlay.fadeInMs.coerceAtMost(retainedDurationMs),
+        fadeOutMs = overlay.fadeOutMs.coerceAtMost(retainedDurationMs),
     )
 }
 
@@ -362,6 +468,8 @@ internal fun decodeClipStickerOverlay(
     assetId: String? = null,
     rotationDegrees: Int = 0,
     opacity: Float = 1f,
+    fadeInMs: Long = 0L,
+    fadeOutMs: Long = 0L,
 ): ClipStickerOverlay? {
     val normalized = raw?.trim() ?: return null
     val normalizedAssetId = assetId?.trim()?.takeIf { it.isNotEmpty() }
@@ -370,7 +478,8 @@ internal fun decodeClipStickerOverlay(
         !isValidClipStickerOverlayTiming(startMs, endMs) ||
         !isValidClipStickerAssetId(normalizedAssetId) ||
         !isValidClipStickerOverlayRotation(rotationDegrees) ||
-        !isValidClipStickerOverlayOpacity(opacity)
+        !isValidClipStickerOverlayOpacity(opacity) ||
+        !isValidClipStickerOverlayFadeDurations(fadeInMs, fadeOutMs)
     ) return null
     val decodedPosition = if (position == null) {
         ClipStickerPosition.BOTTOM_RIGHT
@@ -386,6 +495,8 @@ internal fun decodeClipStickerOverlay(
         assetId = normalizedAssetId,
         rotationDegrees = rotationDegrees,
         opacity = opacity,
+        fadeInMs = fadeInMs,
+        fadeOutMs = fadeOutMs,
     )
 }
 
@@ -465,6 +576,7 @@ internal fun calculateClipStickerOverlayLayout(
 private class ClipStickerBitmapOverlay(
     private val overlay: ClipStickerOverlay,
     private val context: Context,
+    private val clipDurationMs: Long,
 ) : BitmapOverlay() {
     private var bitmap: Bitmap? = null
     private var transparentBitmap: Bitmap? = null
@@ -532,6 +644,17 @@ private class ClipStickerBitmapOverlay(
         transparentBitmap = nextTransparentBitmap
     }
 
+    override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings =
+        OverlaySettings.Builder()
+            .setAlphaScale(
+                clipStickerFadeAlphaScale(
+                    overlay = overlay,
+                    positionMs = presentationTimeUs / 1_000L,
+                    clipDurationMs = clipDurationMs,
+                ),
+            )
+            .build()
+
     override fun getBitmap(presentationTimeUs: Long): Bitmap =
         if (isClipStickerOverlayVisibleAtUs(overlay, presentationTimeUs)) {
             checkNotNull(bitmap) { "Sticker overlay must be configured with a video frame size before rendering" }
@@ -552,13 +675,14 @@ private class ClipStickerBitmapOverlay(
 internal fun createClipStickerOverlayEffects(
     overlays: List<ClipStickerOverlay>,
     context: Context,
+    clipDurationMs: Long,
 ): List<Effect> {
     if (overlays.isEmpty()) return emptyList()
     require(overlays.size <= MAX_CLIP_STICKER_OVERLAYS)
     val applicationContext = context.applicationContext
     return listOf(
         OverlayEffect(overlays.map { overlay ->
-            ClipStickerBitmapOverlay(overlay, applicationContext)
+            ClipStickerBitmapOverlay(overlay, applicationContext, clipDurationMs)
         }),
     )
 }
