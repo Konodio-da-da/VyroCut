@@ -7,6 +7,21 @@ import org.junit.Test
 
 class EditorLayoutRulesTest {
     @Test
+    fun safeDrawingInsetsReduceTheViewportBeforeCompactBreakpointsAreChosen() {
+        // A 640 dp window with 24 dp top and 48 dp bottom safe areas leaves
+        // a 568 dp content viewport for editor sizing.
+        val contentHeightAfterSafeInsets = 640 - 24 - 48
+        val metrics = editorLayoutMetrics(
+            windowHeightDp = contentHeightAfterSafeInsets,
+            windowWidthDp = 360,
+        )
+
+        assertEquals(114, metrics.previewHeightDp)
+        assertEquals(COMPACT_EDITOR_SECTION_SPACING_DP, metrics.sectionSpacingDp)
+        assertTrue(metrics.stackPreviewMetadataAboveTransportControls)
+    }
+
+    @Test
     fun tightWindowReducesPreviewAndSectionSpacing() {
         val metrics = editorLayoutMetrics(480)
 
