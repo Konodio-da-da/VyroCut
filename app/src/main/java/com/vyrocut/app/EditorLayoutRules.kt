@@ -174,6 +174,22 @@ internal fun editorTransportControlsMinimumWindowWidthDp(fontScale: Float): Int 
  * minimum useful width. Font-scale growth follows the shared 4x
  * accessibility range.
  */
+internal fun editorHeaderShowsProjectNavigationLabel(
+    windowWidthDp: Int,
+    fontScale: Float = 1f,
+): Boolean {
+    val safeWidth = windowWidthDp.takeIf { it > 0 }
+        ?: EDITOR_LAYOUT_FALLBACK_WINDOW_WIDTH_DP
+    val safeFontScale = safeEditorFontScale(fontScale)
+    val fontScaleGrowth = (
+        (safeFontScale - 1f) *
+            VyroCutEditorLayoutMetrics.ProjectNavigationLabelFontScaleWidthGrowthDp
+        ).roundToInt().coerceAtLeast(0)
+    val requiredWidth =
+        VyroCutEditorLayoutMetrics.ProjectNavigationLabelMinimumWindowWidthDp + fontScaleGrowth
+    return safeWidth >= requiredWidth
+}
+
 internal fun editorHeaderShowsBrandTitle(
     windowWidthDp: Int,
     fontScale: Float = 1f,
